@@ -6,7 +6,10 @@ import language.experimental.macros
 
 object MPDE {
 
-  def lift[T, R](c: Context)(block: c.Expr[R]): c.Expr[T] = {
+  /**
+   * Macro that converts pure DSL embedding into a deep one. For now it simply prints the trees.
+   */
+  def lift[T](c: Context)(block: c.Expr[T]): c.Expr[T] = {
     import c.universe._
     
     object mpdeTransformer extends Transformer {
@@ -15,7 +18,8 @@ object MPDE {
         tree match {
           case Apply(rest, y) =>
             val result = super.transform(tree)
-            println("s:" + rest + " y:" + y)
+            // prints all applications
+            println("r: " + rest + " y: " + y)
             result
           case _ =>
             super.transform(tree)
@@ -23,14 +27,17 @@ object MPDE {
       }
     }
     
+    // simply prints the tree
     block.tree.foreach{
       case Apply(x, y) =>
         println(x + " --- " + y)
       case _ => ()
     }
     
-     val t = mpdeTransformer.transform(block.tree)
+    val t = mpdeTransformer.transform(block.tree)
     
-    ???
+    // simply return the original tree
+    block
   }
+  
 }
