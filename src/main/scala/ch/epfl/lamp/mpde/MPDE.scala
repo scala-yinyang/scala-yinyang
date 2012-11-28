@@ -16,11 +16,25 @@ object MPDE {
 
       override def transform(tree: Tree): Tree = {
         tree match {
-          case Apply(rest, y) =>
+          case Apply(TypeApply(Select(tpe, method), _), y) =>
+            // How to get the trait where this method is defined?
+            // How to cover the chain of applications?
+            
+            // if (rep method exists) 
+            //   push trees that need to be converted on a stack
+            //   recurse to them 
+            
+            // prints all applications            
+            println(s"tpe: $tpe method: $method y: $y")
+
             val result = super.transform(tree)
-            // prints all applications
-            println("r: " + rest + " y: " + y)
+            
+            
+            // if (the stack marks that this tree should be converted)
+            //   find the conversion method
+            
             result
+          
           case _ =>
             super.transform(tree)
         }
@@ -28,7 +42,7 @@ object MPDE {
     }
     
     // simply prints the tree
-    block.tree.foreach{
+    block.tree.foreach {
       case Apply(x, y) =>
         println(x + " --- " + y)
       case _ => ()
