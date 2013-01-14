@@ -85,6 +85,17 @@ final class MPDETransformer[C <: Context, T](val c: C, dslName: String, val debu
         // This approach does no cover the case of methods with parameters. For now they will be disallowed.
         case t @ Ident(v) if isFree(t.symbol) =>
           Apply(TypeApply(Select(This(newTypeName(className)), newTermName("liftTerm")), List(TypeTree(), TypeTree())), List(t))
+
+        // re-wire objects
+        case s @ Select(inn, name) if s.symbol.isMethod =>
+          Select(transform(inn), name)
+        
+        case s @ Select(inn, name) if s.symbol.isModule =>
+          Ident(name)
+        
+        // Vlads hack for fixing up types
+        case TypeApply(mth, targs) => mth
+        
         case _ =>
           super.transform(tree)
       }

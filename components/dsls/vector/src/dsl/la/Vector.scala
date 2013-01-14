@@ -39,6 +39,10 @@ final private class DenseVector[T: Numeric: ClassTag](val x: Array[T]) extends V
 }
 
 
+object TestObject {
+  def apply[T](v: T*): Vector[T] = ???
+}
+
 object SparseVector {
   // TODO we need index, value tuples. For that we need tuples
   def apply[T: Numeric: ClassTag](a: T*): Vector[T] = apply(a.toList)

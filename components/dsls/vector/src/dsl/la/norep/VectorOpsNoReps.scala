@@ -16,6 +16,10 @@ trait IntDSL extends Base {
   implicit object LiftInt extends LiftEvidence[scala.Int, Int] {
     def lift(v: scala.Int): Int = ???
   }
+  
+  implicit object LiftUnit extends LiftEvidence[scala.Unit, Unit] {
+    def lift(v: Unit): Unit = ???
+  }
 }
 
 trait NumericOps extends IntDSL with Base {
@@ -34,7 +38,7 @@ trait NumericOps extends IntDSL with Base {
     // TODO complete   
   }
   
-  implicit object NumericInt extends Numeric[IntOps] {
+  implicit object IntIsIntegral extends Numeric[Int] {
     def fromInt(x: IntOps): IntOps = ???
     def minus(x: IntOps, y: IntOps): IntOps = ???
     def negate(x: IntOps): IntOps = ???
@@ -47,6 +51,7 @@ trait NumericOps extends IntDSL with Base {
     def toLong(x: IntOps): scala.Long = ???
     def compare(x: IntOps, y: IntOps): IntOps = ???
   }
+  
 }
 
 
@@ -85,4 +90,7 @@ trait VectorDSL extends ArrayDSL with IntDSL with NumericOps with Base with Inte
     def apply[T: Numeric: ClassTag](a: T*): Vector[T] = ???
   }
 
+  object TestObject {
+    def apply[T](a: T*): Vector[T] = ???
+  }
 }

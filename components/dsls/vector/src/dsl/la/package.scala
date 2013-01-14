@@ -7,7 +7,7 @@ import scala.reflect.macros.Context
 package object la {
 
   // TODO should not return Unit but a value
-  def la[T](block: => T): Unit = macro lift[T]
+  def laLift[T](block: => T): Unit = macro lift[T]
 
   def laDebug[T](block: => T): Unit = macro liftDebug[T]
 
