@@ -5,6 +5,7 @@
   <classpathentry path="/home/sun/.ivy2/cache/org.scala-lang/scala-reflect/jars/scala-reflect-2.10.0-SNAPSHOT.jar" kind="lib"></classpathentry>
   <classpathentry kind="con" path="org.scala-ide.sdt.launching.SCALA_COMPILER_CONTAINER"></classpathentry>
   <classpathentry path="/home/sun/.ivy2/cache/org.scalatest/scalatest_2.10.0-RC5/jars/scalatest_2.10.0-RC5-2.0.M5-B1.jar" kind="lib"></classpathentry>
+  <classpathentry path="/home/sun/.ivy2/cache/junit/junit/jars/junit-4.8.1.jar" kind="lib"></classpathentry>
   <classpathentry path="org.eclipse.jdt.launching.JRE_CONTAINER" kind="con"></classpathentry>
   <classpathentry path="bin" kind="output"></classpathentry>
 </classpath>

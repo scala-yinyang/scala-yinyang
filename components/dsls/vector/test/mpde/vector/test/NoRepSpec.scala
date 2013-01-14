@@ -1,11 +1,15 @@
+package mpde.vector.test
+
 import dsl.la.norep._
 import dsl.la._
-import collection.mutable.Stack
 import org.scalatest._
+import org.junit.runner.RunWith
+import org.scalatest.junit.JUnitRunner
 
 /*
  * This tests shows the mechanics of the Rep[T] based approach.
  */
+@RunWith(classOf[JUnitRunner])
 class NoRepSpec extends FlatSpec with ShouldMatchers {
 
   "A deep embedding of la without Rep types" should "compile" in {
@@ -18,7 +22,7 @@ class NoRepSpec extends FlatSpec with ShouldMatchers {
       }
     }
   }
-  
+
   "Baby steps first: No code at all. Just return a constant!!" should "compile" in {
     val out = 1
     var varOut = 2

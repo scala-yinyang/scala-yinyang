@@ -10,7 +10,7 @@ object MPDEBuild extends Build {
   val defaults = Defaults.defaultSettings ++ Seq(
     // scala version + resolver
     scalaVersion := scala,
-    //scalaBinaryVersion := scala,
+    // scalaBinaryVersion := scala,
     resolvers in ThisBuild += ScalaToolsSnapshots, // to get 2.10.0-SNAPSHOT,
     resolvers +=  "OSSH" at "https://oss.sonatype.org/content/groups/public",
 
@@ -28,7 +28,8 @@ object MPDEBuild extends Build {
       "org.scala-lang" % "scala-library" % ver,
       "org.scala-lang" % "scala-reflect" % ver,
       "org.scala-lang" % "scala-compiler" % ver, 
-      "org.scalatest" % "scalatest_2.10.0-RC5" % "2.0.M5-B1" % "test"
+      "org.scalatest" % "scalatest_2.10.0-RC5" % "2.0.M5-B1" % "test",
+      "junit" % "junit" % "4.8.1" % "test" // we need JUnit explicitly
     )),
 
     // testing
