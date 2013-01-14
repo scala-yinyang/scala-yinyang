@@ -37,7 +37,8 @@ object MPDEBuild extends Build {
     // testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-oD")
   )
 
-  lazy val _mpde         = Project(id = "mpde",             base = file(".")) aggregate (framework, vector_dsl)
-  lazy val framework     = Project(id = "mpde-framework",   base = file("components/framework"), settings = defaults)
-  lazy val vector_dsl    = Project(id = "mpde-vector-dsl",  base = file("components/dsls/vector"), settings = defaults) dependsOn(framework)
+  lazy val _mpde           = Project(id = "mpde",                  base = file(".")) aggregate (framework, vector_dsl, vector_dsl_test)
+  lazy val framework       = Project(id = "mpde-framework",        base = file("components/framework"), settings = defaults)
+  lazy val vector_dsl      = Project(id = "mpde-vector-dsl",       base = file("components/dsls/vector"), settings = defaults) dependsOn(framework)
+  lazy val vector_dsl_test = Project(id = "mpde-vector-dsl-test",  base = file("components/dsls/vector-test"), settings = defaults) dependsOn(framework, vector_dsl)
 }

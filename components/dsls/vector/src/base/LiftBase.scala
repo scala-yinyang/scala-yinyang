@@ -1,11 +1,11 @@
 package base
 
 /*
- * This is a prototype implementation of the embedded DSL. In this prototype we will use the of 
- * polymorphic embedding of DSLs.  
- * 
+ * This is a prototype implementation of the embedded DSL. In this prototype we will use the of
+ * polymorphic embedding of DSLs.
+ *
  * DSL. Once the library is complete all method implementations should
- * remain empty so users can build their own embedded compilers. There is need to enforce more than lifting on the library user.  
+ * remain empty so users can build their own embedded compilers. There is need to enforce more than lifting on the library user.
  */
 trait LiftBase {
 
