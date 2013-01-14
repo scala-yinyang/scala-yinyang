@@ -80,20 +80,32 @@ private[mpde] final class MPDETransformer[C <: Context](val c: C, cake: String) 
      */
   private final class ScopeInjectionTransformer extends Transformer {
 
+    private val definedValues = collection.mutable.HashSet[Symbol]()
+    private val definedMethods = collection.mutable.HashSet[Symbol]()    
+    
+    /**
+     * Current solution for finding outer scope idents.
+     */
+    def markDSLDefinition(tree: Tree) = tree match {
+        case _: ValDef => definedValues += tree.symbol
+        case _: DefDef => definedMethods += tree.symbol
+        case _ =>
+    }
+    
+    private[this] final def isFree(s: Symbol) = definedValues.contains(s) || definedMethods.contains(s)
+    
     override def transform(tree: Tree): Tree = {
+      markDSLDefinition(tree)
+            
       tree match {
         // lifting of literals          
         case t @ Literal(Constant(v)) => // v => liftTerm(v)
           Apply(TypeApply(Select(This(newTypeName(cake)), newTermName("liftTerm")), List(TypeTree(), TypeTree())), List(t))
 
-        // if identifier is a val or var outside the scope of the DSL.
-        // we can do this in the following ways:
-        //  * check if ident is val or var from the outer scope (do not know how)
-        //  * just lift it if it is not converted to selects
-        case t @ Ident(v) =>// TODO we need to figure out where is the identifier coming from. 
-          //Apply(TypeApply(Select(This(newTypeName(cake)), newTermName("liftTerm")), List(TypeTree(), TypeTree())), List(t))
-          println("Symbol: " + t.symbol + " owner:" + t.symbol.owner)
-          t
+        // If the identifier is a val or var outside the scope of the DSL we will lift it.
+        // This approach does no cover the case of methods with parameters. For now they will be disallowed.
+        case t @ Ident(v) if isFree(t.symbol) =>  
+          Apply(TypeApply(Select(This(newTypeName(cake)), newTermName("liftTerm")), List(TypeTree(), TypeTree())), List(t))
         case _ =>
           super.transform(tree)
       }
