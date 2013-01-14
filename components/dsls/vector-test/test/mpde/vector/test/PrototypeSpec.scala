@@ -49,13 +49,13 @@ class PrototypeSpec extends FlatSpec with ShouldMatchers {
   }
 
   // Block(List(
-  // ValDef(Modifiers(), newTermName("y"), TypeTree(), 
+  // ValDef(Modifiers(), newTermName("y"), TypeTree(),
   //   Apply(Apply(TypeApply(Select(Select(Select(Ident(dsl), dsl.la), dsl.la.DenseVector), newTermName("apply")), List(TypeTree())), List(Literal(Constant(1)))), List(Select(Select(This(newTypeName("math")), scala.math.Numeric), scala.math.Numeric.IntIsIntegral), Select(Ident(scala.reflect.ClassTag), newTermName("Int")))))
   // Import(Ident(dsl), List(ImportSelector(newTermName("la"), 1324, newTermName("la"), 1324)))
-  // ValDef(Modifiers(), newTermName("z"), TypeTree(), 
+  // ValDef(Modifiers(), newTermName("z"), TypeTree(),
   //   Apply(Apply(TypeApply(Select(Select(Select(Ident(dsl), dsl.la), dsl.la.DenseVector), newTermName("apply")), List(TypeTree())), List(Literal(Constant(1)))), List(Select(Select(This(newTypeName("math")), scala.math.Numeric), scala.math.Numeric.IntIsIntegral), Select(Ident(scala.reflect.ClassTag), newTermName("Int")))))
   // Import(Select(Ident(dsl), dsl.la), List(ImportSelector(newTermName("DenseVector"), 1381, newTermName("DenseVector"), 1381)))
-  // ValDef(Modifiers(), newTermName("dv"), TypeTree(), 
+  // ValDef(Modifiers(), newTermName("dv"), TypeTree(),
   //   Apply(Apply(TypeApply(Select(Select(Select(Ident(dsl), dsl.la), dsl.la.DenseVector), newTermName("apply")), List(TypeTree())), List(Literal(Constant(1)))), List(Select(Select(This(newTypeName("math")), scala.math.Numeric), scala.math.Numeric.IntIsIntegral), Select(Ident(scala.reflect.ClassTag), newTermName("Int")))))
   //), Literal(Constant(()))))
   //
@@ -67,7 +67,7 @@ class PrototypeSpec extends FlatSpec with ShouldMatchers {
 
   //  Select(Select(This(newTypeName("$anon")), newTermName("DenseVector")), newTermName("apply"))
 
-  // object out of a cake 
+  // object out of a cake
   // DenseVector(1,2)
   // Select(Select(Select(Ident(dsl), dsl.la), dsl.la.DenseVector), newTermName("apply"))
 
@@ -83,7 +83,7 @@ class PrototypeSpec extends FlatSpec with ShouldMatchers {
   it should "compile method application on an object" in {
 
     //    val x = laDebug {new VectorDSL { def main = DenseVector.apply(liftTerm(1)) }}
-    val x = dsl.la.laDebug {
+    val x = dsl.la.laLift {
       val y = dsl.la.TestObject(1)
 //      import dsl.la
 //      val z = la.TestObject(1)
@@ -91,8 +91,19 @@ class PrototypeSpec extends FlatSpec with ShouldMatchers {
 //      val dv = TestObject(1)
       ()
     }
-//    x shouldBe (1, 2, 3, 4)
   }
+
+  it should "rewire object applications with our own numeric and class tag" in {
+    val x = dsl.la.laDebug {
+      val y = dsl.la.DenseVector(1,2,3)
+      import dsl.la
+      val z = la.DenseVector(1,2,3)
+      import dsl.la.TestObject
+      val dv = DenseVector(1,2,3)
+      ()
+    }
+  }
+
 
   it should "compile method application on an object" in {
 

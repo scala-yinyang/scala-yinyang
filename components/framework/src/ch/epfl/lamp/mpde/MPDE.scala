@@ -43,7 +43,7 @@ final class MPDETransformer[C <: Context, T](val c: C, dslName: String, val debu
     log("Raw Block:" + showRaw(block))
     log("Cake: " + show(cake))
     log("Raw Cake: " + showRaw(cake))
-    log("Type Cake: " + show(cake, printTypes = true))
+    log("Type Cake: " + show(cake/*, printTypes = true*/))
 
     c.Expr[T](c.resetAllAttrs(cake))
   }
@@ -73,32 +73,42 @@ final class MPDETransformer[C <: Context, T](val c: C, dslName: String, val debu
 
     private[this] final def isFree(s: Symbol) = !(definedValues.contains(s) || definedMethods.contains(s))
 
+    var ident = 0
+
     override def transform(tree: Tree): Tree = {
       markDSLDefinition(tree)
 
-      tree match {
+      log(" " * ident + " ==> " + tree)
+      ident += 1
+      val result = tree match {
         // lifting of literals
         case t @ Literal(Constant(v)) => // v => liftTerm(v)
-          Apply(TypeApply(Select(This(newTypeName(className)), newTermName("liftTerm")), List(TypeTree(), TypeTree())), List(t))
+          Apply(Select(This(newTypeName(className)), newTermName("liftTerm")), List(t))
 
         // If the identifier is a val or var outside the scope of the DSL we will lift it.
         // This approach does no cover the case of methods with parameters. For now they will be disallowed.
-        case t @ Ident(v) if isFree(t.symbol) =>
+        case t @ Ident(v) if isFree(t.symbol) && !t.symbol.isModule =>
           Apply(TypeApply(Select(This(newTypeName(className)), newTermName("liftTerm")), List(TypeTree(), TypeTree())), List(t))
 
         // re-wire objects
         case s @ Select(inn, name) if s.symbol.isMethod =>
           Select(transform(inn), name)
-        
-        case s @ Select(inn, name) if s.symbol.isModule =>
+
+        case s @ Select(inn, name) => // if s.symbol.isModule =>
           Ident(name)
-        
-        // Vlads hack for fixing up types
-        case TypeApply(mth, targs) => mth
-        
+
+        case TypeApply(mth, targs) => transform(mth)
+
+        case Import(_, _) =>
+          EmptyTree
+
         case _ =>
           super.transform(tree)
       }
+      ident -= 1
+      log(" " * ident + " <== " + result)
+
+      result
     }
   }
 

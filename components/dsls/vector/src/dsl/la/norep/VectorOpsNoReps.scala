@@ -7,7 +7,7 @@ trait Base extends LiftBase
 
 trait IntDSL extends Base {
   type Int = IntOps
-  
+
   trait IntOps {
     def +(that: Int): Int
     // TODO complete
@@ -16,10 +16,22 @@ trait IntDSL extends Base {
   implicit object LiftInt extends LiftEvidence[scala.Int, Int] {
     def lift(v: scala.Int): Int = ???
   }
-  
+
   implicit object LiftUnit extends LiftEvidence[scala.Unit, Unit] {
     def lift(v: Unit): Unit = ???
   }
+}
+
+trait ClassTagOps extends Base {
+  //  ClassTags posed a bit of a challenge: You want to keep the original
+  //  class tags created by the compiler, as rewiring everything is too
+  //  cumbersome, but at the same time you want to bridge the types from
+  //  the original class tag to the new types in the dsl. The way to do
+  //  this is to have an implicit conversion from ClassTag[T] to ClassTag[U]
+  //  as long as there is a LiftEvidence[T, U] in scope.
+  implicit def classTagToOurClassTag[T, U](x: ClassTag[T])(implicit ev: LiftEvidence[T, U]): ClassTag[U] = x.asInstanceOf[ClassTag[U]]
+  type ClassTag[T] = scala.reflect.ClassTag[T]
+  val ClassTag = scala.reflect.ClassTag
 }
 
 trait NumericOps extends IntDSL with Base {
@@ -35,9 +47,9 @@ trait NumericOps extends IntDSL with Base {
     def toLong(x: T): Long
     def toFloat(x: T): Float
     def toDouble(x: T): Double
-    // TODO complete   
+    // TODO complete
   }
-  
+
   implicit object IntIsIntegral extends Numeric[Int] {
     def fromInt(x: IntOps): IntOps = ???
     def minus(x: IntOps, y: IntOps): IntOps = ???
@@ -51,9 +63,7 @@ trait NumericOps extends IntDSL with Base {
     def toLong(x: IntOps): scala.Long = ???
     def compare(x: IntOps, y: IntOps): IntOps = ???
   }
-  
 }
-
 
 trait ArrayDSL extends Base {
   type Array[T] = ArrayOps[T]
@@ -70,7 +80,7 @@ trait ArrayDSL extends Base {
 
 }
 
-trait VectorDSL extends ArrayDSL with IntDSL with NumericOps with Base with Interpret {
+trait VectorDSL extends ClassTagOps with ArrayDSL with IntDSL with NumericOps with Base with Interpret {
   type Vector[T] = VectorOps[T]
 
   trait VectorOps[T] {
