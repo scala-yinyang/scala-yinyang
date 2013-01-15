@@ -53,7 +53,7 @@ class GradualLiftingSpec extends FlatSpec with ShouldMatchers {
    */
 
   "Partial lifting" should "produce values" in {
-   /*
+    /*
    val x = DenseVector(20, 31, 44)
 
    val pow = pow(x) // non-lifted

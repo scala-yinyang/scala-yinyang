@@ -27,7 +27,7 @@ class NoRepSpec extends FlatSpec with ShouldMatchers {
     val out = 1
     var varOut = 2
     new VectorDSL {
-      def main = { val x = DenseVector(out,varOut,3)(null, null); var y = x; ();}
+      def main = { val x = DenseVector(out, varOut, 3)(null, null); var y = x; (); }
     }
   }
 }

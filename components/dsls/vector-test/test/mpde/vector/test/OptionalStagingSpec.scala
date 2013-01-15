@@ -46,20 +46,20 @@ class OptionalStagingSpec extends FlatSpec with ShouldMatchers {
    *   The DSL must support holes in its framework. The holes must have a name and a type. The names of all holes must be in the method signature.
    *   Also the order of the holes must match the order that the macro will give.
    */
-//  "Constant as an argument" should "be staged at compilation" in {
-//    matches("abc", "abc") should equal (true)
-//  }
-//
-//  "Constant in a val" should "be staged at compilation" {
-//    val regex = "abc"
-////    matches("abc", regex) shouldBe true
-//  }
-//
-//  "Constant in a var" should "be staged at runtime" {
-//    var regex = "abd"
-//    regex = "abc"
-////    matches("abc", regex) should equal (true)
-//     1
-//  }
+  //  "Constant as an argument" should "be staged at compilation" in {
+  //    matches("abc", "abc") should equal (true)
+  //  }
+  //
+  //  "Constant in a val" should "be staged at compilation" {
+  //    val regex = "abc"
+  ////    matches("abc", regex) shouldBe true
+  //  }
+  //
+  //  "Constant in a var" should "be staged at runtime" {
+  //    var regex = "abd"
+  //    regex = "abc"
+  ////    matches("abc", regex) should equal (true)
+  //     1
+  //  }
 
 }

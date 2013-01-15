@@ -79,14 +79,26 @@ trait ArrayDSL extends Base {
   }
 
 }
+trait BooleanDSL extends Base {
+  type Boolean = scala.Boolean
 
-trait VectorDSL extends ClassTagOps with ArrayDSL with IntDSL with NumericOps with Base with Interpret {
+  implicit object LiftBoolean extends LiftEvidence[scala.Boolean, Boolean] {
+    def lift(v: scala.Boolean): Boolean = ???
+  }
+}
+
+trait IfThenElseDSL extends BooleanDSL with Base {
+
+  def __ifThenElse[T](c: ⇒ Boolean, t: T, e: T) = ???
+}
+
+trait VectorDSL extends ClassTagOps with IfThenElseDSL with ArrayDSL with IntDSL with NumericOps with Base with Interpret {
   type Vector[T] = VectorOps[T]
 
   trait VectorOps[T] {
     def *(v: Vector[T]): Vector[T]
     def +(v: Vector[T]): Vector[T]
-    def map[U: Numeric: ClassTag](v: T => U): Vector[U]
+    def map[U: Numeric: ClassTag](v: T ⇒ U): Vector[U]
   }
 
   object DenseVector {

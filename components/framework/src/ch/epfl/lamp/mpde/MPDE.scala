@@ -43,7 +43,7 @@ final class MPDETransformer[C <: Context, T](val c: C, dslName: String, val debu
     log("Raw Block:" + showRaw(block))
     log("Cake: " + show(cake))
     log("Raw Cake: " + showRaw(cake))
-    log("Type Cake: " + show(cake/*, printTypes = true*/))
+    log("Type Cake: " + show(cake /*, printTypes = true*/ ))
 
     c.Expr[T](c.resetAllAttrs(cake))
   }
@@ -66,9 +66,9 @@ final class MPDETransformer[C <: Context, T](val c: C, dslName: String, val debu
      * Current solution for finding outer scope idents.
      */
     def markDSLDefinition(tree: Tree) = tree match {
-      case _: ValDef => definedValues += tree.symbol
-      case _: DefDef => definedMethods += tree.symbol
-      case _ =>
+      case _: ValDef ⇒ definedValues += tree.symbol
+      case _: DefDef ⇒ definedMethods += tree.symbol
+      case _         ⇒
     }
 
     private[this] final def isFree(s: Symbol) = !(definedValues.contains(s) || definedMethods.contains(s))
@@ -80,31 +80,51 @@ final class MPDETransformer[C <: Context, T](val c: C, dslName: String, val debu
 
       log(" " * ident + " ==> " + tree)
       ident += 1
+
       val result = tree match {
         // lifting of literals
-        case t @ Literal(Constant(v)) => // v => liftTerm(v)
+        case t @ Literal(Constant(v)) ⇒ // v => liftTerm(v)
           Apply(Select(This(newTypeName(className)), newTermName("liftTerm")), List(t))
 
         // If the identifier is a val or var outside the scope of the DSL we will lift it.
         // This approach does no cover the case of methods with parameters. For now they will be disallowed.
-        case t @ Ident(v) if isFree(t.symbol) && !t.symbol.isModule =>
+        case t @ Ident(v) if isFree(t.symbol) && !t.symbol.isModule ⇒
           Apply(TypeApply(Select(This(newTypeName(className)), newTermName("liftTerm")), List(TypeTree(), TypeTree())), List(t))
 
         // re-wire objects
-        case s @ Select(inn, name) if s.symbol.isMethod =>
+        case s @ Select(inn, name) if s.symbol.isMethod ⇒
           Select(transform(inn), name)
 
-        case s @ Select(inn, name) => // if s.symbol.isModule =>
+        // replaces objects with their cake counterparts
+        case s @ Select(inn, name) ⇒ // TODO this needs to be narrowed down if s.symbol.isModule =>
           Ident(name)
 
-        case TypeApply(mth, targs) => transform(mth)
+        case TypeApply(mth, targs) ⇒ // TODO this needs to be changed for LMS to include a type transformer
+          transform(mth)
 
-        case Import(_, _) =>
+        // Removes all import statements for now. TODO later it will figure out the DSL modules and will include them into the cake. 
+        case Import(_, _) ⇒
           EmptyTree
 
-        case _ =>
+        // TODO does not work because resetAllAttrs does not remove types from lambdas.
+        case f @ Function(params, body) ⇒
+          // TODO for LMS we will put here an explicit type for all the arguments to avoid 
+          // inferencer errors.
+          // For polymorphic embedding we will just null it out.
+          log("Function type: " + f.symbol.typeSignature.toString)
+          log("Argument type: " + params.head.symbol.typeSignature.toString)
+          c.resetAllAttrs(f) // this does not re-infer the type. Why?
+
+        // re-wire language feature `if` to the method __ifThenElse 
+        case t @ If(cond, then, elze) ⇒
+          Apply(Select(This(newTypeName(className)), newTermName("__ifThenElse")), List(transform(cond), transform(then), transform(elze)))
+
+        // TODO var, while, do while, return, partial functions, try catch, pattern matching
+
+        case _ ⇒
           super.transform(tree)
       }
+
       ident -= 1
       log(" " * ident + " <== " + result)
 

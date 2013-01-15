@@ -48,6 +48,8 @@ class PrototypeSpec extends FlatSpec with ShouldMatchers {
     }
   }
 
+  // Temporarily here until we lift all of the cases below:
+
   // Block(List(
   // ValDef(Modifiers(), newTermName("y"), TypeTree(),
   //   Apply(Apply(TypeApply(Select(Select(Select(Ident(dsl), dsl.la), dsl.la.DenseVector), newTermName("apply")), List(TypeTree())), List(Literal(Constant(1)))), List(Select(Select(This(newTypeName("math")), scala.math.Numeric), scala.math.Numeric.IntIsIntegral), Select(Ident(scala.reflect.ClassTag), newTermName("Int")))))
@@ -80,40 +82,35 @@ class PrototypeSpec extends FlatSpec with ShouldMatchers {
   // new Exception()
   // Select(New(Select(Select(Ident(scala), scala.package), newTypeName("Exception"))), nme.CONSTRUCTOR)
 
-  it should "compile method application on an object" in {
-
-    //    val x = laDebug {new VectorDSL { def main = DenseVector.apply(liftTerm(1)) }}
-    val x = dsl.la.laLift {
-      val y = dsl.la.TestObject(1)
-//      import dsl.la
-//      val z = la.TestObject(1)
-//      import dsl.la.TestObject
-//      val dv = TestObject(1)
-      ()
-    }
-  }
-
   it should "rewire object applications with our own numeric and class tag" in {
-    val x = dsl.la.laDebug {
-      val y = dsl.la.DenseVector(1,2,3)
+    val x = dsl.la.laLift {
+      val y = dsl.la.DenseVector(1, 2, 3)
       import dsl.la
-      val z = la.DenseVector(1,2,3)
+      val z = la.DenseVector(1, 2, 3)
       import dsl.la.TestObject
-      val dv = DenseVector(1,2,3)
+      val dv = DenseVector(1, 2, 3)
       ()
     }
   }
 
-
-  it should "compile method application on an object" in {
-
-    //	 val x = laDebug {new VectorDSL { def main = DenseVector.apply(liftTerm(1)) }}
-    /*val x = dsl.la.laDebug {
-      dsl.la.DenseVector
-      ()
+  it should "rewire language features to methods" in {
+    val x = dsl.la.laLift {
+      if (true) DenseVector(1, 2, 3) else { DenseVector(1, 2, 3) }
     }
-    x shouldBe (1, 2, 3, 4)*/
+    ()
+  }
+
+  it should "closures should be converted into a cake" in {
+    val x = dsl.la.laLift {
+      //      new VectorDSL {
+      //        def main = {
+      //          DenseVector(liftTerm(1)).map(x => x + 1)
+      //        }
+      //      }
+      //            dsl.la.DenseVector(1,2,3).map(x => x + 1)      
+    }
     ()
   }
 
 }
+

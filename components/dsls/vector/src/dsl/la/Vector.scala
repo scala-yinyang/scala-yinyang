@@ -7,7 +7,7 @@ trait Vector[T] {
   protected[la] def underlying: IndexedSeq[T]
   def *(v: Vector[T]): Vector[T]
   def +(v: Vector[T]): Vector[T]
-  def map[U: Numeric: ClassTag](v: T => U): Vector[U]
+  def map[U: Numeric: ClassTag](v: T ⇒ U): Vector[U]
 }
 
 object DenseVector {
@@ -21,23 +21,20 @@ final private class DenseVector[T: Numeric: ClassTag](val x: Array[T]) extends V
   def num = implicitly[Numeric[T]]
 
   def +(v: Vector[T]) = new DenseVector[T](
-      ((underlying zip v.underlying) map ((x: (T, T)) =>  num.plus(x._1, x._2))).toArray
-  )
+    ((underlying zip v.underlying) map ((x: (T, T)) ⇒ num.plus(x._1, x._2))).toArray)
 
   def *(v: Vector[T]) = new DenseVector[T](
-      ((underlying zip v.underlying) map ((x: (T, T)) =>  num.times(x._1, x._2))).toArray
-  )
+    ((underlying zip v.underlying) map ((x: (T, T)) ⇒ num.times(x._1, x._2))).toArray)
 
-  def map[U: Numeric: ClassTag](f: T => U): Vector[U] = new DenseVector(underlying.map(f).toArray)
+  def map[U: Numeric: ClassTag](f: T ⇒ U): Vector[U] = new DenseVector(underlying.map(f).toArray)
 
   override def equals(that: Any) = that match {
-    case t: Vector[T] => t.underlying.toSeq == underlying.toSeq
-    case _ => false
+    case t: Vector[T] ⇒ t.underlying.toSeq == underlying.toSeq
+    case _            ⇒ false
   }
 
   override def toString = underlying.mkString("DenseVector(", ",", ")")
 }
-
 
 object TestObject {
   def apply[T](v: T*): Vector[T] = ???
@@ -55,20 +52,17 @@ final private class SparseVector[T: Numeric: ClassTag](val x: List[T]) extends V
 
   // these can be slow, we do not care
   def +(v: Vector[T]) = new DenseVector[T](
-      ((underlying zip v.underlying) map ((x: (T, T)) =>  num.plus(x._1, x._2))).toArray
-  )
+    ((underlying zip v.underlying) map ((x: (T, T)) ⇒ num.plus(x._1, x._2))).toArray)
 
   // these can be slow, we do not care
   def *(v: Vector[T]) = new DenseVector[T](
-      ((underlying zip v.underlying) map ((x: (T, T)) =>  num.times(x._1, x._2))).toArray
-  )
+    ((underlying zip v.underlying) map ((x: (T, T)) ⇒ num.times(x._1, x._2))).toArray)
 
-
-  def map[U: Numeric: ClassTag](f: T => U): Vector[U] = new SparseVector(underlying.map(f).toList)
+  def map[U: Numeric: ClassTag](f: T ⇒ U): Vector[U] = new SparseVector(underlying.map(f).toList)
 
   override def equals(that: Any) = that match {
-    case t: Vector[T] => t.underlying.toSeq == underlying.toSeq
-    case _ => false
+    case t: Vector[T] ⇒ t.underlying.toSeq == underlying.toSeq
+    case _            ⇒ false
   }
 
   override def toString = underlying.mkString("SparseVector(", ",", ")")

@@ -2,12 +2,27 @@ import java.io.File
 import sbt._
 import Keys._
 import Process._
+import com.typesafe.sbt.SbtScalariform
+import com.typesafe.sbt.SbtScalariform.ScalariformKeys
 
 object MPDEBuild extends Build {
 
   val scala = "2.10.0-SNAPSHOT"
 
-  val defaults = Defaults.defaultSettings ++ Seq(
+  lazy val formatSettings = SbtScalariform.scalariformSettings ++ Seq(
+    ScalariformKeys.preferences in Compile := formattingPreferences,
+    ScalariformKeys.preferences in Test    := formattingPreferences
+  )
+
+  def formattingPreferences = {
+    import scalariform.formatter.preferences._
+    FormattingPreferences()
+    .setPreference(RewriteArrowSymbols, true)
+    .setPreference(AlignParameters, true)
+    .setPreference(AlignSingleLineCaseStatements, true)
+  }
+
+  val defaults = Defaults.defaultSettings ++ formatSettings ++ Seq(
     // scala version + resolver
     scalaVersion := scala,
     // scalaBinaryVersion := scala,
