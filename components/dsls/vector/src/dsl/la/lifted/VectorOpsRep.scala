@@ -91,12 +91,15 @@ trait NumericOps extends Base {
 }
 
 trait IntDSL extends Base {
+  //to overload int operations
+  implicit object IntOverloaded
+
   //Rep versions of Int operations
   trait IntOps {
-    //    def +(that: Rep[Int]): Rep[Int]
-    def +(that: Rep[Double]): Rep[Double]
-    //    def *(that: Rep[Int]): [Int]
-    def *(that: Rep[Double]): Rep[Double]
+    def +(that: Rep[Int]): Rep[Int]
+    def +(that: Rep[Double])(implicit o: IntOverloaded.type): Rep[Double]
+    def *(that: Rep[Int]): Rep[Int]
+    def *(that: Rep[Double])(implicit o: IntOverloaded.type): Rep[Double]
     def unary_- : Rep[Int]
     def toInt: Rep[Int]
     def toDouble: Rep[Double]
@@ -105,10 +108,10 @@ trait IntDSL extends Base {
   //implementation of this operations (using implicit conversion to IntOpsOf class
   //before operation
   implicit class IntOpsOf(v: Rep[Int]) extends IntOps {
-    //    def +(that: Rep[Int]): Rep[Int] = ???
-    def +(that: Rep[Double]): Rep[Double] = ???
-    //    def *(that: Rep[Int]): [Int] = ???
-    def *(that: Rep[Double]): Rep[Double] = ???
+    def +(that: Rep[Int]): Rep[Int] = ???
+    def +(that: Rep[Double])(implicit o: IntOverloaded.type): Rep[Double] = ???
+    def *(that: Rep[Int]): Rep[Int] = ???
+    def *(that: Rep[Double])(implicit o: IntOverloaded.type): Rep[Double] = ???
     def unary_- : Rep[Int] = ???
     def toInt: Rep[Int] = ???
     def toDouble: Rep[Double] = ???
@@ -122,25 +125,26 @@ trait IntDSL extends Base {
   //  implicit def intOpsToDoubleOps(conv: Rep[Int]): Rep[Double] = ???
 }
 
-//TODO (TOASK) problem to define lift methods
-//where there were in default Double several methods with one parameter of different types
 trait DoubleDSL extends Base {
+
+  implicit object DoubleOverloaded
+
   trait DoubleOps {
-    //    def +(that: Rep[Int]): Rep[Double]
-    def +(that: Rep[Double]): Rep[Double]
-    //    def *(that: Rep[Int]): [Double]
-    def *(that: Rep[Double]): Rep[Double]
-    def unary_- : Rep[Int]
+    def +(that: Rep[Int]): Rep[Double]
+    def +(that: Rep[Double])(implicit o: DoubleOverloaded.type): Rep[Double]
+    def *(that: Rep[Int]): Rep[Double]
+    def *(that: Rep[Double])(implicit o: DoubleOverloaded.type): Rep[Double]
+    def unary_- : Rep[Double]
     def toInt: Rep[Int]
     def toDouble: Rep[Double]
   }
 
   implicit class DoubleOpsOf(v: Rep[Double]) extends DoubleOps {
-    //    def +(that: Rep[Int]): Rep[Double] = ???
-    def +(that: Rep[Double]): Rep[Double] = ???
-    //    def *(that: Rep[Int]): Rep[Double] = ???
-    def *(that: Rep[Double]): Rep[Double] = ???
-    def unary_- : Rep[Int] = ???
+    def +(that: Rep[Int]): Rep[Double] = ???
+    def +(that: Rep[Double])(implicit o: DoubleOverloaded.type): Rep[Double] = ???
+    def *(that: Rep[Int]): Rep[Double] = ???
+    def *(that: Rep[Double])(implicit o: DoubleOverloaded.type): Rep[Double] = ???
+    def unary_- : Rep[Double] = ???
     def toInt: Rep[Int] = ???
     def toDouble: Rep[Double] = ???
   }
