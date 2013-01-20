@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea_modules/mpde.iml" filepath="$PROJECT_DIR$/.idea_modules/mpde.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea_modules/mpde-build.iml" filepath="$PROJECT_DIR$/.idea_modules/mpde-build.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea_modules/mpde-framework.iml" filepath="$PROJECT_DIR$/.idea_modules/mpde-framework.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea_modules/mpde-vector-dsl.iml" filepath="$PROJECT_DIR$/.idea_modules/mpde-vector-dsl.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea_modules/mpde-vector-dsl-test.iml" filepath="$PROJECT_DIR$/.idea_modules/mpde-vector-dsl-test.iml" />
+    </modules>
+  </component>
+</project>
+

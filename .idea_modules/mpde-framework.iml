@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="JAVA_MODULE" version="4">
+  <component name="FacetManager">
+    <facet type="scala" name="Scala">
+      <configuration>
+        <option name="compilerLibraryLevel" value="Project" />
+        <option name="compilerLibraryName" value="SBT: scala:2.10.0-SNAPSHOT" />
+        <option name="fsc" value="true" />
+      </configuration>
+    </facet>
+  </component>
+  <component name="NewModuleRootManager" inherit-compiler-output="false">
+    <output url="file://$MODULE_DIR$/../components/framework/target/scala-2.10/classes" />
+    <output-test url="file://$MODULE_DIR$/../components/framework/target/scala-2.10/test-classes" />
+    <exclude-output />
+    <content url="file://$MODULE_DIR$/../components/framework">
+      <sourceFolder url="file://$MODULE_DIR$/../components/framework/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../components/framework/resources" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../components/framework/test" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/../components/framework/src/test/resources" isTestSource="true" />
+      <excludeFolder url="file://$MODULE_DIR$/../components/framework/target" />
+    </content>
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="library" name="SBT: org.scala-lang:scala-library:2.10.0-SNAPSHOT" level="project" />
+    <orderEntry type="library" name="SBT: org.scala-lang:scala-reflect:2.10.0-SNAPSHOT" level="project" />
+    <orderEntry type="library" name="SBT: org.scala-lang:scala-compiler:2.10.0-SNAPSHOT" level="project" />
+    <orderEntry type="library" scope="TEST" name="SBT: org.scalatest:scalatest_2.10.0-RC5:2.0.M5-B1:test" level="project" />
+    <orderEntry type="library" scope="TEST" name="SBT: junit:junit:4.8.1:test" level="project" />
+  </component>
+</module>
+
