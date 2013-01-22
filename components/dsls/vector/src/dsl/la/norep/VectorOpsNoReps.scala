@@ -47,7 +47,6 @@ trait DoubleDSL extends Base {
     def toDouble: Double
     def unary_- : Double
 
-    //TODO this defs not from original Double and just to provide
     //implementation for Vector operations
     def pow(power: Double)
     def sqrt
@@ -57,12 +56,6 @@ trait DoubleDSL extends Base {
   implicit object LiftDouble extends LiftEvidence[scala.Double, Double] {
     def lift(v: scala.Double): Double = ???
   }
-
-  //TODO (TOASK) we can remove it implicit object from here because we have
-  //selfType IntDSL
-  //  implicit object LiftUnit extends LiftEvidence[scala.Unit, Unit] {
-  //    def lift(v: Unit): Unit = ???
-  //  }
 }
 
 trait ClassTagOps extends Base {
@@ -140,10 +133,6 @@ trait NumericOps extends IntDSL with DoubleDSL with Base {
   }
   //  }
 
-  //TODO find another place
-  //TODO (TOASK) problem how to write Double type or where to place this implicit?
-  //TODO if it works correctly in IntDSL and check DEPENDENCIES (correctness mixing of DoubleDSL in IntDSL
-  //  implicit def intOpsToDoubleOps(conv: Int): Double = ???
 }
 
 trait ArrayDSL extends Base with IntDSL with DoubleDSL {
@@ -156,6 +145,8 @@ trait ArrayDSL extends Base with IntDSL with DoubleDSL {
 
   object Array {
     def apply[T](values: T*): Array[T] = ???
+
+    //TODO (ASK) - what to do with by name parameters (=> T)
     def fill[T: ClassTag](n: Int)(elem: ⇒ T): Array[T] = ???
     // TODO complete
   }
@@ -198,22 +189,14 @@ trait TupleDSL extends Base {
 trait VectorDSL extends ClassTagOps with IfThenElseDSL with ArrayDSL with TupleDSL with IntDSL with DoubleDSL with NumericOps with Base with Interpret {
   type Vector[T] = VectorOps[T]
 
-  //TODO test and correct its usage
-  //  trait VectorTransformer[T] {
-  //    def transform(v: Vector[T]): Vector[T]
-  //  }
-
+  //TODO (NEW) (TOASK) - where should we provide implementation for methods of VectorOps
   trait VectorOps[T] {
-    //TODO test and correct its usage
-    //  implicit object VectorFunction extends VectorTransformer[T] {
-    //    def transform(v: Vector[T]): Vector[T] = ???
-    //  }
+
     def *(v: Vector[T]): Vector[T]
     def +(v: Vector[T]): Vector[T]
     def map[U: Numeric: ClassTag](v: T ⇒ U): Vector[U]
 
-    //TODO it's a bad idea to provide here implementation
-    def baseVectors: Array[Vector[T]] = ??? //find base vectors
+    def baseVectors: Array[Vector[T]] //find base vectors
 
     def partition(fun: T ⇒ Boolean): Tuple2[Vector[T], Vector[T]]
 
@@ -223,14 +206,12 @@ trait VectorDSL extends ClassTagOps with IfThenElseDSL with ArrayDSL with TupleD
 
     def spliceT(v: Tuple2[Vector[T], Vector[T]]): Vector[T]
 
-    //    def transform(tr: VectorTransformer[T]): Vector[T]
+    def transform[U: Numeric: ClassTag](fn: Vector[T] ⇒ Vector[U]): Vector[U]
   }
 
   object DenseVector {
     def apply[T: Numeric: ClassTag](a: T*): Vector[T] = ???
 
-    //    def apply(a: Double*): Vector[Double] = ???
-    //    def apply[T <: Double,  Double: Numeric: ClassTag](a: T*): Vector[T] = ???
     //    def apply[T <: AnyVal: Numeric: ClassTag](a: Map[Int, T]): Vector[T] = ???
   }
 

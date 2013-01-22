@@ -63,7 +63,7 @@ trait NumericOps extends Base {
     override implicit def mkNumericOps(lhs: Rep[T]) = ???
   }
 
-  //conctete implicit objects for Numeric[Double] and Numeric[Int]
+  //concrete implicit objects for Numeric[Double] and Numeric[Int]
   object NumericOpsOf {
     implicit object NumericInt extends NumericOpsOf[Int] {
       def plus(x: Rep[Int], y: Rep[Int]): Rep[Int] = ???
@@ -170,7 +170,7 @@ trait ArrayDSL extends Base {
     def apply[T](values: T*): Rep[Array[T]] = ???
     // TODO complete
 
-    //TODO (TOASK) - what should we do with parameters like elem of type => T
+    //TODO (TOASK) (NEW) - what should we do with parameters like elem of type => T
     def fill[T: ClassTag](n: Rep[Int])(elem: ⇒ Rep[T]): ArrayOps[T] = ???
     // TODO complete
   }
@@ -212,10 +212,7 @@ trait VectorDSL extends ArrayDSL with IntDSL with DoubleDSL with NumericOps with
     def length: Rep[Double]
 
     //returns list of Vectors - to test with Rep Types
-    //TODO (TOASK) how to correctly provide Rep type?
-    //Rep[List[Vector[T]] or List[Rep[Vector[T]]
-    //or Rep[List[Rep[Vector[T]]]] ???
-    def baseVectors: Rep[ArrayOps[Vector[T]]] //find base vectors
+    def baseVectors: ArrayOps[Rep[Vector[T]]] //find base vectors
 
     def partition(fun: Rep[T] ⇒ Rep[Boolean]): Tuple2Ops[Rep[Vector[T]], Rep[Vector[T]]]
 
@@ -223,9 +220,9 @@ trait VectorDSL extends ArrayDSL with IntDSL with DoubleDSL with NumericOps with
 
     def splice(vs: Rep[Vector[T]]*): Rep[Vector[T]]
 
-    //TODO (TOASK)
-    //the same question with tuple Rep[(El, El)] or (Rep[El], Rep[El]) or Rep[(Rep[El], Rep[El])]
     def spliceT(v: Tuple2Ops[Rep[Vector[T]], Rep[Vector[T]]]): Rep[Vector[T]]
+
+    def transform[U: Numeric: ClassTag](fn: Rep[Vector[T]] ⇒ Rep[Vector[U]]): Rep[Vector[U]]
 
   }
 
@@ -237,19 +234,18 @@ trait VectorDSL extends ArrayDSL with IntDSL with DoubleDSL with NumericOps with
     def negate: Rep[Vector[T]] = ???
     def length: Rep[Double] = ???
 
-    //TODO think about correctness of usafe (Rep[List[...]] -> List[Rep[...]])
-    def baseVectors: Rep[ArrayOps[Vector[T]]] = ??? //find base vectors
+    //TODO (TOASK) - is it correct ArrayOps[Rep...] or it should be Rep[ArrayOps...]
+    def baseVectors: ArrayOps[Rep[Vector[T]]] = ??? //find base vectors
 
-    //TODO model tuples - it should be Tuple(Rep[Vector[T]], Rep[Vector[T]])
     def partition(fun: Rep[T] ⇒ Rep[Boolean]): Tuple2Ops[Rep[Vector[T]], Rep[Vector[T]]] = ???
 
     def dotProduct(v: Rep[Vector[T]]): Rep[T] = ???
 
     def splice(vs: Rep[Vector[T]]*): Rep[Vector[T]] = ???
 
-    //TODO model tuples
     def spliceT(v: Tuple2Ops[Rep[Vector[T]], Rep[Vector[T]]]): Rep[Vector[T]] = ???
 
+    def transform[U: Numeric: ClassTag](fn: Rep[Vector[T]] ⇒ Rep[Vector[U]]): Rep[Vector[U]] = ???
     // TODO complete
 
   }
@@ -267,8 +263,7 @@ trait VectorDSL extends ArrayDSL with IntDSL with DoubleDSL with NumericOps with
   object SparseVector {
     def apply[T: Numeric: ClassTag](a: Rep[T]*): Rep[Vector[T]] = ???
 
-    //TODO incorrect - should model Map instead (maybe, test it)
-    //TODO (TOASK) - what classes we should model (like Tuples) and what we can use (like Double)
+    //TODO (TOASK, TOTEST) - what classes we should model (like Tuples) and what we can use (like Double)
     def apply[T: Numeric: ClassTag](a: Rep[Map[Int, T]]): Rep[Vector[T]] = ???
   }
 

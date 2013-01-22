@@ -5,8 +5,8 @@ import collection.mutable.{ ListBuffer, WrappedArray }
 import scala.collection.mutable.WrappedArray
 
 trait Vector[T] {
-  type VectorTransformer[T] = Vector[T] ⇒ Vector[T]
-  type VectorConverter[Vector1[T] <: Vector[T], Vector2[T] <: Vector[T]] = Vector1[T] ⇒ Vector2[T]
+  //TODO try to implement
+  //  type VectorConverter[Vector1[T] <: Vector[T], Vector2[T] <: Vector[T]] = Vector1[T] ⇒ Vector2[T]
 
   protected[la] def underlying: IndexedSeq[T]
   def *(v: Vector[T]): Vector[T]
@@ -26,21 +26,18 @@ trait Vector[T] {
 
   //divide vector on 2 vectors according to condition
   //to see behaviour of function with various types as parameter and tuple (result)
-  //TODO required possibility to lift such functions
   def partition(fun: T ⇒ Boolean): (Vector[T], Vector[T])
 
   //to see behaviour of varargs parameters with Rep types
   def splice(vs: Vector[T]*): Vector[T]
 
   //to see behaviour of tuples when they behave as parameter type
-  //TODO required possibility to lift tuples to Rep[(Tuple, Tuple)]
   def spliceT(v: (Vector[T], Vector[T])): Vector[T]
 
   //to see behaviour of functional type parameter with generics
-  //def transform[U: Numeric: ClassTag: VectorTransformer]: Vector[T]
+  def transform[U: Numeric: ClassTag](fn: Vector[T] ⇒ Vector[U]): Vector[U]
 
-  def transform(implicit vt: VectorTransformer[T]): Vector[T]
-
+  //TODO try to implement
   //  def convert[Vector1, Vector2](implicit conv: VectorConverter[Vector1, Vector2]): Vector2
 }
 
@@ -51,8 +48,8 @@ object DenseVector {
   //TODO change implementation for Dense Vector
   def apply[T: Numeric: ClassTag](v: Map[Int, T]): Vector[T] = new DenseVector(v.values.seq.toArray)
 
-  //ERROR when using with apply(a: T*)
-  //def apply[T: Numeric: ClassTag](v: (T, T, T)): Vector[T] = new SparseVector[T](List(v._1, v._2, v._3))
+  //Error (see comment in SparseVector)
+  //def apply[T: Numeric: ClassTag](v: (T, T, T)): Vector[T] = new DenseVector[T](Array(v._1, v._2, v._3))
 }
 
 final private class DenseVector[T: Numeric: ClassTag](val x: Array[T]) extends Vector[T] {
@@ -82,23 +79,20 @@ final private class DenseVector[T: Numeric: ClassTag](val x: Array[T]) extends V
     })
   } toList
 
-  //TODO required possibility to lift such functions
   def partition(fun: T ⇒ Boolean): (Vector[T], Vector[T]) = underlying partition (fun) match {
     case (head, tail) ⇒ (new DenseVector(head toArray), new DenseVector(tail toArray))
   }
 
   def splice(vs: Vector[T]*): Vector[T] = new DenseVector(vs flatMap (_.underlying) toArray)
 
-  //TODO required possibility to lift tuples to Rep[(Tuple, Tuple)]
   //warning very ineffective
   def spliceT(v: (Vector[T], Vector[T])): Vector[T] = new DenseVector[T](v._1.underlying ++ v._2.underlying toArray)
 
-  //def transform[U: Numeric: ClassTag: VectorTransformer]: Vector[T] = ???
-  def transform(implicit vt: VectorTransformer[T]): Vector[T] = {
-    vt(this)
+  def transform[U: Numeric: ClassTag](fn: Vector[T] ⇒ Vector[U]): Vector[U] = {
+    fn(this)
   }
 
-  //TODO (TOASK) why I can't (shouldn't) setup here type parameter T for DenseVector and SparseVector
+  //TODO why I can't (shouldn't) setup here type parameter T for DenseVector and SparseVector
   //I mean VectorConverter[DenseVector[T], SparseVector[T]]
   //type VectorConverter[Vector1[T] <: Vector[T], Vector2[T] <: Vector[T]] = Vector1[T]=>Vector2[T]
   //is it because of VectorConverter?
@@ -119,13 +113,14 @@ object TestObject {
 }
 
 object SparseVector {
-  // TODO we need index, value tuples. For that we need tuples
   def apply[T: Numeric: ClassTag](a: T*): Vector[T] = apply(a.toList)
   def apply[T: Numeric: ClassTag](v: List[T]): Vector[T] = new SparseVector(v)
 
-  //apply to Tuples (not for all TupleN classes)
-  //ERROR when using with apply(a: T*)
+  //ERROR
+  //TODO (TOASK) why this apply works if val a = SparseVector[Double](1,2,2) and
+  //doesn't work when val a = SparseVector[Int](1,2,2)
   //def apply[T: Numeric: ClassTag](v: (T, T, T)): Vector[T] = new SparseVector[T](List(v._1, v._2, v._3))
+
   def apply[T: Numeric: ClassTag](v: Map[Int, T]): Vector[T] = new SparseVector(v.values.seq.toList)
 }
 
@@ -157,18 +152,17 @@ final private class SparseVector[T: Numeric: ClassTag](val x: List[T]) extends V
     })
   } toList
 
-  //TODO required possibility to lift such functions
   def partition(fun: T ⇒ Boolean): (Vector[T], Vector[T]) = underlying partition (fun) match {
     case (head, tail) ⇒ (new SparseVector(head toList), new SparseVector(tail toList))
   }
 
   def splice(vs: Vector[T]*): Vector[T] = new SparseVector(vs flatMap (_.underlying) toList)
 
-  //TODO required possibility to lift tuples to Rep[(Tuple, Tuple)]
   def spliceT(v: (Vector[T], Vector[T])): Vector[T] = new SparseVector[T](v._1.underlying ++ v._2.underlying toList)
 
-  def transform(implicit vt: VectorTransformer[T]): Vector[T] = {
-    vt(this)
+  //TODO change implementation
+  def transform[U: Numeric: ClassTag](fn: Vector[T] ⇒ Vector[U]): Vector[U] = {
+    fn(this)
   }
 
   //  def convert(implicit conv: VectorConverter[SparseVector, DenseVector]): DenseVector[T] = {
