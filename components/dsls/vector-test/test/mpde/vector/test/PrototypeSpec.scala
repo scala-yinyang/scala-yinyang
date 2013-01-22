@@ -26,6 +26,29 @@ class PrototypeSpec extends FlatSpec with ShouldMatchers {
     x should equal(DenseVector(20, 31, 44))
   }
 
+  //TODO rewrite this test
+  it should "compile" in {
+    import dsl.la._
+
+    val x = {
+      //TODO implement this methods
+
+      val a: Double = 5;
+      val t0 = DenseVector(Array(1, 2.0)) baseVectors
+      val t1 = DenseVector(a, 2, 3.0) baseVectors
+      val test1: Vector[Double] = t1(0)
+      val t2 = DenseVector(1.0, 2, 3.0) partition (_ == 4)
+      val test2: (Vector[Double], Vector[Double]) = t2;
+      val t3 = DenseVector(1.0, 2.0, 3) dotProduct t2._1
+      val t4 = DenseVector(1, 2.0, 3.0) splice (t2._1, t2._2)
+      val t5: Vector[Double] = t4 spliceT ((t2._1, t2._2))
+
+      val newV = DenseVector(1, 2, 3)
+      lazy val fn: Vector[Int] ⇒ Vector[Double] = ???
+      lazy val t6: Vector[Double] = newV transform (fn)
+    }
+  }
+
   it should "lift only fields, functions, and variables that are not bound in the DSL scope" in {
     import dsl.la._
     def y(i: Int) = { 1 }
@@ -108,6 +131,14 @@ class PrototypeSpec extends FlatSpec with ShouldMatchers {
       //        }
       //      }
       //            dsl.la.DenseVector(1,2,3).map(x => x + 1)      
+    }
+    ()
+  }
+
+  it should "tuples should be lifted to the cake" in {
+
+    val x = dsl.la.laDebug {
+      Tuple4.apply(1, 2, 3, 4)
     }
     ()
   }
