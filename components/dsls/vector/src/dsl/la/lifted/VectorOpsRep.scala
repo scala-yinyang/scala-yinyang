@@ -263,7 +263,7 @@ trait VectorDSL extends ArrayDSL with IntDSL with DoubleDSL with NumericOps with
   object SparseVector {
     def apply[T: Numeric: ClassTag](a: Rep[T]*): Rep[Vector[T]] = ???
 
-    //TODO (TOASK, TOTEST) - what classes we should model (like Tuples) and what we can use (like Double)
+    //TODO (TOASK) - what classes we should model (like Tuples) and what we can use (like Double)
     def apply[T: Numeric: ClassTag](a: Rep[Map[Int, T]]): Rep[Vector[T]] = ???
   }
 
