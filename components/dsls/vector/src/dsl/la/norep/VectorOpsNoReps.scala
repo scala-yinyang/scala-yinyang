@@ -6,7 +6,7 @@ import base._
 trait Base extends LiftBase
 
 trait IntDSL extends Base {
-  self: DoubleDSL ⇒
+  self: DoubleDSL with BooleanDSL ⇒
 
   type Int = IntOps
 
@@ -19,21 +19,31 @@ trait IntDSL extends Base {
     def unary_- : Int
     def toInt: Int
     def toDouble: Double
+
+    def == : Boolean
+    def > : Boolean
+    def < : Boolean
   }
 
+  //TODO (TOASK) why do we need to provide implementation for this method
   implicit object LiftInt extends LiftEvidence[scala.Int, Int] {
-    def lift(v: scala.Int): Int = ???
+    def lift(v: scala.Int): Int = null
   }
 
   implicit object LiftUnit extends LiftEvidence[scala.Unit, Unit] {
-    def lift(v: Unit): Unit = ???
+    def lift(v: Unit): Unit = ()
+  }
+
+  implicit object IntOrdering extends Ordering[Int] {
+    def compare(x: Int, y: Int): scala.Int =
+      if (x < y) -1 else if (x == y) 0 else 1
   }
 
   implicit def intOpsToDoubleOps(conv: Int): Double = ???
 }
 
 trait DoubleDSL extends Base {
-  selfType: IntDSL ⇒
+  selfType: IntDSL with BooleanDSL ⇒
 
   type Double = DoubleOps
 
@@ -47,6 +57,10 @@ trait DoubleDSL extends Base {
     def toDouble: Double
     def unary_- : Double
 
+    def == : Boolean
+    def > : Boolean
+    def < : Boolean
+
     //implementation for Vector operations
     def pow(power: Double)
     def sqrt
@@ -55,6 +69,11 @@ trait DoubleDSL extends Base {
   //TODO (TOASK) maybe extends LiftEvidence[scala.Double, DoubleDSL#Double]
   implicit object LiftDouble extends LiftEvidence[scala.Double, Double] {
     def lift(v: scala.Double): Double = ???
+  }
+
+  implicit object DoubleOrdering extends Ordering[Double] {
+    def compare(x: Double, y: Double): scala.Int =
+      if (x < y) -1 else if (x == y) 0 else 1
   }
 }
 
@@ -73,7 +92,7 @@ trait ClassTagOps extends Base {
 //TODO (TOASK) check the correctness of this implementation (correctness for DSL usage)
 //maybe implement Ordering to get it complexier
 //maybe rename to NumericLifted
-trait NumericOps extends IntDSL with DoubleDSL with Base {
+trait NumericOps extends IntDSL with DoubleDSL with BooleanDSL with Base {
   type Numeric[T] = NumericOps[T]
 
   trait NumericOps[T] {
@@ -135,12 +154,20 @@ trait NumericOps extends IntDSL with DoubleDSL with Base {
 
 }
 
-trait ArrayDSL extends Base with IntDSL with DoubleDSL {
+trait ArrayDSL extends Base with IntDSL with DoubleDSL with BooleanDSL {
   type Array[T] = ArrayOps[T]
 
   trait ArrayOps[T] {
     def apply(i: Int): T
-    // TODO complete the list of methods
+
+    def aggregate[B](z: B)(seqop: (B, T) ⇒ B, combop: (B, B) ⇒ B): B
+
+    def fold[A1 >: T](z: A1)(op: (A1, A1) ⇒ A1): A1
+
+    //TODO implement Ordering
+    def sort[B](f: (T) ⇒ B)(implicit ord: Ordering[B]): Array[T]
+
+    def sort(implicit ord: Ordering[T]): Array[T]
   }
 
   object Array {
@@ -148,7 +175,6 @@ trait ArrayDSL extends Base with IntDSL with DoubleDSL {
 
     //TODO (ASK) - what to do with by name parameters (=> T)
     def fill[T: ClassTag](n: Int)(elem: ⇒ T): Array[T] = ???
-    // TODO complete
   }
 
 }
@@ -207,6 +233,18 @@ trait VectorDSL extends ClassTagOps with IfThenElseDSL with ArrayDSL with IntDSL
     def spliceT(v: Tuple2[Vector[T], Vector[T]]): Vector[T]
 
     def transform[U: Numeric: ClassTag](fn: Vector[T] ⇒ Vector[U]): Vector[U]
+
+    //TODO check new methods
+    //TODO implement Ordering
+    def apply(i: Int): T
+
+    def sort[B](f: (T) ⇒ B)(implicit ord: Ordering[B]): Vector[T]
+
+    def sort(implicit ord: Ordering[T]): Vector[T]
+
+    def corresponds[B](that: Vector[B])(p: (T, B) ⇒ Boolean): Boolean
+
+    def fold[A1 >: T](z: A1)(op: (A1, A1) ⇒ A1): A1
   }
 
   object DenseVector {

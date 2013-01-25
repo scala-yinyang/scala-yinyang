@@ -37,6 +37,18 @@ trait Vector[T] {
   //to see behaviour of functional type parameter with generics
   def transform[U: Numeric: ClassTag](fn: Vector[T] ⇒ Vector[U]): Vector[U]
 
+  def apply(i: Int): T
+
+  //to test implicit parameter
+  def sort(implicit ord: Ordering[T]): Vector[T]
+
+  //to test implicit parameter and work with several parameter lists
+  def sort[B](f: (T) ⇒ B)(implicit ord: Ordering[B]): Vector[T]
+
+  //nest two functions to test work with functional parameters and bounded type parameter
+  def corresponds[B](that: Vector[B])(p: (T, B) ⇒ Boolean): Boolean
+  def fold[A1 >: T](z: A1)(op: (A1, A1) ⇒ A1): A1
+
   //TODO try to implement
   //  def convert[Vector1, Vector2](implicit conv: VectorConverter[Vector1, Vector2]): Vector2
 }
@@ -91,6 +103,17 @@ final private class DenseVector[T: Numeric: ClassTag](val x: Array[T]) extends V
   def transform[U: Numeric: ClassTag](fn: Vector[T] ⇒ Vector[U]): Vector[U] = {
     fn(this)
   }
+
+  //TODO provide correct implementation for methods below
+  def apply(i: Int): T = underlying(i)
+
+  def sort[B](f: (T) ⇒ B)(implicit ord: Ordering[B]): Vector[T] = this
+
+  def sort(implicit ord: Ordering[T]): Vector[T] = this
+
+  def corresponds[B](that: Vector[B])(p: (T, B) ⇒ Boolean): Boolean = underlying.zipWithIndex.forall(x ⇒ p(x._1, that.apply(x._2)))
+
+  def fold[A1 >: T](z: A1)(op: (A1, A1) ⇒ A1): A1 = z
 
   //TODO why I can't (shouldn't) setup here type parameter T for DenseVector and SparseVector
   //I mean VectorConverter[DenseVector[T], SparseVector[T]]
@@ -164,6 +187,17 @@ final private class SparseVector[T: Numeric: ClassTag](val x: List[T]) extends V
   def transform[U: Numeric: ClassTag](fn: Vector[T] ⇒ Vector[U]): Vector[U] = {
     fn(this)
   }
+
+  //TODO provide correct implementation for methods below
+  def apply(i: Int): T = underlying(i)
+
+  def sort[B](f: (T) ⇒ B)(implicit ord: Ordering[B]): Vector[T] = this
+
+  def sort(implicit ord: Ordering[T]): Vector[T] = this
+
+  def corresponds[B](that: Vector[B])(p: (T, B) ⇒ Boolean): Boolean = underlying.zipWithIndex.forall(x ⇒ p(x._1, that.apply(x._2)))
+
+  def fold[A1 >: T](z: A1)(op: (A1, A1) ⇒ A1): A1 = z
 
   //  def convert(implicit conv: VectorConverter[SparseVector, DenseVector]): DenseVector[T] = {
   //    conv(this)
