@@ -21,12 +21,13 @@ trait IntDSL extends Base {
     def toDouble: Double
   }
 
+  //TODO (TOASK) why do we need to provide implementation for this method
   implicit object LiftInt extends LiftEvidence[scala.Int, Int] {
-    def lift(v: scala.Int): Int = ???
+    def lift(v: scala.Int): Int = null
   }
 
   implicit object LiftUnit extends LiftEvidence[scala.Unit, Unit] {
-    def lift(v: Unit): Unit = ???
+    def lift(v: Unit): Unit = ()
   }
 
   implicit def intOpsToDoubleOps(conv: Int): Double = ???
@@ -166,27 +167,27 @@ trait IfThenElseDSL extends BooleanDSL with Base {
 }
 
 //TODO try to remove it and test without TupleDSL
-trait TupleDSL extends Base {
-  type Tuple2[T1, T2] = Tuple2Ops[T1, T2]
+//trait TupleDSL extends Base {
+//  type Tuple2[T1, T2] = Tuple2Ops[T1, T2]
+//
+//  trait Tuple2Ops[T1, T2] extends AnyRef {
+//    def _1: T1
+//    def _2: T2
+//    def swap: Tuple2[T2, T1]
+//
+//    // !!!! TODO (TOASK) find place for code lifting (do we need this lifting)
+//    implicit object LiftTuple2 extends LiftEvidence[scala.Tuple2[T1, T2], Tuple2[T1, T2]] {
+//      def lift(v: scala.Tuple2[T1, T2]): Tuple2[T1, T2] = ???
+//    }
+//  }
+//
+//  object Tuple2 {
+//    def apply[T1, T2](x1: T1, x2: T2): Tuple2[T1, T2] = ???
+//
+//  }
+//}
 
-  trait Tuple2Ops[T1, T2] extends AnyRef {
-    def _1: T1
-    def _2: T2
-    def swap: Tuple2[T2, T1]
-
-    // !!!! TODO (TOASK) find place for code lifting (do we need this lifting)
-    implicit object LiftTuple2 extends LiftEvidence[scala.Tuple2[T1, T2], Tuple2[T1, T2]] {
-      def lift(v: scala.Tuple2[T1, T2]): Tuple2[T1, T2] = ???
-    }
-  }
-
-  object Tuple2 {
-    def apply[T1, T2](x1: T1, x2: T2): Tuple2[T1, T2] = ???
-
-  }
-}
-
-trait VectorDSL extends ClassTagOps with IfThenElseDSL with ArrayDSL with TupleDSL with IntDSL with DoubleDSL with NumericOps with Base with Interpret {
+trait VectorDSL extends ClassTagOps with IfThenElseDSL with ArrayDSL with IntDSL with DoubleDSL with NumericOps with Base with Interpret {
   type Vector[T] = VectorOps[T]
 
   //TODO (NEW) (TOASK) - where should we provide implementation for methods of VectorOps

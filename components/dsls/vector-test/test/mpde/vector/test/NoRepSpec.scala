@@ -49,4 +49,12 @@ class NoRepSpec extends FlatSpec with ShouldMatchers {
       def main = { val x = DenseVector(out, varOut, 3)(null, null); var y = x; (); }
     }
   }
+
+  it should "lift constant" in {
+    val x = dsl.la.laLift {
+      Tuple4(2, 4, 6, 7)
+    }
+    ()
+  }
+
 }

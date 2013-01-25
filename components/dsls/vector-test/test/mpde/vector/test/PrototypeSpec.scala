@@ -135,13 +135,5 @@ class PrototypeSpec extends FlatSpec with ShouldMatchers {
     ()
   }
 
-  it should "tuples should be lifted to the cake" in {
-
-    val x = dsl.la.laDebug {
-      Tuple4.apply(1, 2, 3, 4)
-    }
-    ()
-  }
-
 }
 
