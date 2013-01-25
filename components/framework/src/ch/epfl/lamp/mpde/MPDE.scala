@@ -22,6 +22,19 @@ final class MPDETransformer[C <: Context, T](val c: C, dslName: String, val debu
     // Task 3: Specify how to rewire constructors.
     // Task 4: Specify how to rewire primitive types.
     // Task 5: Specify how to rewire language features (if then else, while, try catch, return, var etc.).
+
+    //    {class MyDSL extends DSL { }}
+
+    //    scala> reflect.runtime.universe.showRaw(t.tree)
+    //    val res15 = Block(List(
+    //      ClassDef(Modifiers(), newTypeName("MyDSL"), List(), Template(
+    //        List(Ident(newTypeName("DSL"))),
+    //        emptyValDef,
+    //        List(
+    //          DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(List()), TypeTree(),
+    //            Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List())), Literal(Constant(())))))))),
+    //      Literal(Constant(())))
+
     val cake = Block(List(
       // class MyDSL extends DSL {
       ClassDef(Modifiers(), newTypeName(className), List(), Template(
@@ -33,6 +46,7 @@ final class MPDETransformer[C <: Context, T](val c: C, dslName: String, val debu
           // def main = {
           DefDef(Modifiers(), newTermName(dslMethod), List(), List(List()), TypeTree(),
             // transformed body
+            //            block.tree))))), //it was for my test
             new ScopeInjectionTransformer().transform(block.tree)))))),
       //     }
       // }
@@ -45,6 +59,7 @@ final class MPDETransformer[C <: Context, T](val c: C, dslName: String, val debu
     log("Raw Cake: " + showRaw(cake))
     log("Type Cake: " + show(cake /*, printTypes = true*/ ))
 
+    //TODO (TO ASK) why do we need it
     c.Expr[T](c.resetAllAttrs(cake))
   }
 
