@@ -121,6 +121,11 @@ trait IntDSL extends Base {
     def lift(v: Int): Rep[Int] = ???
   }
 
+  //TODO (TOASK) do we need such object
+  implicit object IntOrdering extends Ordering[Rep[Int]] {
+    def compare(x: Rep[Int], y: Rep[Int]): scala.Int = ???
+  }
+
   //maybe we don't need it
   //  implicit def intOpsToDoubleOps(conv: Rep[Int]): Rep[Double] = ???
 }
@@ -152,6 +157,11 @@ trait DoubleDSL extends Base {
   implicit object LiftDouble extends LiftEvidence[Double, Rep[Double]] {
     def lift(v: Double): Rep[Double] = ???
   }
+
+  //TODO (TOASK) do we need such object
+  implicit object DoubleOrdering extends Ordering[Rep[Double]] {
+    def compare(x: Rep[Double], y: Rep[Double]): scala.Int = ???
+  }
 }
 
 trait ArrayDSL extends Base {
@@ -163,21 +173,27 @@ trait ArrayDSL extends Base {
 
   implicit class ArrayOpsOf[T](v: Rep[Array[T]]) extends ArrayOps[T] {
     def apply(i: Rep[Int]): Rep[T] = ???
-    // TODO complete
+
+    def aggregate[B](z: Rep[B])(seqop: (Rep[B], Rep[T]) ⇒ Rep[B], combop: (Rep[B], Rep[B]) ⇒ Rep[B]): Rep[B] = ???
+
+    def fold[A1 >: T](z: Rep[A1])(op: (Rep[A1], Rep[A1]) ⇒ Rep[A1]): Rep[A1] = ???
+
+    //TODO (NEW) to ask - what type do we need here as output ArrayOps[T] or ArrayOps[Rep[T]]?
+    def sort[B](f: (Rep[T]) ⇒ Rep[B])(implicit ord: Ordering[Rep[B]]): Rep[Array[T]] = ???
+
+    def sort(implicit ord: Ordering[Rep[T]]): Rep[Array[T]] = ???
   }
 
   object Array {
     def apply[T](values: T*): Rep[Array[T]] = ???
-    // TODO complete
 
     //TODO (TOASK) (NEW) - what should we do with parameters like elem of type => T
-    def fill[T: ClassTag](n: Rep[Int])(elem: ⇒ Rep[T]): ArrayOps[T] = ???
+    def fill[T: ClassTag](n: Rep[Int])(elem: ⇒ Rep[T]): Rep[Array[T]] = ???
     // TODO complete
   }
 
 }
 
-//TODO try without Tuples
 //trait TupleDSL extends Base {
 //
 //  trait Tuple2Ops[T1, T2] extends AnyRef {
@@ -224,6 +240,19 @@ trait VectorDSL extends ArrayDSL with IntDSL with DoubleDSL with NumericOps with
 
     def transform[U: Numeric: ClassTag](fn: Rep[Vector[T]] ⇒ Rep[Vector[U]]): Rep[Vector[U]]
 
+    //TODO check new methods
+    //TODO (TOASK) - what ordering should do with Rep?
+
+    def apply(i: Rep[Int]): Rep[T]
+
+    def sort[B](f: (Rep[T]) ⇒ Rep[B])(implicit ord: Ordering[Rep[B]]): Vector[T]
+
+    def sort(implicit ord: Ordering[Rep[T]]): Vector[T]
+
+    def corresponds[B](that: Vector[B])(p: (Rep[T], Rep[B]) ⇒ Rep[Boolean]): Rep[Boolean]
+
+    def fold[A1 >: T](z: Rep[A1])(op: (Rep[A1], Rep[A1]) ⇒ Rep[A1]): Rep[A1]
+
   }
 
   implicit class VectorOpsOf[T](v: Rep[Vector[T]]) extends VectorOps[T] {
@@ -246,8 +275,16 @@ trait VectorDSL extends ArrayDSL with IntDSL with DoubleDSL with NumericOps with
     def spliceT(v: Tuple2[Rep[Vector[T]], Rep[Vector[T]]]): Rep[Vector[T]] = ???
 
     def transform[U: Numeric: ClassTag](fn: Rep[Vector[T]] ⇒ Rep[Vector[U]]): Rep[Vector[U]] = ???
-    // TODO complete
 
+    def apply(i: Rep[Int]): Rep[T] = ???
+
+    def sort[B](f: (Rep[T]) ⇒ Rep[B])(implicit ord: Ordering[Rep[B]]): Vector[T] = ???
+
+    def sort(implicit ord: Ordering[Rep[T]]): Vector[T] = ???
+
+    def corresponds[B](that: Vector[B])(p: (Rep[T], Rep[B]) ⇒ Rep[Boolean]): Rep[Boolean] = ???
+
+    def fold[A1 >: T](z: Rep[A1])(op: (Rep[A1], Rep[A1]) ⇒ Rep[A1]): Rep[A1] = ???
   }
 
   object DenseVector {

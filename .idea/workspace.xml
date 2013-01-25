@@ -2,28 +2,25 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="7a65e9fa-f7b9-4868-9a66-4eccac2fbaed" name="Default" comment="">
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/components/framework/src/ch/epfl/lamp/mpde/MPDE.scala" afterPath="$PROJECT_DIR$/components/framework/src/ch/epfl/lamp/mpde/MPDE.scala" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/components/dsls/vector-test/test/mpde/vector/test/NoRepSpec.scala" afterPath="$PROJECT_DIR$/components/dsls/vector-test/test/mpde/vector/test/NoRepSpec.scala" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/components/dsls/vector-test/test/mpde/vector/test/PrototypeSpec.scala" afterPath="$PROJECT_DIR$/components/dsls/vector-test/test/mpde/vector/test/PrototypeSpec.scala" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/components/dsls/vector-test/test/mpde/vector/test/RepSpec.scala" afterPath="$PROJECT_DIR$/components/dsls/vector-test/test/mpde/vector/test/RepSpec.scala" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/components/dsls/vector/src/dsl/la/Vector.scala" afterPath="$PROJECT_DIR$/components/dsls/vector/src/dsl/la/Vector.scala" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/components/dsls/vector/src/dsl/la/norep/VectorOpsNoReps.scala" afterPath="$PROJECT_DIR$/components/dsls/vector/src/dsl/la/norep/VectorOpsNoReps.scala" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/components/dsls/vector/src/dsl/la/lifted/VectorOpsRep.scala" afterPath="$PROJECT_DIR$/components/dsls/vector/src/dsl/la/lifted/VectorOpsRep.scala" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
     </list>
     <ignored path="mpde.iws" />
     <ignored path=".idea/workspace.xml" />
-    <file path="/Dummy.txt" changelist="7a65e9fa-f7b9-4868-9a66-4eccac2fbaed" time="1359132801379" ignored="false" />
+    <file path="/Dummy.txt" changelist="7a65e9fa-f7b9-4868-9a66-4eccac2fbaed" time="1359142001571" ignored="false" />
     <file path="$PROJECT_DIR$/../../MPDE-dsl/mpde-dsl/src/main/scala/dsl/la/Vector.scala" changelist="7a65e9fa-f7b9-4868-9a66-4eccac2fbaed" time="1358714545002" ignored="false" />
     <file path="$PROJECT_DIR$/../../MPDE-dsl/mpde-dsl/src/main/scala/dsl/la/lifted/VectorOpsNoReps.scala" changelist="7a65e9fa-f7b9-4868-9a66-4eccac2fbaed" time="1358887060390" ignored="false" />
-    <file path="/VectorOpsNoReps.scala" changelist="7a65e9fa-f7b9-4868-9a66-4eccac2fbaed" time="1359134799643" ignored="false" />
+    <file path="/VectorOpsNoReps.scala" changelist="7a65e9fa-f7b9-4868-9a66-4eccac2fbaed" time="1359149896912" ignored="false" />
     <file path="/PrototypeSpec.scala" changelist="7a65e9fa-f7b9-4868-9a66-4eccac2fbaed" time="1359134714064" ignored="false" />
     <file path="$PROJECT_DIR$/../../MPDE-dsl/mpde-dsl/src/main/scala/dsl/la/lifted/VectorOpsRep.scala" changelist="7a65e9fa-f7b9-4868-9a66-4eccac2fbaed" time="1358887190528" ignored="false" />
-    <file path="/VectorOpsRep.scala" changelist="7a65e9fa-f7b9-4868-9a66-4eccac2fbaed" time="1358895021370" ignored="false" />
+    <file path="/VectorOpsRep.scala" changelist="7a65e9fa-f7b9-4868-9a66-4eccac2fbaed" time="1359150101248" ignored="false" />
     <file path="/NoRepSpec.scala" changelist="7a65e9fa-f7b9-4868-9a66-4eccac2fbaed" time="1359139634626" ignored="false" />
     <file path="$PROJECT_DIR$/../../MPDE-dsl/mpde-dsl/src/test/scala/NoRepSpec.scala" changelist="7a65e9fa-f7b9-4868-9a66-4eccac2fbaed" time="1358893117049" ignored="false" />
     <file path="$PROJECT_DIR$/../../MPDE-dsl/mpde-dsl/src/test/scala/RepSpec.scala" changelist="7a65e9fa-f7b9-4868-9a66-4eccac2fbaed" time="1358894564767" ignored="false" />
     <file path="/RepSpec.scala" changelist="7a65e9fa-f7b9-4868-9a66-4eccac2fbaed" time="1358894945620" ignored="false" />
-    <file path="/Vector.scala" changelist="7a65e9fa-f7b9-4868-9a66-4eccac2fbaed" time="1358895466117" ignored="false" />
+    <file path="/Vector.scala" changelist="7a65e9fa-f7b9-4868-9a66-4eccac2fbaed" time="1359147744256" ignored="false" />
     <file path="/MPDE.scala" changelist="7a65e9fa-f7b9-4868-9a66-4eccac2fbaed" time="1359137989476" ignored="false" />
     <file path="$USER_HOME$/.ivy2/cache/org.scala-lang/scala-reflect/jars/scala-reflect-2.10.0-SNAPSHOT.jar!/scala/reflect/api/Exprs.class" changelist="7a65e9fa-f7b9-4868-9a66-4eccac2fbaed" time="1359138620225" ignored="false" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -84,101 +81,64 @@
   </component>
   <component name="FileEditorManager">
     <leaf>
-      <file leaf-file-name="NoRepSpec.scala" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/components/dsls/vector-test/test/mpde/vector/test/NoRepSpec.scala">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="12" column="6" selection-start="267" selection-end="267" vertical-scroll-proportion="0.0">
-              <folding>
-                <element signature="e#26#47#0" expanded="true" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="Tuple2.scala" pinned="false" current="false" current-in-tab="false">
-        <entry file="jar://$USER_HOME$/.ivy2/cache/org.scala-lang/scala-library/srcs/scala-library-2.10.0-SNAPSHOT-sources.jar!/scala/Tuple2.scala">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="18" column="11" selection-start="911" selection-end="911" vertical-scroll-proportion="0.0">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="RepSpec.scala" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/components/dsls/vector-test/test/mpde/vector/test/RepSpec.scala">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="41" column="0" selection-start="1630" selection-end="1630" vertical-scroll-proportion="0.0">
-              <folding>
-                <element signature="e#26#45#0" expanded="true" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="GradualLiftingSpec.scala" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/components/dsls/vector-test/test/mpde/vector/test/GradualLiftingSpec.scala">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="9" column="6" selection-start="196" selection-end="196" vertical-scroll-proportion="0.0">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="OptionalStagingSpec.scala" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/components/dsls/vector-test/test/mpde/vector/test/OptionalStagingSpec.scala">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="7" column="6" selection-start="149" selection-end="149" vertical-scroll-proportion="0.0">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="PrototypeSpec.scala" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/components/dsls/vector-test/test/mpde/vector/test/PrototypeSpec.scala">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="135" column="3" selection-start="5745" selection-end="5745" vertical-scroll-proportion="0.0">
-              <folding>
-                <element signature="e#26#48#0" expanded="true" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="Vector.scala" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/components/dsls/vector/src/dsl/la/Vector.scala">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="43" column="7" selection-start="1526" selection-end="1526" vertical-scroll-proportion="0.0">
-              <folding>
-                <element signature="e#16#45#0" expanded="true" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="MPDE.scala" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/components/framework/src/ch/epfl/lamp/mpde/MPDE.scala">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="48" column="49" selection-start="2156" selection-end="2156" vertical-scroll-proportion="0.0">
-              <folding>
-                <element signature="e#35#70#0" expanded="true" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="VectorOpsNoReps.scala" pinned="false" current="true" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/components/dsls/vector/src/dsl/la/norep/VectorOpsNoReps.scala">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="138" column="6" selection-start="4086" selection-end="4086" vertical-scroll-proportion="3.8339553">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
       <file leaf-file-name="VectorOpsRep.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/components/dsls/vector/src/dsl/la/lifted/VectorOpsRep.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="156" column="6" selection-start="5203" selection-end="5203" vertical-scroll-proportion="0.0">
+            <state line="195" column="0" selection-start="6496" selection-end="6496" vertical-scroll-proportion="0.0">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="Vector.scala" pinned="false" current="true" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/components/dsls/vector/src/dsl/la/Vector.scala">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="66" column="90" selection-start="2529" selection-end="2529" vertical-scroll-proportion="1.6842105">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="VectorOpsNoReps.scala" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/components/dsls/vector/src/dsl/la/norep/VectorOpsNoReps.scala">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="156" column="6" selection-start="4570" selection-end="4570" vertical-scroll-proportion="0.0">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="Double.scala" pinned="false" current="false" current-in-tab="false">
+        <entry file="jar://$USER_HOME$/.ivy2/cache/org.scala-lang/scala-library/srcs/scala-library-2.10.0-SNAPSHOT-sources.jar!/scala/Double.scala">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="21" column="21" selection-start="1025" selection-end="1025" vertical-scroll-proportion="0.0">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="package.scala" pinned="false" current="false" current-in-tab="false">
+        <entry file="jar://$USER_HOME$/.ivy2/cache/org.scala-lang/scala-library/srcs/scala-library-2.10.0-SNAPSHOT-sources.jar!/scala/package.scala">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="105" column="35" selection-start="4060" selection-end="4060" vertical-scroll-proportion="0.0">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="Ordering.scala" pinned="false" current="false" current-in-tab="false">
+        <entry file="jar://$USER_HOME$/.ivy2/cache/org.scala-lang/scala-library/srcs/scala-library-2.10.0-SNAPSHOT-sources.jar!/scala/math/Ordering.scala">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="270" column="56" selection-start="9497" selection-end="9497" vertical-scroll-proportion="0.0">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="Float.scala" pinned="false" current="false" current-in-tab="false">
+        <entry file="jar://$USER_HOME$/.ivy2/cache/org.scala-lang/scala-library/srcs/scala-library-2.10.0-SNAPSHOT-sources.jar!/scala/Float.scala">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="151" column="6" selection-start="4290" selection-end="4290" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -209,13 +169,13 @@
   <component name="IdeDocumentHistory">
     <option name="changedFiles">
       <list>
-        <option value="$PROJECT_DIR$/components/dsls/vector/src/dsl/la/Vector.scala" />
         <option value="$PROJECT_DIR$/components/framework/src/ch/epfl/lamp/mpde/MPDE.scala" />
-        <option value="$PROJECT_DIR$/components/dsls/vector/src/dsl/la/norep/VectorOpsNoReps.scala" />
-        <option value="$PROJECT_DIR$/components/dsls/vector/src/dsl/la/lifted/VectorOpsRep.scala" />
         <option value="$PROJECT_DIR$/components/dsls/vector-test/test/mpde/vector/test/RepSpec.scala" />
         <option value="$PROJECT_DIR$/components/dsls/vector-test/test/mpde/vector/test/NoRepSpec.scala" />
         <option value="$PROJECT_DIR$/components/dsls/vector-test/test/mpde/vector/test/PrototypeSpec.scala" />
+        <option value="$PROJECT_DIR$/components/dsls/vector/src/dsl/la/norep/VectorOpsNoReps.scala" />
+        <option value="$PROJECT_DIR$/components/dsls/vector/src/dsl/la/lifted/VectorOpsRep.scala" />
+        <option value="$PROJECT_DIR$/components/dsls/vector/src/dsl/la/Vector.scala" />
       </list>
     </option>
   </component>
@@ -254,6 +214,8 @@
       <sortByType />
     </navigator>
     <panes>
+      <pane id="Scope" />
+      <pane id="PackagesPane" />
       <pane id="ProjectPane">
         <subPane>
           <PATH>
@@ -618,8 +580,6 @@
           </PATH>
         </subPane>
       </pane>
-      <pane id="PackagesPane" />
-      <pane id="Scope" />
     </panes>
   </component>
   <component name="PropertiesComponent">
@@ -644,19 +604,6 @@
       <option name="SHMEM_ADDRESS" value="javadebug" />
       <option name="HOST" value="localhost" />
       <option name="PORT" value="5005" />
-      <method />
-    </configuration>
-    <configuration default="true" type="Applet" factoryName="Applet">
-      <module name="" />
-      <option name="MAIN_CLASS_NAME" />
-      <option name="HTML_FILE_NAME" />
-      <option name="HTML_USED" value="false" />
-      <option name="WIDTH" value="400" />
-      <option name="HEIGHT" value="300" />
-      <option name="POLICY_FILE" value="$APPLICATION_HOME_DIR$/bin/appletviewer.policy" />
-      <option name="VM_PARAMETERS" />
-      <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="false" />
-      <option name="ALTERNATIVE_JRE_PATH" />
       <method />
     </configuration>
     <configuration default="true" type="TestNG" factoryName="TestNG">
@@ -684,6 +631,19 @@
       <envs />
       <properties />
       <listeners />
+      <method />
+    </configuration>
+    <configuration default="true" type="Applet" factoryName="Applet">
+      <module name="" />
+      <option name="MAIN_CLASS_NAME" />
+      <option name="HTML_FILE_NAME" />
+      <option name="HTML_USED" value="false" />
+      <option name="WIDTH" value="400" />
+      <option name="HEIGHT" value="300" />
+      <option name="POLICY_FILE" value="$APPLICATION_HOME_DIR$/bin/appletviewer.policy" />
+      <option name="VM_PARAMETERS" />
+      <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="false" />
+      <option name="ALTERNATIVE_JRE_PATH" />
       <method />
     </configuration>
     <configuration default="true" type="Application" factoryName="Application">
@@ -816,31 +776,9 @@
     <breakpoint-manager />
   </component>
   <component name="editorHistoryManager">
-    <entry file="jar://$USER_HOME$/.ivy2/cache/org.scala-lang/scala-reflect/srcs/scala-reflect-2.10.0-SNAPSHOT-sources.jar!/scala/reflect/api/Trees.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="528" column="91" selection-start="17246" selection-end="17246" vertical-scroll-proportion="0.0" />
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/components/dsls/vector/src/base/LiftBase.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="9" column="6" selection-start="360" selection-end="360" vertical-scroll-proportion="0.0" />
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/components/dsls/vector/src/base/Interpret.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="2" column="6" selection-start="20" selection-end="20" vertical-scroll-proportion="0.0" />
-      </provider>
-    </entry>
-    <entry file="jar://$USER_HOME$/.ivy2/cache/org.scala-lang/scala-library/srcs/scala-library-2.10.0-SNAPSHOT-sources.jar!/scala/Tuple4.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="20" column="11" selection-start="1003" selection-end="1003" vertical-scroll-proportion="0.0" />
-      </provider>
-    </entry>
     <entry file="jar://$USER_HOME$/.ivy2/cache/org.scala-lang/scala-library/srcs/scala-library-2.10.0-SNAPSHOT-sources.jar!/scala/Predef.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="251" column="6" selection-start="12314" selection-end="12314" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
+        <state line="251" column="6" selection-start="12314" selection-end="12314" vertical-scroll-proportion="0.0" />
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/components/dsls/vector/src/dsl/la/package.scala">
@@ -857,28 +795,10 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/components/dsls/vector/src/dsl/la/Vector.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="43" column="7" selection-start="1526" selection-end="1526" vertical-scroll-proportion="0.0">
-          <folding>
-            <element signature="e#16#45#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="jar://$USER_HOME$/.ivy2/cache/org.scala-lang/scala-library/srcs/scala-library-2.10.0-SNAPSHOT-sources.jar!/scala/Tuple2.scala">
       <provider selected="true" editor-type-id="text-editor">
         <state line="18" column="11" selection-start="911" selection-end="911" vertical-scroll-proportion="0.0">
           <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/components/framework/src/ch/epfl/lamp/mpde/MPDE.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="48" column="49" selection-start="2156" selection-end="2156" vertical-scroll-proportion="0.0">
-          <folding>
-            <element signature="e#35#70#0" expanded="true" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -892,40 +812,76 @@
     <entry file="file://$PROJECT_DIR$/components/dsls/vector-test/test/mpde/vector/test/RepSpec.scala">
       <provider selected="true" editor-type-id="text-editor">
         <state line="41" column="0" selection-start="1630" selection-end="1630" vertical-scroll-proportion="0.0">
-          <folding>
-            <element signature="e#26#45#0" expanded="true" />
-          </folding>
+          <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/components/dsls/vector-test/test/mpde/vector/test/NoRepSpec.scala">
       <provider selected="true" editor-type-id="text-editor">
         <state line="12" column="6" selection-start="267" selection-end="267" vertical-scroll-proportion="0.0">
-          <folding>
-            <element signature="e#26#47#0" expanded="true" />
-          </folding>
+          <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/components/dsls/vector-test/test/mpde/vector/test/PrototypeSpec.scala">
       <provider selected="true" editor-type-id="text-editor">
         <state line="135" column="3" selection-start="5745" selection-end="5745" vertical-scroll-proportion="0.0">
-          <folding>
-            <element signature="e#26#48#0" expanded="true" />
-          </folding>
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/components/framework/src/ch/epfl/lamp/mpde/MPDE.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="48" column="49" selection-start="2156" selection-end="2156" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="jar://$USER_HOME$/.ivy2/cache/org.scala-lang/scala-library/srcs/scala-library-2.10.0-SNAPSHOT-sources.jar!/scala/Double.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="21" column="21" selection-start="1025" selection-end="1025" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="jar://$USER_HOME$/.ivy2/cache/org.scala-lang/scala-library/srcs/scala-library-2.10.0-SNAPSHOT-sources.jar!/scala/package.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="105" column="35" selection-start="4060" selection-end="4060" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="jar://$USER_HOME$/.ivy2/cache/org.scala-lang/scala-library/srcs/scala-library-2.10.0-SNAPSHOT-sources.jar!/scala/math/Ordering.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="270" column="56" selection-start="9497" selection-end="9497" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="jar://$USER_HOME$/.ivy2/cache/org.scala-lang/scala-library/srcs/scala-library-2.10.0-SNAPSHOT-sources.jar!/scala/Float.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="151" column="6" selection-start="4290" selection-end="4290" vertical-scroll-proportion="0.0">
+          <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/components/dsls/vector/src/dsl/la/lifted/VectorOpsRep.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="156" column="6" selection-start="5203" selection-end="5203" vertical-scroll-proportion="0.0">
+        <state line="195" column="0" selection-start="6496" selection-end="6496" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/components/dsls/vector/src/dsl/la/norep/VectorOpsNoReps.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="138" column="6" selection-start="4086" selection-end="4086" vertical-scroll-proportion="3.8339553">
+        <state line="156" column="6" selection-start="4570" selection-end="4570" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/components/dsls/vector/src/dsl/la/Vector.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="66" column="90" selection-start="2529" selection-end="2529" vertical-scroll-proportion="1.6842105">
           <folding />
         </state>
       </provider>
