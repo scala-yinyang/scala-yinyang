@@ -178,28 +178,28 @@ trait ArrayDSL extends Base {
 }
 
 //TODO try without Tuples
-trait TupleDSL extends Base {
+//trait TupleDSL extends Base {
+//
+//  trait Tuple2Ops[T1, T2] extends AnyRef {
+//    def _1: Rep[T1]
+//    def _2: Rep[T2]
+//    def swap: Tuple2[Rep[T2], Rep[T1]]
+//  }
+//
+//  //Wrapper to work with Rep tuples
+//  implicit class Tuple2OpsOf[T1, T2](v: Rep[Tuple2[T1, T2]]) extends Tuple2Ops[T1, T2] {
+//    def _1: Rep[T1] = ???
+//    def _2: Rep[T2] = ???
+//    def swap: Tuple2[Rep[T2], Rep[T1]] = ???
+//  }
+//
+//  object Tuple2 {
+//    def apply[T1, T2](x1: T1, x2: T2): Rep[Tuple2[T1, T2]] = ???
+//  }
+//
+//}
 
-  trait Tuple2Ops[T1, T2] extends AnyRef {
-    def _1: Rep[T1]
-    def _2: Rep[T2]
-    def swap: Tuple2[Rep[T2], Rep[T1]]
-  }
-
-  //Wrapper to work with Rep tuples
-  implicit class Tuple2OpsOf[T1, T2](v: Rep[Tuple2[T1, T2]]) extends Tuple2Ops[T1, T2] {
-    def _1: Rep[T1] = ???
-    def _2: Rep[T2] = ???
-    def swap: Tuple2[Rep[T2], Rep[T1]] = ???
-  }
-
-  object Tuple2 {
-    def apply[T1, T2](x1: T1, x2: T2): Rep[Tuple2[T1, T2]] = ???
-  }
-
-}
-
-trait VectorDSL extends ArrayDSL with IntDSL with DoubleDSL with NumericOps with TupleDSL with Base {
+trait VectorDSL extends ArrayDSL with IntDSL with DoubleDSL with NumericOps with Base {
 
   type Vector[T] = dsl.la.Vector[T]
 
@@ -214,13 +214,13 @@ trait VectorDSL extends ArrayDSL with IntDSL with DoubleDSL with NumericOps with
     //returns list of Vectors - to test with Rep Types
     def baseVectors: ArrayOps[Rep[Vector[T]]] //find base vectors
 
-    def partition(fun: Rep[T] ⇒ Rep[Boolean]): Tuple2Ops[Rep[Vector[T]], Rep[Vector[T]]]
+    def partition(fun: Rep[T] ⇒ Rep[Boolean]): Tuple2[Rep[Vector[T]], Rep[Vector[T]]]
 
     def dotProduct(v: Rep[Vector[T]]): Rep[T]
 
     def splice(vs: Rep[Vector[T]]*): Rep[Vector[T]]
 
-    def spliceT(v: Tuple2Ops[Rep[Vector[T]], Rep[Vector[T]]]): Rep[Vector[T]]
+    def spliceT(v: Tuple2[Rep[Vector[T]], Rep[Vector[T]]]): Rep[Vector[T]]
 
     def transform[U: Numeric: ClassTag](fn: Rep[Vector[T]] ⇒ Rep[Vector[U]]): Rep[Vector[U]]
 
@@ -237,13 +237,13 @@ trait VectorDSL extends ArrayDSL with IntDSL with DoubleDSL with NumericOps with
     //TODO (TOASK) - is it correct ArrayOps[Rep...] or it should be Rep[ArrayOps...]
     def baseVectors: ArrayOps[Rep[Vector[T]]] = ??? //find base vectors
 
-    def partition(fun: Rep[T] ⇒ Rep[Boolean]): Tuple2Ops[Rep[Vector[T]], Rep[Vector[T]]] = ???
+    def partition(fun: Rep[T] ⇒ Rep[Boolean]): Tuple2[Rep[Vector[T]], Rep[Vector[T]]] = ???
 
     def dotProduct(v: Rep[Vector[T]]): Rep[T] = ???
 
     def splice(vs: Rep[Vector[T]]*): Rep[Vector[T]] = ???
 
-    def spliceT(v: Tuple2Ops[Rep[Vector[T]], Rep[Vector[T]]]): Rep[Vector[T]] = ???
+    def spliceT(v: Tuple2[Rep[Vector[T]], Rep[Vector[T]]]): Rep[Vector[T]] = ???
 
     def transform[U: Numeric: ClassTag](fn: Rep[Vector[T]] ⇒ Rep[Vector[U]]): Rep[Vector[U]] = ???
     // TODO complete
