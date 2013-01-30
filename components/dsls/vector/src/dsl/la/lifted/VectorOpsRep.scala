@@ -63,31 +63,54 @@ trait NumericOps extends Base {
     override implicit def mkNumericOps(lhs: Rep[T]) = ???
   }
 
-  //concrete implicit objects for Numeric[Double] and Numeric[Int]
-  object NumericOpsOf {
-    implicit object NumericInt extends NumericOpsOf[Int] {
-      def plus(x: Rep[Int], y: Rep[Int]): Rep[Int] = ???
-      def minus(x: Rep[Int], y: Rep[Int]): Rep[Int] = ???
-      def times(x: Rep[Int], y: Rep[Int]): Rep[Int] = ???
-      def negate(x: Rep[Int]): Rep[Int] = ???
+  implicit object IntIsIntegral extends NumericOpsOf[Int] {
+    def plus(x: Rep[Int], y: Rep[Int]): Rep[Int] = ???
+    def minus(x: Rep[Int], y: Rep[Int]): Rep[Int] = ???
+    def times(x: Rep[Int], y: Rep[Int]): Rep[Int] = ???
+    def negate(x: Rep[Int]): Rep[Int] = ???
 
-      def fromInt(x: Rep[Int]): Rep[Int] = ???
-      def toInt(x: Rep[Int]): Rep[Int] = ???
-      def toDouble(x: Rep[Int]): Rep[Double] = ???
-    }
-
-    implicit object NumericDouble extends NumericOpsOf[Double] {
-      def plus(x: Rep[Double], y: Rep[Double]): Rep[Double] = ???
-      def minus(x: Rep[Double], y: Rep[Double]): Rep[Double] = ???
-      def times(x: Rep[Double], y: Rep[Double]): Rep[Double] = ???
-      def negate(x: Rep[Double]): Rep[Double] = ???
-
-      def fromInt(x: Rep[Int]): Rep[Double] = ???
-      // TODO these need to return the lifted types. This means that Numeric Type needs to be changed to something else.
-      def toInt(x: Rep[Double]): Rep[Int] = ???
-      def toDouble(x: Rep[Double]): Rep[Double] = ???
-    }
+    def fromInt(x: Rep[Int]): Rep[Int] = ???
+    def toInt(x: Rep[Int]): Rep[Int] = ???
+    def toDouble(x: Rep[Int]): Rep[Double] = ???
   }
+
+  implicit object DoubleIsIntegral extends NumericOpsOf[Double] {
+    def plus(x: Rep[Double], y: Rep[Double]): Rep[Double] = ???
+    def minus(x: Rep[Double], y: Rep[Double]): Rep[Double] = ???
+    def times(x: Rep[Double], y: Rep[Double]): Rep[Double] = ???
+    def negate(x: Rep[Double]): Rep[Double] = ???
+
+    def fromInt(x: Rep[Int]): Rep[Double] = ???
+    // TODO these need to return the lifted types. This means that Numeric Type needs to be changed to something else.
+    def toInt(x: Rep[Double]): Rep[Int] = ???
+    def toDouble(x: Rep[Double]): Rep[Double] = ???
+  }
+
+  //concrete implicit objects for Numeric[Double] and Numeric[Int]
+  //  object NumericOpsOf {
+  //    implicit object NumericInt extends NumericOpsOf[Int] {
+  //      def plus(x: Rep[Int], y: Rep[Int]): Rep[Int] = ???
+  //      def minus(x: Rep[Int], y: Rep[Int]): Rep[Int] = ???
+  //      def times(x: Rep[Int], y: Rep[Int]): Rep[Int] = ???
+  //      def negate(x: Rep[Int]): Rep[Int] = ???
+  //
+  //      def fromInt(x: Rep[Int]): Rep[Int] = ???
+  //      def toInt(x: Rep[Int]): Rep[Int] = ???
+  //      def toDouble(x: Rep[Int]): Rep[Double] = ???
+  //    }
+  //
+  //    implicit object NumericDouble extends NumericOpsOf[Double] {
+  //      def plus(x: Rep[Double], y: Rep[Double]): Rep[Double] = ???
+  //      def minus(x: Rep[Double], y: Rep[Double]): Rep[Double] = ???
+  //      def times(x: Rep[Double], y: Rep[Double]): Rep[Double] = ???
+  //      def negate(x: Rep[Double]): Rep[Double] = ???
+  //
+  //      def fromInt(x: Rep[Int]): Rep[Double] = ???
+  //      // TODO these need to return the lifted types. This means that Numeric Type needs to be changed to something else.
+  //      def toInt(x: Rep[Double]): Rep[Int] = ???
+  //      def toDouble(x: Rep[Double]): Rep[Double] = ???
+  //    }
+  //  }
 }
 
 trait IntDSL extends Base {
@@ -119,6 +142,10 @@ trait IntDSL extends Base {
 
   implicit object LiftInt extends LiftEvidence[Int, Rep[Int]] {
     def lift(v: Int): Rep[Int] = ???
+  }
+
+  implicit object LiftUnit extends LiftEvidence[scala.Unit, Unit] {
+    def lift(v: Unit): Unit = ()
   }
 
   //TODO (TOASK) do we need such object
@@ -215,7 +242,7 @@ trait ArrayDSL extends Base {
 //
 //}
 
-trait VectorDSL extends ArrayDSL with IntDSL with DoubleDSL with NumericOps with Base {
+trait VectorDSL extends ArrayDSL with IntDSL with DoubleDSL with NumericOps with Base with Interpret {
 
   type Vector[T] = dsl.la.Vector[T]
 
@@ -290,6 +317,7 @@ trait VectorDSL extends ArrayDSL with IntDSL with DoubleDSL with NumericOps with
   object DenseVector {
     def apply[T: Numeric: ClassTag](a: Rep[T]*): Rep[Vector[T]] = ???
 
+    //    def apply[T](a: Rep[T]*)(implicit num: NumericOps[T], ct: ClassTag[Rep[T]]): Rep[Vector[T]] = ???
     //TODO maybe we need to provide map - test
     def apply[T: Numeric: ClassTag](a: Rep[Map[Int, T]]): Rep[Vector[T]] = ???
   }

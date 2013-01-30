@@ -7,7 +7,7 @@ import com.typesafe.sbt.SbtScalariform.ScalariformKeys
 
 object MPDEBuild extends Build {
 
-  val scala = "2.10.0-SNAPSHOT"
+  val scala = "2.10.1-SNAPSHOT"
 
   lazy val formatSettings = SbtScalariform.scalariformSettings ++ Seq(
     ScalariformKeys.preferences in Compile := formattingPreferences,

@@ -215,6 +215,14 @@ trait IfThenElseDSL extends BooleanDSL with Base {
 trait VectorDSL extends ClassTagOps with IfThenElseDSL with ArrayDSL with IntDSL with DoubleDSL with NumericOps with Base with Interpret {
   type Vector[T] = VectorOps[T]
 
+  //  implicit object LiftIntVector extends LiftEvidence[dsl.la.Vector[Int], VectorOps[Int]] {
+  //    def lift(v: dsl.la.Vector[Int]): VectorOps[Int] = null
+  //  }
+  //
+  //  implicit object LiftDoubleVector extends LiftEvidence[dsl.la.Vector[Double], VectorOps[Double]] {
+  //    def lift(v: dsl.la.Vector[Double]): VectorOps[Double] = null
+  //  }
+
   //TODO (NEW) (TOASK) - where should we provide implementation for methods of VectorOps
   trait VectorOps[T] {
 
@@ -248,7 +256,7 @@ trait VectorDSL extends ClassTagOps with IfThenElseDSL with ArrayDSL with IntDSL
   }
 
   object DenseVector {
-    def apply[T: Numeric: ClassTag](a: T*): Vector[T] = ???
+    def apply[T: Numeric: ClassTag](a: T*): Vector[T] = null
 
     //    def apply[T <: AnyVal: Numeric: ClassTag](a: Map[Int, T]): Vector[T] = ???
   }

@@ -35,6 +35,9 @@ final class MPDETransformer[C <: Context, T](val c: C, dslName: String, val debu
     //            Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List())), Literal(Constant(())))))))),
     //      Literal(Constant(())))
 
+    log("Before Block:" + show(block, printTypes = true))
+    log("Before Raw Block:" + showRaw(block))
+
     val cake = Block(List(
       // class MyDSL extends DSL {
       ClassDef(Modifiers(), newTypeName(className), List(), Template(
@@ -106,6 +109,56 @@ final class MPDETransformer[C <: Context, T](val c: C, dslName: String, val debu
         case t @ Ident(v) if isFree(t.symbol) && !t.symbol.isModule ⇒
           Apply(TypeApply(Select(This(newTypeName(className)), newTermName("liftTerm")), List(TypeTree(), TypeTree())), List(t))
 
+        case valDef @ ValDef(param1 @ _, param2 @ _, ttr: TypeTree, param4 @ _) ⇒ { //correct line
+          //        case ttr @ TypeTree() ⇒ {
+          var formattedType: Tree = ttr.original
+          formattedType match {
+            case att @ AppliedTypeTree(tree1, List(tree2, _*)) //if (tree1.tpe.typeSymbol.name == newTypeName("Vector")) ⇒ {
+            if tree1.symbol.isType && tree2.symbol.isType
+              && (tree1.symbol.name == newTypeName("Vector"))
+              && (tree2.symbol.name == newTypeName("Int")) ⇒ {
+
+              //val typeOfType = tree2
+              //println("typeOfType.name" + typeOfType.symbol.name)
+              //println("att = " + att); //dsl.la.Vector[Int]
+              //println("att.tpe = " + att.tpe) //null
+              //val attSymbol: Symbol = att.symbol
+              //println("att.symbol = " + attSymbol) //trait Vector
+              //println("att.type.name = " + (if (attSymbol.isType) attSymbol.asType.name))
+              //println("attSymbol.name = " + attSymbol.name)
+              //println("attSymbol.owner = " + attSymbol.owner)
+              //println("attSymbol.typeSignature = " + attSymbol.typeSignature)
+              //
+              //println("tree1 = " + tree1) //dsl.la.Vector
+              //println("tree1.tpe = " + tree1.tpe) //dsl.la.Vector
+              //val type1: Type = tree1.tpe
+              //println("type1.termSymbol.name = " + (if (type1.termSymbol != null) type1.termSymbol.name))
+              //println("type1.typeSymbol.name = " + (if (type1.typeSymbol != null) type1.typeSymbol.name))
+              //println("type1.members = " + type1.members)
+              //
+              //val tree1Symbol: Symbol = tree1.symbol
+              //println("tree1.symbol = " + tree1Symbol) //trait Vector
+              //println("tree1Symbol.type.name = " + (if (tree1Symbol.isType) tree1Symbol.asType.name))
+              //println("tree1Symbol.name = " + tree1Symbol.name)
+              //println("tree1Symbol.owner = " + tree1Symbol.owner)
+              //println("tree1Symbol.typeSignature = " + tree1Symbol.typeSignature)
+
+              val expr: Tree = AppliedTypeTree(Select(This(newTypeName(className)), newTypeName("Vector")),
+                List(Select(This(newTypeName(className)), newTypeName("Int"))))
+
+              //val expr: Tree = AppliedTypeTree(Select(This(newTypeName(className)), newTypeName("Vector")),
+              //List(Select(Ident("scala"), newTypeName("Int"))))
+
+              ValDef(param1, param2, expr, transform(param4)) //correct line
+              //TypeTree().setOriginal(expr)
+            }
+
+            case _ ⇒
+              super.transform(valDef) //correct line
+            //super.transform(ttr)
+          }
+        }
+
         // re-wire objects
         case s @ Select(inn, name) if s.symbol.isMethod ⇒
           Select(transform(inn), name)
@@ -117,20 +170,20 @@ final class MPDETransformer[C <: Context, T](val c: C, dslName: String, val debu
         case TypeApply(mth, targs) ⇒ // TODO this needs to be changed for LMS to include a type transformer
           transform(mth)
 
-        // Removes all import statements for now. TODO later it will figure out the DSL modules and will include them into the cake. 
+        // Removes all import statements for now. TODO later it will figure out the DSL modules and will include them into the cake.
         case Import(_, _) ⇒
           EmptyTree
 
         // TODO does not work because resetAllAttrs does not remove types from lambdas.
         case f @ Function(params, body) ⇒
-          // TODO for LMS we will put here an explicit type for all the arguments to avoid 
+          // TODO for LMS we will put here an explicit type for all the arguments to avoid
           // inferencer errors.
           // For polymorphic embedding we will just null it out.
           log("Function type: " + f.symbol.typeSignature.toString)
           log("Argument type: " + params.head.symbol.typeSignature.toString)
           c.resetAllAttrs(f) // this does not re-infer the type. Why?
 
-        // re-wire language feature `if` to the method __ifThenElse 
+        // re-wire language feature `if` to the method __ifThenElse
         case t @ If(cond, then, elze) ⇒
           Apply(Select(This(newTypeName(className)), newTermName("__ifThenElse")), List(transform(cond), transform(then), transform(elze)))
 
