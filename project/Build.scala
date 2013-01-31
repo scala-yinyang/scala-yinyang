@@ -7,8 +7,6 @@ import com.typesafe.sbt.SbtScalariform.ScalariformKeys
 
 object MPDEBuild extends Build {
 
-  val scala = "2.10.0-SNAPSHOT"
-
   lazy val formatSettings = SbtScalariform.scalariformSettings ++ Seq(
     ScalariformKeys.preferences in Compile := formattingPreferences,
     ScalariformKeys.preferences in Test    := formattingPreferences
@@ -24,9 +22,8 @@ object MPDEBuild extends Build {
 
   val defaults = Defaults.defaultSettings ++ formatSettings ++ Seq(
     // scala version + resolver
-    scalaVersion := scala,
-    // scalaBinaryVersion := scala,
-    resolvers in ThisBuild += ScalaToolsSnapshots, // to get 2.10.0-SNAPSHOT,
+    scalaVersion := "2.10.1-SNAPSHOT",
+    resolvers in ThisBuild += ScalaToolsSnapshots,
     resolvers +=  "OSSH" at "https://oss.sonatype.org/content/groups/public",
 
     // paths - so we don't need to have src/main/scala ... just src/ test/ and resources/
@@ -43,7 +40,7 @@ object MPDEBuild extends Build {
       "org.scala-lang" % "scala-library" % ver,
       "org.scala-lang" % "scala-reflect" % ver,
       "org.scala-lang" % "scala-compiler" % ver, 
-      "org.scalatest" % "scalatest_2.10.0-RC5" % "2.0.M5-B1" % "test",
+      "org.scalatest" % "scalatest_2.10" % "2.0.M6-SNAP7" % "test",
       "junit" % "junit" % "4.8.1" % "test" // we need JUnit explicitly
     )),
 
