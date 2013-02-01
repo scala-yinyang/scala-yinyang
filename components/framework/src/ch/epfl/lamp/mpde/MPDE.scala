@@ -114,9 +114,9 @@ final class MPDETransformer[C <: Context, T](val c: C, dslName: String, val debu
           var formattedType: Tree = ttr.original
           formattedType match {
             case att @ AppliedTypeTree(tree1, List(tree2, _*)) //if (tree1.tpe.typeSymbol.name == newTypeName("Vector")) ⇒ {
-            if tree1.symbol.isType && tree2.symbol.isType
-              && (tree1.symbol.name == newTypeName("Vector"))
-              && (tree2.symbol.name == newTypeName("Int")) ⇒ {
+            if tree1.symbol.isType && tree2.symbol.isType ⇒ {
+              //              && (tree1.symbol.name == newTypeName("Vector"))
+              //              && (tree2.symbol.name == newTypeName("Int")) ⇒ {
 
               //val typeOfType = tree2
               //println("typeOfType.name" + typeOfType.symbol.name)
@@ -143,14 +143,18 @@ final class MPDETransformer[C <: Context, T](val c: C, dslName: String, val debu
               //println("tree1Symbol.owner = " + tree1Symbol.owner)
               //println("tree1Symbol.typeSignature = " + tree1Symbol.typeSignature)
 
-              val expr: Tree = AppliedTypeTree(Select(This(newTypeName(className)), newTypeName("Vector")),
-                List(Select(This(newTypeName(className)), newTypeName("Int"))))
+              //val expr: Tree = AppliedTypeTree(Select(This(newTypeName(className)), newTypeName("Vector")),
+              //  List(Select(This(newTypeName(className)), newTypeName("Int"))))
 
               //val expr: Tree = AppliedTypeTree(Select(This(newTypeName(className)), newTypeName("Vector")),
               //List(Select(Ident("scala"), newTypeName("Int"))))
 
+              val expr: Tree = AppliedTypeTree(Select(This(newTypeName(className)), tree1.symbol.name),
+                List(Select(This(newTypeName(className)), tree2.symbol.name)))
+
               ValDef(param1, param2, expr, transform(param4)) //correct line
               //TypeTree().setOriginal(expr)
+              //expr
             }
 
             case _ ⇒

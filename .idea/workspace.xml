@@ -2,20 +2,12 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="7a65e9fa-f7b9-4868-9a66-4eccac2fbaed" name="Default" comment="">
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/.idea/ant.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/project/Build.scala" afterPath="$PROJECT_DIR$/project/Build.scala" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/components/framework/src/ch/epfl/lamp/mpde/MPDE.scala" afterPath="$PROJECT_DIR$/components/framework/src/ch/epfl/lamp/mpde/MPDE.scala" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/components/dsls/vector-test/test/mpde/vector/test/NoRepSpec.scala" afterPath="$PROJECT_DIR$/components/dsls/vector-test/test/mpde/vector/test/NoRepSpec.scala" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/components/dsls/vector-test/test/mpde/vector/test/PrototypeSpec.scala" afterPath="$PROJECT_DIR$/components/dsls/vector-test/test/mpde/vector/test/PrototypeSpec.scala" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/components/dsls/vector-test/test/mpde/vector/test/RepSpec.scala" afterPath="$PROJECT_DIR$/components/dsls/vector-test/test/mpde/vector/test/RepSpec.scala" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/components/dsls/vector/src/dsl/la/norep/VectorOpsNoReps.scala" afterPath="$PROJECT_DIR$/components/dsls/vector/src/dsl/la/norep/VectorOpsNoReps.scala" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/components/dsls/vector/src/dsl/la/lifted/VectorOpsRep.scala" afterPath="$PROJECT_DIR$/components/dsls/vector/src/dsl/la/lifted/VectorOpsRep.scala" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/build.sbt" afterPath="$PROJECT_DIR$/build.sbt" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
     </list>
     <ignored path="mpde.iws" />
     <ignored path=".idea/workspace.xml" />
-    <file path="/Dummy.txt" changelist="7a65e9fa-f7b9-4868-9a66-4eccac2fbaed" time="1359577416382" ignored="false" />
+    <file path="/Dummy.txt" changelist="7a65e9fa-f7b9-4868-9a66-4eccac2fbaed" time="1359727931251" ignored="false" />
     <file path="$PROJECT_DIR$/../../MPDE-dsl/mpde-dsl/src/main/scala/dsl/la/Vector.scala" changelist="7a65e9fa-f7b9-4868-9a66-4eccac2fbaed" time="1358714545002" ignored="false" />
     <file path="$PROJECT_DIR$/../../MPDE-dsl/mpde-dsl/src/main/scala/dsl/la/lifted/VectorOpsNoReps.scala" changelist="7a65e9fa-f7b9-4868-9a66-4eccac2fbaed" time="1358887060390" ignored="false" />
     <file path="/VectorOpsNoReps.scala" changelist="7a65e9fa-f7b9-4868-9a66-4eccac2fbaed" time="1359504317607" ignored="false" />
@@ -27,7 +19,7 @@
     <file path="$PROJECT_DIR$/../../MPDE-dsl/mpde-dsl/src/test/scala/RepSpec.scala" changelist="7a65e9fa-f7b9-4868-9a66-4eccac2fbaed" time="1358894564767" ignored="false" />
     <file path="/RepSpec.scala" changelist="7a65e9fa-f7b9-4868-9a66-4eccac2fbaed" time="1359487984596" ignored="false" />
     <file path="/Vector.scala" changelist="7a65e9fa-f7b9-4868-9a66-4eccac2fbaed" time="1359147744256" ignored="false" />
-    <file path="/MPDE.scala" changelist="7a65e9fa-f7b9-4868-9a66-4eccac2fbaed" time="1359579692170" ignored="false" />
+    <file path="/MPDE.scala" changelist="7a65e9fa-f7b9-4868-9a66-4eccac2fbaed" time="1359729556881" ignored="false" />
     <file path="$USER_HOME$/.ivy2/cache/org.scala-lang/scala-reflect/jars/scala-reflect-2.10.0-SNAPSHOT.jar!/scala/reflect/api/Exprs.class" changelist="7a65e9fa-f7b9-4868-9a66-4eccac2fbaed" time="1359138620225" ignored="false" />
     <option name="TRACKING_ENABLED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -43,7 +35,6 @@
     <disable_hints />
   </component>
   <component name="DebuggerManager">
-    <ui_properties default_suspend_policy="SuspendAll" default_condition_enabled="true" />
     <breakpoint_any default_suspend_policy="SuspendAll" default_condition_enabled="true">
       <breakpoint>
         <option name="NOTIFY_CAUGHT" value="true" />
@@ -78,6 +69,7 @@
         <option name="LOG_MESSAGE" value="" />
       </breakpoint>
     </breakpoint_any>
+    <ui_properties default_suspend_policy="SuspendAll" default_condition_enabled="true" />
     <breakpoint_rules />
     <ui_properties />
   </component>
@@ -87,13 +79,20 @@
   </component>
   <component name="FileEditorManager">
     <leaf>
-      <file leaf-file-name="MPDE.scala" pinned="false" current="false" current-in-tab="false">
+      <file leaf-file-name="MPDE.scala" pinned="false" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/components/framework/src/ch/epfl/lamp/mpde/MPDE.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="143" column="16" selection-start="6682" selection-end="6682" vertical-scroll-proportion="0.0">
-              <folding>
-                <element signature="e#35#70#0" expanded="true" />
-              </folding>
+            <state line="161" column="14" selection-start="7587" selection-end="7587" vertical-scroll-proportion="3.8264925">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="Names.scala" pinned="false" current="false" current-in-tab="false">
+        <entry file="jar://$USER_HOME$/.ivy2/cache/org.scala-lang/scala-reflect/srcs/scala-reflect-2.10.0-SNAPSHOT-sources.jar!/scala/reflect/api/Names.scala">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="116" column="6" selection-start="3790" selection-end="3790" vertical-scroll-proportion="0.0">
+              <folding />
             </state>
           </provider>
         </entry>
@@ -111,15 +110,6 @@
         <entry file="file://$PROJECT_DIR$/components/dsls/vector-test/test/mpde/vector/test/PrototypeSpec.scala">
           <provider selected="true" editor-type-id="text-editor">
             <state line="11" column="6" selection-start="229" selection-end="229" vertical-scroll-proportion="0.0">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="Trees.class" pinned="false" current="false" current-in-tab="false">
-        <entry file="jar://$USER_HOME$/.ivy2/cache/org.scala-lang/scala-reflect/jars/scala-reflect-2.10.0-SNAPSHOT.jar!/scala/reflect/api/Trees.class">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="572" column="39" selection-start="33787" selection-end="33787" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -161,10 +151,10 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="VectorOpsRep.scala" pinned="false" current="true" current-in-tab="true">
+      <file leaf-file-name="VectorOpsRep.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/components/dsls/vector/src/dsl/la/lifted/VectorOpsRep.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="319" column="103" selection-start="10953" selection-end="10953" vertical-scroll-proportion="8.688524">
+            <state line="320" column="103" selection-start="11004" selection-end="11004" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -208,10 +198,10 @@
         <option value="$PROJECT_DIR$/components/dsls/vector-test/test/mpde/vector/test/PrototypeSpec.scala" />
         <option value="$PROJECT_DIR$/components/dsls/vector/src/base/LiftBase.scala" />
         <option value="$PROJECT_DIR$/components/dsls/vector-test/test/mpde/vector/test/RepSpec.scala" />
-        <option value="$PROJECT_DIR$/components/framework/src/ch/epfl/lamp/mpde/MPDE.scala" />
         <option value="$PROJECT_DIR$/components/dsls/vector-test/test/mpde/vector/test/NoRepSpec.scala" />
         <option value="$PROJECT_DIR$/components/dsls/vector/src/dsl/la/norep/VectorOpsNoReps.scala" />
         <option value="$PROJECT_DIR$/components/dsls/vector/src/dsl/la/lifted/VectorOpsRep.scala" />
+        <option value="$PROJECT_DIR$/components/framework/src/ch/epfl/lamp/mpde/MPDE.scala" />
       </list>
     </option>
   </component>
@@ -250,6 +240,7 @@
       <sortByType />
     </navigator>
     <panes>
+      <pane id="PackagesPane" />
       <pane id="ProjectPane">
         <subPane>
           <PATH>
@@ -636,7 +627,6 @@
           </PATH>
         </subPane>
       </pane>
-      <pane id="PackagesPane" />
       <pane id="Scope" />
     </panes>
   </component>
@@ -773,7 +763,7 @@
   </component>
   <component name="ToolWindowManager">
     <frame x="-1" y="27" width="1368" height="742" extended-state="7" />
-    <editor active="false" />
+    <editor active="true" />
     <layout>
       <window_info id="Changes" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="JetGradle" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32954547" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
@@ -856,11 +846,6 @@
     <option name="FILTER_TARGETS" value="false" />
   </component>
   <component name="editorHistoryManager">
-    <entry file="jar://$USER_HOME$/.ivy2/cache/org.scala-lang/scala-reflect/srcs/scala-reflect-2.10.0-SNAPSHOT-sources.jar!/scala/reflect/api/Names.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="54" column="7" selection-start="2038" selection-end="2038" vertical-scroll-proportion="0.0" />
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/components/dsls/vector-test/test/mpde/vector/test/OptionalStagingSpec.scala">
       <provider selected="true" editor-type-id="text-editor">
         <state line="7" column="6" selection-start="149" selection-end="149" vertical-scroll-proportion="0.0" />
@@ -878,16 +863,12 @@
     </entry>
     <entry file="jar://$USER_HOME$/.ivy2/cache/org.scala-lang/scala-reflect/srcs/scala-reflect-2.10.0-SNAPSHOT-sources.jar!/scala/reflect/internal/Types.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="644" column="28" selection-start="26148" selection-end="26152" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
+        <state line="644" column="28" selection-start="26148" selection-end="26152" vertical-scroll-proportion="0.0" />
       </provider>
     </entry>
     <entry file="jar://$USER_HOME$/.ivy2/cache/org.scala-lang/scala-reflect/srcs/scala-reflect-2.10.0-SNAPSHOT-sources.jar!/scala/reflect/api/StandardNames.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="0" column="0" selection-start="0" selection-end="0" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
+        <state line="0" column="0" selection-start="0" selection-end="0" vertical-scroll-proportion="0.0" />
       </provider>
     </entry>
     <entry file="jar://$USER_HOME$/.ivy2/cache/org.scala-lang/scala-reflect/jars/scala-reflect-2.10.0-SNAPSHOT.jar!/scala/reflect/api/Trees.class">
@@ -925,15 +906,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/components/framework/src/ch/epfl/lamp/mpde/MPDE.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="143" column="16" selection-start="6682" selection-end="6682" vertical-scroll-proportion="0.0">
-          <folding>
-            <element signature="e#35#70#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/components/dsls/vector-test/test/mpde/vector/test/RepSpec.scala">
       <provider selected="true" editor-type-id="text-editor">
         <state line="58" column="0" selection-start="2609" selection-end="2620" vertical-scroll-proportion="0.0">
@@ -957,7 +929,21 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/components/dsls/vector/src/dsl/la/lifted/VectorOpsRep.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="319" column="103" selection-start="10953" selection-end="10953" vertical-scroll-proportion="8.688524">
+        <state line="320" column="103" selection-start="11004" selection-end="11004" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="jar://$USER_HOME$/.ivy2/cache/org.scala-lang/scala-reflect/srcs/scala-reflect-2.10.0-SNAPSHOT-sources.jar!/scala/reflect/api/Names.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="116" column="6" selection-start="3790" selection-end="3790" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/components/framework/src/ch/epfl/lamp/mpde/MPDE.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="161" column="14" selection-start="7587" selection-end="7587" vertical-scroll-proportion="3.8264925">
           <folding />
         </state>
       </provider>
