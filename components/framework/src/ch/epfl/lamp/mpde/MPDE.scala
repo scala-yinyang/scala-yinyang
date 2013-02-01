@@ -13,6 +13,24 @@ final class MPDETransformer[C <: Context, T](val c: C, dslName: String, val debu
   def dslMethod = "main"
   def interpretMethod = "interpret"
 
+  val dslTrait = {
+    val names = dslName.split("\\.").toList.reverse
+    assert(names.length >= 1, names + " " + dslName)
+    val packs = names.tail.reverse
+    val packsTree = packs match {
+      case head :: Nil  ⇒ Ident(newTermName(head))
+      case head :: tail ⇒ tail.foldRight[Tree](Ident(newTermName(head)))((name, tree) ⇒ Select(tree, newTermName(name)))
+      case Nil          ⇒ EmptyTree
+    }
+    val _trait = newTypeName(names.head)
+    val traitTree = packsTree match {
+      case EmptyTree ⇒ Ident(_trait)
+      case _         ⇒ Select(packsTree, _trait)
+    }
+    // the final thing:
+    traitTree
+  }
+
   def apply[T](block: c.Expr[T]): c.Expr[T] = {
     /*
      * This body of code generates the Embedded DSL cake with the empty main method.
@@ -25,7 +43,7 @@ final class MPDETransformer[C <: Context, T](val c: C, dslName: String, val debu
     val cake = Block(List(
       // class MyDSL extends DSL {
       ClassDef(Modifiers(), newTypeName(className), List(), Template(
-        List(Ident(newTypeName("VectorDSL"))),
+        List(dslTrait),
         emptyValDef,
         List(
           DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(List()), TypeTree(),
@@ -48,15 +66,20 @@ final class MPDETransformer[C <: Context, T](val c: C, dslName: String, val debu
     c.Expr[T](c.resetAllAttrs(cake))
   }
 
+  def runStagedCode[T](block: c.Expr[T]): c.Expr[T] = {
+    println(this.apply(block))
+    null.asInstanceOf[c.Expr[T]]
+  }
+
   /*
-     * This transformer needs to do the following:
-     *   - lift all identifiers and constants with a liftTerm method
-     *   - rewire all top-level objects to cake objects
-     *   - rewire all method selections to cake types
-     *   - convert all language constructs to method calls (__ifThenElse, __while, ...)
-     *   - rewire types to their cake counterparts (in case of type ascriptions and type application etc.)
-     *   ...
-     */
+   * This transformer needs to do the following:
+   *   - lift all identifiers and constants with a liftTerm method
+   *   - rewire all top-level objects to cake objects
+   *   - rewire all method selections to cake types
+   *   - convert all language constructs to method calls (__ifThenElse, __while, ...)
+   *   - rewire types to their cake counterparts (in case of type ascriptions and type application etc.)
+   *   ...
+   */
   private final class ScopeInjectionTransformer extends Transformer {
 
     private val definedValues = collection.mutable.HashSet[Symbol]()
@@ -92,6 +115,12 @@ final class MPDETransformer[C <: Context, T](val c: C, dslName: String, val debu
           Apply(TypeApply(Select(This(newTypeName(className)), newTermName("liftTerm")), List(TypeTree(), TypeTree())), List(t))
 
         // re-wire objects
+        case s @ Select(Select(inn, t: TermName), name) if s.symbol.isMethod && t.toString == "package" /* ugh, no TermName extractor */ ⇒
+          Ident(name)
+
+        case s @ Select(Select(inn, t: TermName), name) if s.symbol.isMethod && t.toString == "this" /* ugh, no TermName extractor */ ⇒
+          Ident(name)
+
         case s @ Select(inn, name) if s.symbol.isMethod ⇒
           Select(transform(inn), name)
 
@@ -102,20 +131,20 @@ final class MPDETransformer[C <: Context, T](val c: C, dslName: String, val debu
         case TypeApply(mth, targs) ⇒ // TODO this needs to be changed for LMS to include a type transformer
           transform(mth)
 
-        // Removes all import statements for now. TODO later it will figure out the DSL modules and will include them into the cake. 
+        // Removes all import statements for now. TODO later it will figure out the DSL modules and will include them into the cake.
         case Import(_, _) ⇒
           EmptyTree
 
         // TODO does not work because resetAllAttrs does not remove types from lambdas.
         case f @ Function(params, body) ⇒
-          // TODO for LMS we will put here an explicit type for all the arguments to avoid 
+          // TODO for LMS we will put here an explicit type for all the arguments to avoid
           // inferencer errors.
           // For polymorphic embedding we will just null it out.
           log("Function type: " + f.symbol.typeSignature.toString)
           log("Argument type: " + params.head.symbol.typeSignature.toString)
           c.resetAllAttrs(f) // this does not re-infer the type. Why?
 
-        // re-wire language feature `if` to the method __ifThenElse 
+        // re-wire language feature `if` to the method __ifThenElse
         case t @ If(cond, then, elze) ⇒
           Apply(Select(This(newTypeName(className)), newTermName("__ifThenElse")), List(transform(cond), transform(then), transform(elze)))
 
