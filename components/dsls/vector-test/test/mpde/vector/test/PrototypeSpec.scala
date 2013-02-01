@@ -107,7 +107,7 @@ class PrototypeSpec extends FlatSpec with ShouldMatchers {
       //          DenseVector(liftTerm(1)).map(x => x + 1)
       //        }
       //      }
-      //            dsl.la.DenseVector(1,2,3).map(x => x + 1)      
+      //            dsl.la.DenseVector(1,2,3).map(x => x + 1)
     }
     ()
   }
