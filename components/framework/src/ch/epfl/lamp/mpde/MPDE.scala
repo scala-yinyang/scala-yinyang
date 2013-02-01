@@ -56,11 +56,26 @@ final class MPDETransformer[C <: Context, T](val c: C, dslName: String, val debu
       // new MyDSL().interpret()
       Apply(Select(Apply(Select(New(Ident(newTypeName(className))), nme.CONSTRUCTOR), List()), newTermName(interpretMethod)), List()))
 
-    log("Block:" + show(block, printTypes = true))
-    log("Raw Block:" + showRaw(block))
+    c.resetAllAttrs(block.tree)
+    c.resetAllAttrs(cake)
+
+    log("Block (with print Types): " + show(block, printTypes = true))
+    println("-----")
+    log("Block: " + show(block))
+    println("-----")
+    log("Raw Block: " + showRaw(block))
+    println("-----")
+    log("Raw Block (with print Types): " + showRaw(block, printTypes = true))
+    println("-----")
     log("Cake: " + show(cake))
+    println("-----")
+    log("Cake (with print Types): " + show(cake, printTypes = true))
+    println("-----")
     log("Raw Cake: " + showRaw(cake))
-    log("Type Cake: " + show(cake /*, printTypes = true*/ ))
+    println("-----")
+    log("Raw Cake (with print Types): " + showRaw(cake, printTypes = true))
+    println("-----")
+    //    log("Type Cake: " + show(cake /*, printTypes = true*/ ))
 
     //TODO (TO ASK) why do we need it
     c.Expr[T](c.resetAllAttrs(cake))
@@ -118,6 +133,13 @@ final class MPDETransformer[C <: Context, T](val c: C, dslName: String, val debu
               //              && (tree1.symbol.name == newTypeName("Vector"))
               //              && (tree2.symbol.name == newTypeName("Int")) ⇒ {
 
+              //val testTree = This(newTypeName(className))
+              //println("testTree = " + testTree)
+              //println("testTree.children = " + testTree.children) //List()
+              //println("testTree.symbol = " + testTree.symbol) //<none>
+              //println("testTree.type = " + testTree.tpe) //null
+              //              println("testTree.owner = " + testTree.symbol.owner) //ERROR
+
               //val typeOfType = tree2
               //println("typeOfType.name" + typeOfType.symbol.name)
               //println("att = " + att); //dsl.la.Vector[Int]
@@ -144,22 +166,22 @@ final class MPDETransformer[C <: Context, T](val c: C, dslName: String, val debu
               //println("tree1Symbol.typeSignature = " + tree1Symbol.typeSignature)
 
               //val expr: Tree = AppliedTypeTree(Select(This(newTypeName(className)), newTypeName("Vector")),
-              //  List(Select(This(newTypeName(className)), newTypeName("Int"))))
-
-              //val expr: Tree = AppliedTypeTree(Select(This(newTypeName(className)), newTypeName("Vector")),
               //List(Select(Ident("scala"), newTypeName("Int"))))
 
               val expr: Tree = AppliedTypeTree(Select(This(newTypeName(className)), tree1.symbol.name),
-                List(Select(This(newTypeName(className)), tree2.symbol.name)))
+                List(Select(This(newTypeName(className)), tree2.symbol.name))) //correct line
+
+              //val expr: Tree = AppliedTypeTree(Select(This(newTypeName(className)), newTypeName("Rep")), List(AppliedTypeTree(Select(This(newTypeName(className)), tree1.symbol.name), //EXPR for REP DSL
+              //  List(tree2)))) //correct line for REP
 
               ValDef(param1, param2, expr, transform(param4)) //correct line
-              //TypeTree().setOriginal(expr)
-              //expr
+              //TypeTree().setOriginal(expr) //doesn't work
+              //expr //TEST
             }
 
             case _ ⇒
               super.transform(valDef) //correct line
-            //super.transform(ttr)
+            //              super.transform(ttr) //TEST
           }
         }
 
@@ -197,8 +219,18 @@ final class MPDETransformer[C <: Context, T](val c: C, dslName: String, val debu
           super.transform(tree)
       }
 
+      c.resetAllAttrs(tree)
       ident -= 1
       log(" " * ident + " <== " + result)
+      println("-----")
+      log("Result: " + show(result))
+      println("-----")
+      log("Result (with print Types): " + show(result, printTypes = true))
+      println("-----")
+      log("Raw Result: " + showRaw(result))
+      println("-----")
+      log("Raw Result (with print Types): " + showRaw(result, printTypes = true))
+      println("=====")
 
       result
     }
