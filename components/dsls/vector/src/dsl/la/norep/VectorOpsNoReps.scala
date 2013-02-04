@@ -11,6 +11,7 @@ trait IntDSL extends Base {
   type Int = IntOps
 
   //TODO (TOASK) where do we provide the implementation for this methods (in result DSL object)
+  // v: When we stage, we should have the provide the implementation that actually lifts the entire thing
   trait IntOps {
     def +(that: Int): Int
     def +(that: Double): Double
@@ -26,8 +27,9 @@ trait IntDSL extends Base {
   }
 
   //TODO (TOASK) why do we need to provide implementation for this method
+  // v: Else Scala won't let you declare the object with abstract methods
   implicit object LiftInt extends LiftEvidence[scala.Int, Int] {
-    def lift(v: scala.Int): Int = null
+    def lift(v: scala.Int): Int = null // TODO: Wouldn't this better be a ???
   }
 
   implicit object LiftUnit extends LiftEvidence[scala.Unit, Unit] {
