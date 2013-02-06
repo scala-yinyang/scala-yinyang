@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <module type="JAVA_MODULE" version="4">
   <component name="NewModuleRootManager" inherit-compiler-output="false">
-    <output url="file://$MODULE_DIR$/../project/target/scala_2.9.2/classes" />
-    <output-test url="file://$MODULE_DIR$/../project/target/scala_2.9.2/test-classes" />
+    <output url="file://$MODULE_DIR$/../project/target/idea-classes" />
+    <output-test url="file://$MODULE_DIR$/../project/target/idea-test-classes" />
     <exclude-output />
     <content url="file://$MODULE_DIR$/../project">
       <sourceFolder url="file://$MODULE_DIR$/../project" isTestSource="false" />

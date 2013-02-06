@@ -4,7 +4,7 @@
     <facet type="scala" name="Scala">
       <configuration>
         <option name="compilerLibraryLevel" value="Project" />
-        <option name="compilerLibraryName" value="SBT: scala:2.10.0-SNAPSHOT" />
+        <option name="compilerLibraryName" value="SBT: scala:2.10.1-SNAPSHOT" />
         <option name="fsc" value="true" />
       </configuration>
     </facet>
@@ -24,7 +24,7 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="library" name="SBT: org.scala-lang:scala-library:2.10.0-SNAPSHOT" level="project" />
+    <orderEntry type="library" name="SBT: org.scala-lang:scala-library:2.10.1-SNAPSHOT" level="project" />
     <orderEntry type="module" module-name="mpde-framework" exported="" />
     <orderEntry type="module" module-name="mpde-vector-dsl" exported="" />
     <orderEntry type="module" module-name="mpde-vector-dsl-test" exported="" />

@@ -85,11 +85,10 @@ class NoRepSpec extends FlatSpec with ShouldMatchers {
   //
   //  }
 
-  //    val r: scala.Int = 5
   it should "lift vat = 1 to Rep" in {
 
     val x = dsl.la.laDebug {
-      val a: Vector[Int] = DenseVector(1, 2)
+      val a: Int = ???
     }
     ()
   }

@@ -4,7 +4,7 @@
     <facet type="scala" name="Scala">
       <configuration>
         <option name="compilerLibraryLevel" value="Project" />
-        <option name="compilerLibraryName" value="SBT: scala:2.10.0-SNAPSHOT" />
+        <option name="compilerLibraryName" value="SBT: scala:2.10.1-SNAPSHOT" />
         <option name="fsc" value="true" />
       </configuration>
     </facet>
@@ -22,9 +22,9 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="library" name="SBT: org.scala-lang:scala-library:2.10.0-SNAPSHOT" level="project" />
-    <orderEntry type="library" name="SBT: org.scala-lang:scala-reflect:2.10.0-SNAPSHOT" level="project" />
-    <orderEntry type="library" name="SBT: org.scala-lang:scala-compiler:2.10.0-SNAPSHOT" level="project" />
+    <orderEntry type="library" name="SBT: org.scala-lang:scala-library:2.10.1-SNAPSHOT" level="project" />
+    <orderEntry type="library" name="SBT: org.scala-lang:scala-reflect:2.10.1-SNAPSHOT" level="project" />
+    <orderEntry type="library" name="SBT: org.scala-lang:scala-compiler:2.10.1-SNAPSHOT" level="project" />
     <orderEntry type="library" scope="TEST" name="SBT: org.scalatest:scalatest_2.10.0-RC5:2.0.M5-B1:test" level="project" />
     <orderEntry type="library" scope="TEST" name="SBT: junit:junit:4.8.1:test" level="project" />
     <orderEntry type="module" module-name="mpde-framework" exported="" />

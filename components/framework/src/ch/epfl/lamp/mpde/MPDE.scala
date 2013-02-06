@@ -35,8 +35,8 @@ final class MPDETransformer[C <: Context, T](val c: C, dslName: String, val debu
     //            Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List())), Literal(Constant(())))))))),
     //      Literal(Constant(())))
 
-    log("Before Block:" + show(block, printTypes = true))
-    log("Before Raw Block:" + showRaw(block))
+    log("Before processing - block:" + show(block, printTypes = true))
+    log("Before processing - raw block:" + showRaw(block, printTypes = true))
 
     val cake = Block(List(
       // class MyDSL extends DSL {
@@ -59,21 +59,13 @@ final class MPDETransformer[C <: Context, T](val c: C, dslName: String, val debu
     c.resetAllAttrs(block.tree)
     c.resetAllAttrs(cake)
 
-    log("Block (with print Types): " + show(block, printTypes = true))
+    log("Final cake: " + show(cake))
     println("-----")
-    log("Block: " + show(block))
+    log("Final cake (with print Types): " + show(cake, printTypes = true))
     println("-----")
-    log("Raw Block: " + showRaw(block))
+    log("Final raw cake: " + showRaw(cake))
     println("-----")
-    log("Raw Block (with print Types): " + showRaw(block, printTypes = true))
-    println("-----")
-    log("Cake: " + show(cake))
-    println("-----")
-    log("Cake (with print Types): " + show(cake, printTypes = true))
-    println("-----")
-    log("Raw Cake: " + showRaw(cake))
-    println("-----")
-    log("Raw Cake (with print Types): " + showRaw(cake, printTypes = true))
+    log("Final raw Cake (with print Types): " + showRaw(cake, printTypes = true))
     println("-----")
     //    log("Type Cake: " + show(cake /*, printTypes = true*/ ))
 
@@ -124,65 +116,78 @@ final class MPDETransformer[C <: Context, T](val c: C, dslName: String, val debu
         case t @ Ident(v) if isFree(t.symbol) && !t.symbol.isModule ⇒
           Apply(TypeApply(Select(This(newTypeName(className)), newTermName("liftTerm")), List(TypeTree(), TypeTree())), List(t))
 
-        case valDef @ ValDef(param1 @ _, param2 @ _, ttr: TypeTree, param4 @ _) ⇒ { //correct line
-          //        case ttr @ TypeTree() ⇒ {
-          var formattedType: Tree = ttr.original
-          formattedType match {
-            case att @ AppliedTypeTree(tree1, List(tree2, _*)) //if (tree1.tpe.typeSymbol.name == newTypeName("Vector")) ⇒ {
-            if tree1.symbol.isType && tree2.symbol.isType ⇒ {
-              //              && (tree1.symbol.name == newTypeName("Vector"))
-              //              && (tree2.symbol.name == newTypeName("Int")) ⇒ {
+        case valDef @ ValDef(param1 @ _, param2 @ _, ttr: TypeTree, param4 @ _) ⇒ {
+          val transformedTypeTree = transform(ttr)
 
-              //val testTree = This(newTypeName(className))
-              //println("testTree = " + testTree)
-              //println("testTree.children = " + testTree.children) //List()
-              //println("testTree.symbol = " + testTree.symbol) //<none>
-              //println("testTree.type = " + testTree.tpe) //null
-              //              println("testTree.owner = " + testTree.symbol.owner) //ERROR
+          //          === default transform implementation ===
+          //          in scala.reflect.internal.Trees:
+          //          def itraverse(traverser: Traverser, tree: Tree): Unit = {
+          //            ...
+          //            case ValDef(mods, name, tpt, rhs) =>
+          //              atOwner(tree.symbol) {
+          //                treeCopy.ValDef(tree, transformModifiers(mods),
+          //                  name, transform(tpt), transform(rhs))
+          //              }
+          //
+          //          in scala.reflect.internal.Trees:
+          //          private[scala] def copyAttrs(tree: Tree): this.type = {
+          //            rawatt = tree.rawatt
+          //            tpe = tree.tpe
+          //            if (hasSymbol) symbol = tree.symbol
+          //            this
+          //          }
 
-              //val typeOfType = tree2
-              //println("typeOfType.name" + typeOfType.symbol.name)
-              //println("att = " + att); //dsl.la.Vector[Int]
-              //println("att.tpe = " + att.tpe) //null
-              //val attSymbol: Symbol = att.symbol
-              //println("att.symbol = " + attSymbol) //trait Vector
-              //println("att.type.name = " + (if (attSymbol.isType) attSymbol.asType.name))
-              //println("attSymbol.name = " + attSymbol.name)
-              //println("attSymbol.owner = " + attSymbol.owner)
-              //println("attSymbol.typeSignature = " + attSymbol.typeSignature)
-              //
-              //println("tree1 = " + tree1) //dsl.la.Vector
-              //println("tree1.tpe = " + tree1.tpe) //dsl.la.Vector
-              //val type1: Type = tree1.tpe
-              //println("type1.termSymbol.name = " + (if (type1.termSymbol != null) type1.termSymbol.name))
-              //println("type1.typeSymbol.name = " + (if (type1.typeSymbol != null) type1.typeSymbol.name))
-              //println("type1.members = " + type1.members)
-              //
-              //val tree1Symbol: Symbol = tree1.symbol
-              //println("tree1.symbol = " + tree1Symbol) //trait Vector
-              //println("tree1Symbol.type.name = " + (if (tree1Symbol.isType) tree1Symbol.asType.name))
-              //println("tree1Symbol.name = " + tree1Symbol.name)
-              //println("tree1Symbol.owner = " + tree1Symbol.owner)
-              //println("tree1Symbol.typeSignature = " + tree1Symbol.typeSignature)
+          //valDef1 - to see attributes of custom valDef
+          val valDef1 = ValDef(transformModifiers(param1), param2, transformedTypeTree, super.transform(param4))
 
-              //val expr: Tree = AppliedTypeTree(Select(This(newTypeName(className)), newTypeName("Vector")),
-              //List(Select(Ident("scala"), newTypeName("Int"))))
-
-              val expr: Tree = AppliedTypeTree(Select(This(newTypeName(className)), tree1.symbol.name),
-                List(Select(This(newTypeName(className)), tree2.symbol.name))) //correct line
-
-              //val expr: Tree = AppliedTypeTree(Select(This(newTypeName(className)), newTypeName("Rep")), List(AppliedTypeTree(Select(This(newTypeName(className)), tree1.symbol.name), //EXPR for REP DSL
-              //  List(tree2)))) //correct line for REP
-
-              ValDef(param1, param2, expr, transform(param4)) //correct line
-              //TypeTree().setOriginal(expr) //doesn't work
-              //expr //TEST
-            }
-
-            case _ ⇒
-              super.transform(valDef) //correct line
-            //              super.transform(ttr) //TEST
+          //valDef2 - AST to return
+          val valDef2 = atOwner(tree.symbol) {
+            ValDef(transformModifiers(param1), param2, transformedTypeTree, super.transform(param4))
           }
+
+          //ATTENTION - if comment this line, correct type is printed in show
+          valDef2.setSymbol(tree.symbol)
+
+          valDef2.setPos(tree.pos)
+          valDef2.setType(tree.tpe)
+
+          println("*** ValDef ***")
+          println("show(valDef1) = " + show(valDef1)) // val a: scala.Any = Predef.???
+          println("valDef1.symbol = " + valDef1.symbol) //<none>
+          println("valDef1.symbol.typeSignature = " + valDef1.symbol.typeSignature) // <notype>
+          println("valDef1.symbol.name = " + valDef1.symbol.name) //<none>
+          println("--------------")
+
+          println("transformedTypeTree = " + show(transformedTypeTree)) // scala.Any
+          println("show(valDef2) = " + show(valDef2)) // val a: Int = Predef.???
+          println("valDef2.symbol = " + valDef2.symbol) // value a
+          println("valDef2.symbol.typeSignature = " + valDef2.symbol.typeSignature) // Int
+          println("valDef2.symbol.name = " + valDef2.symbol.name) // a
+          println("**************")
+
+          valDef2
+        }
+
+        case ttr @ TypeTree() ⇒ {
+          //Expression to return
+          val expr: Tree = Select(Ident("scala"), newTypeName("Any"))
+
+          println("*** TypeTree ***")
+          println("expr.tpe = " + expr.tpe) // null
+          println("expr.symbol = " + expr.symbol) //<none>
+          println("expr.pos = " + expr.pos) //NoPosition
+          println("expr.isEmpty = " + expr.isEmpty) //false
+          println("----------------")
+
+          //Origin type tree parameters
+          println("tree.tpe = " + tree.tpe) // Int
+          println("tree.symbol = " + tree.symbol) // class Int
+          println("tree.pos = " + tree.pos) //source-/home/vova/scala-projects/MPDE/mpde/components/dsls/vector-test/test/mpde/vector/test/NoRepSpec.scala,line-92,offset=3035
+          println("tree.isEmpty = " + tree.isEmpty) //false
+          println("****************")
+
+          expr.setPos(tree.pos)
+          expr
         }
 
         // re-wire objects
@@ -222,15 +227,6 @@ final class MPDETransformer[C <: Context, T](val c: C, dslName: String, val debu
       c.resetAllAttrs(tree)
       ident -= 1
       log(" " * ident + " <== " + result)
-      println("-----")
-      log("Result: " + show(result))
-      println("-----")
-      log("Result (with print Types): " + show(result, printTypes = true))
-      println("-----")
-      log("Raw Result: " + showRaw(result))
-      println("-----")
-      log("Raw Result (with print Types): " + showRaw(result, printTypes = true))
-      println("=====")
 
       result
     }
