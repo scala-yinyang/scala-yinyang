@@ -59,3 +59,38 @@ object `package` {
   // Still, we need to be able to print:
   def safe_println(x: Any) = scala.Predef.println(x)
 }
+
+
+/**
+ *  val canStatic = analyze(block)
+ *  if (canStatic) 
+ *     // do the above but in the smarter way
+ *  else 
+ *     // postpone to runtime like it is done before
+ * 
+ * 
+ * In the DSL: 
+ *   def match(text: String, regex: String @required)
+ * 
+ * 1)
+ * analyze(block) 
+ *  * true if regex is known at compile time across the whole DSL
+ *     * match(variable, "abc*") 
+ *  * false otherwise
+ * 
+ * 2)Code that we generate needs to link to variables. E.g:
+ *   automaton.match(variable)
+ *    
+ *    i) Staged code= 
+ *         object uniqueId {
+ *            def method(p1: String, ...) = {
+ *              // generated code that uses p1 instead of variable
+ *            }
+ *         }
+ *         method(variable, ...)
+ *    ii) relink the variables in the generated code
+ *       val parsed = ...
+ *       transform(parsed)
+ *       transform will do the relinking 
+ * 
+ */
