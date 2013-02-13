@@ -1,7 +1,9 @@
 package dsl.print
 
+import ch.epfl.lamp.mpde.api._
+
 /** The int printing DSL */
-trait PrintDSLStage extends base.LiftBase with MiniIntDSL with MiniUnitDSL with MiniPrintDSL with base.Interpret {
+trait PrintDSL extends CodeGenerator with base.LiftBase with MiniIntDSL with MiniUnitDSL with MiniPrintDSL with base.Interpret {
 
   var sb: StringBuffer = new StringBuffer()
 
@@ -9,10 +11,20 @@ trait PrintDSLStage extends base.LiftBase with MiniIntDSL with MiniUnitDSL with 
   def println(x: Any) = sb.append(s"scala.Predef.println(${x.toString});\n")
   def returns(x: Any) = sb.append(x.toString + ";\n") // added because we cannot test output
 
-  override def interpret(): Any = {
+  def generateCode: String = {
     this.main()
     sb.toString
   }
+
+  override def interpret(): Any = {
+    this.main()
+    println("Here the compiler should be invoked to compile and run the sb!")
+    println(sb.toString)
+    ()
+  }
+
+  def hole[T](variable: String): T = ???
+
 }
 
 trait PrintDSLInterpret extends base.LiftBase with MiniUnitDSL with MiniPrintDSL with base.Interpret {

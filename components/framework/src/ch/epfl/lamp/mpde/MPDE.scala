@@ -3,87 +3,148 @@ package mpde
 
 import scala.reflect.macros.Context
 import language.experimental.macros
+import mpde.api._
 
-// for now config goes as named parameter list
-final class MPDETransformer[C <: Context, T](val c: C, dslName: String, val debug: Boolean = false) {
+// for now configuration goes as a named parameter list
+final class MPDETransformer[C <: Context, T](
+  val c: C,
+  dslName: String,
+  val debug: Boolean = false) {
   import c.universe._
+
+  /**
+   * Main MPDE method. Transforms the body of the DSL, makes the DSL cake out of the body and then executes the DSL code.
+   * If the DSL supports static analysis of the DSL code this method will perform it during compilation. The errors
+   * will be reported to the compiler error console.
+   *
+   * Depending on the configuration and the analysis of static values this DSL will be compiled either at compile time,
+   * if all required values are present, or at runtime.
+   */
+  def apply[T](block: c.Expr[T]): c.Expr[T] = {
+    val transfBody = new ScopeInjectionTransformer().transform(block.tree)
+
+    // generates the Embedded DSL cake with the transformed "main" method.
+    val dslClass = c.resetAllAttrs(composeDSL(transfBody))
+
+    // if the DSL inherits the StaticallyChecked trait stage it and do the analysis
+    if (staticallyCheck)
+      dslInstance(dslClass).asInstanceOf[StaticallyChecked].staticallyCheck(c)
+
+    val dslTree = if (canCompileDSL(block.tree)) {
+      val code = dslInstance(dslClass).asInstanceOf[CodeGenerator].generateCode
+
+      // TODO (Duy) for now we do not do any external parameter tracking.
+      /* 2) Code that we generate needs to link to variables. E.g:
+       *   automaton.match(variable)
+       *    One solution:
+       *    i) re-link the variables in the generated code to method calls with literals
+       *       val parsed = ...
+       *       transform(parsed)
+       *       and the `transform` will do the re-linking. For example:
+       *         matches(x, "abc*") => matches(hole("p1"), "abc*")
+       *       where `hole` is a DSL method which will generate an identifier
+       * 
+       *    ii) Then we produce the following
+       *         object uniqueIdName {
+       *            def method(p1: String, ...) = {
+       *              matches(p1, "abc*") // In real world this would be compiled of course
+       *            }
+       *         }
+       *         method(x)
+       */
+
+      val parsed = c.parse(code)
+      parsed
+    } else {
+      Block(dslClass,
+        Apply(Select(Apply(Select(New(Ident(newTypeName(className))), nme.CONSTRUCTOR), List()), newTermName(interpretMethod)), List()))
+    }
+
+    c.Expr[T](c.resetAllAttrs(dslTree))
+  }
+
+  /**
+   * 1) TODO (Duy) Should be analyze(block)
+   *  * true if regex is known at compile time across the whole DSL
+   *     * match(variable, "abc*")
+   *  * false otherwise
+   *
+   * The analysis requires to find methods in the DSL (cake of the DSL).
+   * This should be implemented as a module so it can be reused.
+   *
+   */
+  def canCompileDSL(body: Tree): Boolean = dslName match {
+    case "dsl.print.PrintDSL" ⇒ true
+    case _                    ⇒ false
+  }
+
+  /*
+   * TODO (Duy)
+   * 3) Enabling static analysis of the DSLs at compile time.
+   *
+   */
+  def staticallyCheck = false
 
   // configuration params to be included in the end
   def className = "test"
-  def dslMethod = "main"
   def interpretMethod = "interpret"
+  def stageMethod = "stage"
+  val dslMethod: String = "main"
 
-  val dslTrait = {
+  private lazy val dslTrait = {
     val names = dslName.split("\\.").toList.reverse
-    assert(names.length >= 1, names + " " + dslName)
-    val packs = names.tail.reverse
-    val packsTree = packs match {
-      case head :: Nil  ⇒ Ident(newTermName(head))
-      case head :: tail ⇒ tail.foldRight[Tree](Ident(newTermName(head)))((name, tree) ⇒ Select(tree, newTermName(name)))
-      case Nil          ⇒ EmptyTree
+    assert(names.length >= 1, "DSL trait name must be in the valid format. DSL trait name is " + dslName)
+
+    val tpeName = newTypeName(names.head)
+    names.tail.reverse match {
+      case head :: tail ⇒
+        Select(tail.foldLeft[Tree](Ident(newTermName(head)))((tree, name) ⇒ Select(tree, newTermName(name))), tpeName)
+      case Nil ⇒
+        Ident(tpeName)
     }
-    val _trait = newTypeName(names.head)
-    val traitTree = packsTree match {
-      case EmptyTree ⇒ Ident(_trait)
-      case _         ⇒ Select(packsTree, _trait)
+  }
+
+  var _dslInstance: Option[Object] = None
+  /**
+   * Returns a once initialized DSL instance when it is needed at compile time.
+   */
+  def dslInstance(dslDef: Tree) = {
+    if (_dslInstance == None) {
+      _dslInstance = Some(
+        c.eval(
+          c.Expr(
+            Block(
+              dslDef,
+              Apply(Select(New(Ident(newTypeName(className))), nme.CONSTRUCTOR), List())))))
     }
-    // the final thing:
-    traitTree
+    _dslInstance.get
   }
 
-  def apply[T](block: c.Expr[T]): c.Expr[T] = {
-    /*
-     * This body of code generates the Embedded DSL cake with the empty main method.
-     */
-    // Task 1: main should return type T in some way. Type inference should take care of it. However the run method should return that value.
-    // Task 2: Specify how to rewire object accesses.
-    // Task 3: Specify how to rewire constructors.
-    // Task 4: Specify how to rewire primitive types.
-    // Task 5: Specify how to rewire language features (if then else, while, try catch, return, var etc.).
-    val cake = Block(List(
-      // class MyDSL extends DSL {
-      ClassDef(Modifiers(), newTypeName(className), List(), Template(
-        List(dslTrait),
-        emptyValDef,
-        List(
-          DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(List()), TypeTree(),
-            Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List())), Literal(Constant(())))),
-          // def main = {
-          DefDef(Modifiers(), newTermName(dslMethod), List(), List(List()), TypeTree(),
-            // transformed body
-            new ScopeInjectionTransformer().transform(block.tree)))))),
-      //     }
-      // }
-      // new MyDSL().interpret()
-      Apply(Select(Apply(Select(New(Ident(newTypeName(className))), nme.CONSTRUCTOR), List()), newTermName(interpretMethod)), List()))
-
-    log("Block:" + show(block, printTypes = true))
-    log("Raw Block:" + showRaw(block))
-    log("Cake: " + show(cake))
-    log("Raw Cake: " + showRaw(cake))
-    log("Type Cake: " + show(cake /*, printTypes = true*/ ))
-
-    c.Expr[T](c.resetAllAttrs(cake))
-  }
-
-  def runStagedCode[T](block: c.Expr[T]): c.Expr[T] = {
-    println(this.apply(block))
-    null.asInstanceOf[c.Expr[T]]
-  }
+  def composeDSL(transformedBody: Tree) =
+    // class MyDSL extends DSL {
+    ClassDef(Modifiers(), newTypeName(className), List(), Template(
+      List(dslTrait),
+      emptyValDef,
+      List(
+        DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(List()), TypeTree(),
+          Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List())), Literal(Constant(())))),
+        // def main = {
+        DefDef(Modifiers(), newTermName(dslMethod), List(), List(List()), TypeTree(), transformedBody))))
+  //     }
+  // }
 
   /*
    * This transformer needs to do the following:
    *   - lift all identifiers and constants with a liftTerm method
-   *   - rewire all top-level objects to cake objects
-   *   - rewire all method selections to cake types
+   *   - rewire all top-level objects to DSL objects
+   *   - rewire all method selections to DSL method
    *   - convert all language constructs to method calls (__ifThenElse, __while, ...)
-   *   - rewire types to their cake counterparts (in case of type ascriptions and type application etc.)
+   *   - rewire types to their cake counterparts (in case of type ascription and type application etc.)
    *   ...
    */
   private final class ScopeInjectionTransformer extends Transformer {
 
-    private val definedValues = collection.mutable.HashSet[Symbol]()
-    private val definedMethods = collection.mutable.HashSet[Symbol]()
+    private val definedValues, definedMethods = collection.mutable.HashSet[Symbol]()
 
     /**
      * Current solution for finding outer scope idents.
