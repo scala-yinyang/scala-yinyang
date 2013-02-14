@@ -1,44 +1,42 @@
 package dsl.print
 
 import ch.epfl.lamp.mpde.api._
+import base._
 
 /** The int printing DSL */
-trait PrintDSL extends CodeGenerator with base.LiftBase with MiniIntDSL with MiniUnitDSL with MiniPrintDSL with base.Interpret {
+trait PrintDSL extends ScalaCompile with CodeGenerator with base.LiftBase with MiniIntDSL with MiniPrintDSL with base.Interpret {
 
   var sb: StringBuffer = new StringBuffer()
 
   // hey, we can refine println -- but we don't need it right now
   def println(x: Any) = sb.append(s"scala.Predef.println(${x.toString});\n")
-  def returns(x: Any) = sb.append(x.toString + ";\n") // added because we cannot test output
 
-  def generateCode: String = {
-    this.main()
-    sb.toString
+  def generateCode(className: String): String = {
+    val res = main()
+
+    s"""
+      class $className extends Function0[Any] {
+        def apply() = {
+          ${sb.toString} + ${res.toString}
+        }
+      }
+    """
   }
 
-  override def interpret(): Any = {
-    this.main()
-    println("Here the compiler should be invoked to compile and run the sb!")
-    println(sb.toString)
-    ()
+  override def interpret[T](): T = {
+    if (compiledCode == null) {
+      val res = main()
+      compiledCode = compile[T]
+    }
+    compiledCode.apply().asInstanceOf[T]
   }
 
+  var compiledCode: () ⇒ Any = _
+
+  // TODO (Duy) make the mechanism with holes work. This can be interesting for both compile time compilation
+  // and for runtime compilation. This could be one of the strong points in our approach.
   def hole[T](variable: String): T = ???
 
-}
-
-trait PrintDSLInterpret extends base.LiftBase with MiniUnitDSL with MiniPrintDSL with base.Interpret {
-
-  type Int = scala.Int
-  implicit object LiftInt extends LiftEvidence[scala.Int, scala.Int] { def lift(i: Int) = i }
-
-  // hey, we can refine println -- but we don't need it right now
-  def println(x: Any) = scala.Predef.println(x.toString)
-  def returns(x: Any) = x
-
-  override def interpret(): Any = {
-    this.main()
-  }
 }
 
 trait MiniIntDSL extends base.LiftBase {
@@ -46,17 +44,12 @@ trait MiniIntDSL extends base.LiftBase {
   type Int = IntOps
 
   trait IntOps {
-    def +(that: Int): Int = (IntOps.this, that) match {
-      case (IntConst(x), IntConst(y)) ⇒
-        IntConst(x + y)
-      case _ ⇒
-        IntPlus(IntOps.this, that)
-    }
+    def +(that: Int): Int = IntPlus(IntOps.this, that)
   }
 
   // actual classes that provide lifting
   case class IntConst(i: scala.Int) extends IntOps { override def toString = s"$i" }
-  case class IntPlus(l: IntOps, r: IntOps) extends IntOps { override def toString = s"$l + $r" }
+  case class IntPlus(l: IntOps, r: IntOps) extends IntOps { override def toString = s"($l + $r)" }
 
   implicit object LiftInt extends LiftEvidence[scala.Int, Int] {
     def lift(v: scala.Int): Int = IntConst(v)
@@ -71,5 +64,4 @@ trait MiniUnitDSL extends base.LiftBase {
 
 trait MiniPrintDSL extends base.LiftBase {
   def println(x: Any): Unit
-  def returns(x: Any): Any
 }

@@ -255,6 +255,8 @@ trait VectorDSL extends ClassTagOps with IfThenElseDSL with ArrayDSL with IntDSL
     //    def apply[T <: AnyVal: Numeric: ClassTag](a: Map[Int, T]): Vector[T] = ???
   }
 
+  def interpret[T](): T = ???
+
   /**
    * TODO how are we going to translate to objects and yet remain modular and reusable.
    */

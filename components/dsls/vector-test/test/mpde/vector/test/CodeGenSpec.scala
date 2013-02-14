@@ -9,13 +9,14 @@ import org.scalatest.junit.JUnitRunner
 class CodeGenSpec extends FlatSpec with ShouldMatchers {
 
   "Static code staging" should "work" in {
-    assert(liftPrint {
+    val x = liftPrint {
       val x = 1
       val y = 2
       val z = 4
       println(x + y + z)
-      returns(x + y + z)
-    } == 7) // should print "7" and return "7"
+      x + y + z
+    }
+    assert(x == 7, "Should return the value 7!")
   }
 
   // TODO (Duy) This should work after the holes are made. 
@@ -27,7 +28,7 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
       liftPrint {
         val z = 4
         println(x + y + z)
-        returns(x + y + z)
-      } == ()) // should print "7" and return "7"
+        x + y + z
+      } == 7) // should print "7" and return "7"
   }*/
 }

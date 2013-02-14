@@ -21,17 +21,19 @@ final class MPDETransformer[C <: Context, T](
    * if all required values are present, or at runtime.
    */
   def apply[T](block: c.Expr[T]): c.Expr[T] = {
+    log("Body: " + show(block.tree))
     val transfBody = new ScopeInjectionTransformer().transform(block.tree)
-
+    log("Transformed Body: " + show(transfBody))
     // generates the Embedded DSL cake with the transformed "main" method.
     val dslClass = c.resetAllAttrs(composeDSL(transfBody))
+    log("DSL Class: " + show(dslClass))
 
     // if the DSL inherits the StaticallyChecked trait stage it and do the analysis
     if (staticallyCheck)
       dslInstance(dslClass).asInstanceOf[StaticallyChecked].staticallyCheck(c)
 
     val dslTree = if (canCompileDSL(block.tree)) {
-      val code = dslInstance(dslClass).asInstanceOf[CodeGenerator].generateCode
+      val code = dslInstance(dslClass).asInstanceOf[CodeGenerator].generateCode("generated$" + dslName)
 
       // TODO (Duy) for now we do not do any external parameter tracking.
       /* 2) Code that we generate needs to link to variables. E.g:
@@ -57,9 +59,14 @@ final class MPDETransformer[C <: Context, T](
       parsed
     } else {
       Block(dslClass,
-        Apply(Select(Apply(Select(New(Ident(newTypeName(className))), nme.CONSTRUCTOR), List()), newTermName(interpretMethod)), List()))
+        Apply(
+          TypeApply(
+            Select(Apply(Select(New(Ident(newTypeName(className))), nme.CONSTRUCTOR), List()), newTermName(interpretMethod)),
+            List(TypeTree(block.tree.tpe))),
+          List()))
     }
 
+    log("Final tree: " + show(c.typeCheck(c.resetAllAttrs(dslTree))))
     c.Expr[T](c.resetAllAttrs(dslTree))
   }
 
@@ -129,7 +136,7 @@ final class MPDETransformer[C <: Context, T](
         DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(List()), TypeTree(),
           Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List())), Literal(Constant(())))),
         // def main = {
-        DefDef(Modifiers(), newTermName(dslMethod), List(), List(List()), TypeTree(), transformedBody))))
+        DefDef(Modifiers(), newTermName(dslMethod), List(), List(List()), Ident(newTypeName("Any")), transformedBody))))
   //     }
   // }
 
