@@ -41,25 +41,25 @@ trait PrintDSL extends ScalaCompile with CodeGenerator with base.LiftBase with M
    * liftDSL {
    *   print(y + x.y)
    * }
-   * 
+   *
    * -
    * |
    * U
-   * 
+   *
    * liftDSL {
    *   print(hole("p$1") + hole("p$2"))
    * }
    * -
    * |
    * U
-   * 
+   *
    * object staged$1 {
-   *   def apply(p$1: Int, p$2: String): Any = 
+   *   def apply(p$1: Int, p$2: String): Any =
    *     print(p$1 + p$2)
    * }
    * staged$1(y, x.y)
-   * 
-   * 
+   *
+   *
    */
 
   def hole[T](variable: String): T = ???
