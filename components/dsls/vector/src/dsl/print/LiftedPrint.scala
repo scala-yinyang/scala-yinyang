@@ -35,6 +35,33 @@ trait PrintDSL extends ScalaCompile with CodeGenerator with base.LiftBase with M
 
   // TODO (Duy) make the mechanism with holes work. This can be interesting for both compile time compilation
   // and for runtime compilation. This could be one of the strong points in our approach.
+  /*
+   * val y = 1
+   * object x { val y = "a" }
+   * liftDSL {
+   *   print(y + x.y)
+   * }
+   * 
+   * -
+   * |
+   * U
+   * 
+   * liftDSL {
+   *   print(hole("p$1") + hole("p$2"))
+   * }
+   * -
+   * |
+   * U
+   * 
+   * object staged$1 {
+   *   def apply(p$1: Int, p$2: String): Any = 
+   *     print(p$1 + p$2)
+   * }
+   * staged$1(y, x.y)
+   * 
+   * 
+   */
+
   def hole[T](variable: String): T = ???
 
 }

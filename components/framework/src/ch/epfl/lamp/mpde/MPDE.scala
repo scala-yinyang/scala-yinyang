@@ -5,6 +5,12 @@ import scala.reflect.macros.Context
 import language.experimental.macros
 import mpde.api._
 
+import java.util.concurrent.atomic.AtomicLong
+
+object MPDETransformer {
+  val uID = new AtomicLong(0)
+}
+
 // for now configuration goes as a named parameter list
 final class MPDETransformer[C <: Context, T](
   val c: C,
@@ -33,7 +39,7 @@ final class MPDETransformer[C <: Context, T](
       dslInstance(dslClass).asInstanceOf[StaticallyChecked].staticallyCheck(c)
 
     val dslTree = if (canCompileDSL(block.tree)) {
-      val code = dslInstance(dslClass).asInstanceOf[CodeGenerator].generateCode("generated$" + dslName)
+      val code = dslInstance(dslClass).asInstanceOf[CodeGenerator].generateCode(className)
 
       // TODO (Duy) for now we do not do any external parameter tracking.
       /* 2) Code that we generate needs to link to variables. E.g:
@@ -44,7 +50,7 @@ final class MPDETransformer[C <: Context, T](
        *       transform(parsed)
        *       and the `transform` will do the re-linking. For example:
        *         matches(x, "abc*") => matches(hole("p1"), "abc*")
-       *       where `hole` is a DSL method which will generate an identifier
+       *       where `hole` is a DSL method which will generate an identifier.
        * 
        *    ii) Then we produce the following
        *         object uniqueIdName {
@@ -54,25 +60,31 @@ final class MPDETransformer[C <: Context, T](
        *         }
        *         method(x)
        */
+      Block(
+        c.parse(code),
+        Apply(
+          Select(constructor, newTermName("apply")),
+          List()) // TODO Duy this needs to be filled in with parameters
+          )
 
-      val parsed = c.parse(code)
-      parsed
     } else {
       Block(dslClass,
         Apply(
           TypeApply(
-            Select(Apply(Select(New(Ident(newTypeName(className))), nme.CONSTRUCTOR), List()), newTermName(interpretMethod)),
+            Select(constructor, newTermName(interpretMethod)),
             List(TypeTree(block.tree.tpe))),
-          List()))
+          List())) // TODO Duy this needs to be filled in with parameters
     }
 
     log("Final tree: " + show(c.typeCheck(c.resetAllAttrs(dslTree))))
     c.Expr[T](c.resetAllAttrs(dslTree))
   }
 
+  private def constructor = Apply(Select(New(Ident(newTypeName(className))), nme.CONSTRUCTOR), List())
+
   /**
    * 1) TODO (Duy) Should be analyze(block)
-   *  * true if regex is known at compile time across the whole DSL
+   *  * true if regex is known at compile time. This needs to apply for the whole DSL body/program.
    *     * match(variable, "abc*")
    *  * false otherwise
    *
@@ -80,8 +92,8 @@ final class MPDETransformer[C <: Context, T](
    * This should be implemented as a module so it can be reused.
    *
    */
-  def canCompileDSL(body: Tree): Boolean = dslName match {
-    case "dsl.print.PrintDSL" ⇒ true
+  private def canCompileDSL(body: Tree): Boolean = dslName match {
+    case "dsl.print.PrintDSL" ⇒ false
     case _                    ⇒ false
   }
 
@@ -91,54 +103,6 @@ final class MPDETransformer[C <: Context, T](
    *
    */
   def staticallyCheck = false
-
-  // configuration params to be included in the end
-  def className = "test"
-  def interpretMethod = "interpret"
-  def stageMethod = "stage"
-  val dslMethod: String = "main"
-
-  private lazy val dslTrait = {
-    val names = dslName.split("\\.").toList.reverse
-    assert(names.length >= 1, "DSL trait name must be in the valid format. DSL trait name is " + dslName)
-
-    val tpeName = newTypeName(names.head)
-    names.tail.reverse match {
-      case head :: tail ⇒
-        Select(tail.foldLeft[Tree](Ident(newTermName(head)))((tree, name) ⇒ Select(tree, newTermName(name))), tpeName)
-      case Nil ⇒
-        Ident(tpeName)
-    }
-  }
-
-  var _dslInstance: Option[Object] = None
-  /**
-   * Returns a once initialized DSL instance when it is needed at compile time.
-   */
-  def dslInstance(dslDef: Tree) = {
-    if (_dslInstance == None) {
-      _dslInstance = Some(
-        c.eval(
-          c.Expr(
-            Block(
-              dslDef,
-              Apply(Select(New(Ident(newTypeName(className))), nme.CONSTRUCTOR), List())))))
-    }
-    _dslInstance.get
-  }
-
-  def composeDSL(transformedBody: Tree) =
-    // class MyDSL extends DSL {
-    ClassDef(Modifiers(), newTypeName(className), List(), Template(
-      List(dslTrait),
-      emptyValDef,
-      List(
-        DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(List()), TypeTree(),
-          Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List())), Literal(Constant(())))),
-        // def main = {
-        DefDef(Modifiers(), newTermName(dslMethod), List(), List(List()), Ident(newTypeName("Any")), transformedBody))))
-  //     }
-  // }
 
   /*
    * This transformer needs to do the following:
@@ -228,6 +192,55 @@ final class MPDETransformer[C <: Context, T](
       result
     }
   }
+
+  /*
+  * Configuration parameters.
+  */
+  def interpretMethod = "interpret"
+  val dslMethod: String = "main"
+  val className = "generated$" + dslName.filter(_ != '.') + MPDETransformer.uID.incrementAndGet
+
+  /*
+   * Utilities.
+   */
+  private lazy val dslTrait = {
+    val names = dslName.split("\\.").toList.reverse
+    assert(names.length >= 1, "DSL trait name must be in the valid format. DSL trait name is " + dslName)
+
+    val tpeName = newTypeName(names.head)
+    names.tail.reverse match {
+      case head :: tail ⇒
+        Select(tail.foldLeft[Tree](Ident(newTermName(head)))((tree, name) ⇒ Select(tree, newTermName(name))), tpeName)
+      case Nil ⇒
+        Ident(tpeName)
+    }
+  }
+
+  private var _dslInstance: Option[Object] = None
+  /**
+   * Returns a once initialized DSL instance when it is needed at compile time.
+   */
+  private def dslInstance(dslDef: Tree) = {
+    if (_dslInstance == None) {
+      _dslInstance = Some(
+        c.eval(
+          c.Expr(Block(dslDef, constructor))))
+    }
+    _dslInstance.get
+  }
+
+  def composeDSL(transformedBody: Tree) =
+    // class MyDSL extends DSL {
+    ClassDef(Modifiers(), newTypeName(className), List(), Template(
+      List(dslTrait),
+      emptyValDef,
+      List(
+        DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(List()), TypeTree(),
+          Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List())), Literal(Constant(())))),
+        // def main = {
+        DefDef(Modifiers(), newTermName(dslMethod), List(), List(List()), Ident(newTypeName("Any")), transformedBody))))
+  //     }
+  // }
 
   def log(s: String) = if (debug) println(s)
 
