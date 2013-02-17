@@ -230,7 +230,9 @@ final class MPDETransformer[C <: Context, T](
           Select(transform(inn), name)
 
         // replaces objects with their cake counterparts
-        case s @ Select(inn, name) if (name != newTermName("IntIsIntegral")) ⇒ // TODO this needs to be narrowed down if s.symbol.isModule =>
+        //TODO check for IntIsIntegral is temporary solution and should be changed
+        //for rep dsl we don't need to replace IntIsIntegral
+        case s @ Select(inn, name) if (!rep) || (name != newTermName("IntIsIntegral")) ⇒ // TODO this needs to be narrowed down if s.symbol.isModule =>
           Ident(name)
 
         case TypeApply(mth, targs) ⇒ // TODO this needs to be changed for LMS to include a type transformer
