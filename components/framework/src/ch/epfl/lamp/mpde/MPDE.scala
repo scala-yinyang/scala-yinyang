@@ -15,7 +15,8 @@ object MPDETransformer {
 final class MPDETransformer[C <: Context, T](
   val c: C,
   dslName: String,
-  val debug: Boolean = false) {
+  val debug: Boolean = false,
+  val rep: Boolean = false) {
   import c.universe._
 
   /**
@@ -146,6 +147,78 @@ final class MPDETransformer[C <: Context, T](
         case t @ Ident(v) if isFree(t.symbol) && !t.symbol.isModule ⇒
           Apply(TypeApply(Select(This(newTypeName(className)), newTermName("liftTerm")), List(TypeTree(), TypeTree())), List(t))
 
+        //provide way to transform Ident(v) to Select
+        //case t @ Ident(v) ⇒ {
+        //  println("t @ Ident(v)")
+        //  println("t = " + t)
+        //  println("v = " + v)
+        //  Select(Select(Ident(newTermName("scala")), newTermName("reflect")), newTermName("ClassTag"))
+        //}
+
+        //provide Def trees with NoSymbol (for correct show(tree)
+        case vdDef: ValOrDefDef ⇒ {
+          val retDef = super.transform(tree)
+          retDef.setSymbol(NoSymbol)
+          retDef
+        }
+
+        case typTree: TypTree ⇒ {
+          //FOR NOREP type
+          if (!rep) {
+
+            val typeToLift: Tree = typTree match {
+              //if tree is TypeTree and has original tree than process original tree
+              //TODO refactor this to case
+              case typeTree: TypeTree ⇒
+                if (typeTree.original != null) {
+                  typeTree.original
+                } else typeTree
+              case _ ⇒ typTree
+            }
+            println("*** typeToLift = " + typeToLift)
+
+            typeToLift match {
+              //see another possible type applications
+
+              //TODO (TOASK) - how to process bounds in Rep DSL? In NORep DSL we just need to change them to our types?
+              case tbTree: TypeBoundsTree ⇒ {
+                println("*** TypeBoundsTree")
+                //TODO process it later
+                tree
+              }
+
+              case atTree @ AppliedTypeTree(currentTree, typeTrees) ⇒ {
+                println("*** AppliedTypeTree")
+                //transform type of AppliedTypeTree
+                val mainType = transform(currentTree)
+                //transform type parameters
+                val typeParams = typeTrees map {
+                  x ⇒ transform(x)
+                }
+                AppliedTypeTree(mainType, typeParams)
+              }
+
+              //TODO find another way to get name
+              //get name of Type and produce AST for type with the same name
+              //in our DSL
+              case tTree @ _ ⇒ {
+                val expr: Tree = if (tTree != null) {
+                  println("*** Tree")
+                  Select(This(newTypeName(className)), typeToLift.symbol.name)
+                } else null
+                expr
+              }
+            }
+
+            //else if Rep DSL
+          } else {
+            //transform Type1[Type2[...]] => Rep[Type1[Type2[...]]]
+            val expr: Tree =
+              AppliedTypeTree(Select(This(newTypeName(className)), newTypeName("Rep")), List(typTree))
+            expr
+          }
+        }
+
         // re-wire objects
         case s @ Select(Select(inn, t: TermName), name) if s.symbol.isMethod && t.toString == "package" /* ugh, no TermName extractor */ ⇒
           Ident(name)
@@ -157,7 +230,7 @@ final class MPDETransformer[C <: Context, T](
           Select(transform(inn), name)
 
         // replaces objects with their cake counterparts
-        case s @ Select(inn, name) ⇒ // TODO this needs to be narrowed down if s.symbol.isModule =>
+        case s @ Select(inn, name) if (name != newTermName("IntIsIntegral")) ⇒ // TODO this needs to be narrowed down if s.symbol.isModule =>
           Ident(name)
 
         case TypeApply(mth, targs) ⇒ // TODO this needs to be changed for LMS to include a type transformer
@@ -174,8 +247,12 @@ final class MPDETransformer[C <: Context, T](
           // For polymorphic embedding we will just null it out.
           log("Function type: " + f.symbol.typeSignature.toString)
           log("Argument type: " + params.head.symbol.typeSignature.toString)
-          c.resetAllAttrs(f) // this does not re-infer the type. Why?
 
+          //transform params definitions
+          val functionParams: List[ValDef] = params map { x ⇒ transform(x).asInstanceOf[ValDef] }
+
+          c.resetAllAttrs(f) // this does not re-infer the type. Why?
+          Function(functionParams, transform(body))
         // re-wire language feature `if` to the method __ifThenElse
         case t @ If(cond, then, elze) ⇒
           Apply(Select(This(newTypeName(className)), newTermName("__ifThenElse")), List(transform(cond), transform(then), transform(elze)))

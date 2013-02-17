@@ -13,6 +13,16 @@ trait Base extends LiftBase {
   type Rep[+T]
 }
 
+//TODO problem with visibility
+//we need to transform Ident to Select(...)
+//it's temporary solution
+trait ClassTagVals {
+  object ClassTag {
+    val Int = scala.reflect.ClassTag.Int
+    val Double = scala.reflect.ClassTag.Double
+  }
+}
+
 trait NumericOps extends Base {
   trait NumericOps[T] {
     def plus(x: Rep[T], y: Rep[T]): Rep[T]
@@ -121,6 +131,10 @@ trait IntDSL extends Base {
     def lift(v: Int): Rep[Int] = ???
   }
 
+  implicit object LiftUnit extends LiftEvidence[scala.Unit, Unit] {
+    def lift(v: Unit): Unit = ()
+  }
+
   //TODO (TOASK) do we need such object
   implicit object IntOrdering extends Ordering[Rep[Int]] {
     def compare(x: Rep[Int], y: Rep[Int]): scala.Int = ???
@@ -215,7 +229,12 @@ trait ArrayDSL extends Base {
 //
 //}
 
-trait VectorDSL extends ArrayDSL with IntDSL with DoubleDSL with NumericOps with Base {
+trait VectorDSL extends ArrayDSL with IntDSL with DoubleDSL with ClassTagVals with NumericOps with Base with Interpret {
+
+  override def interpret[T]() = {
+    val res = main().asInstanceOf[T]
+    res
+  }
 
   type Vector[T] = dsl.la.Vector[T]
 
