@@ -175,20 +175,20 @@ final class MPDETransformer[C <: Context, T](
                 } else typeTree
               case _ ⇒ typTree
             }
-            println("*** typeToLift = " + typeToLift)
+            log("*** typeToLift = " + typeToLift)
 
             typeToLift match {
               //see another possible type applications
 
               //TODO (TOASK) - how to process bounds in Rep DSL? In NORep DSL we just need to change them to our types?
               case tbTree: TypeBoundsTree ⇒ {
-                println("*** TypeBoundsTree")
+                log("*** TypeBoundsTree")
                 //TODO process it later
                 tree
               }
 
               case atTree @ AppliedTypeTree(currentTree, typeTrees) ⇒ {
-                println("*** AppliedTypeTree")
+                log("*** AppliedTypeTree")
                 //transform type of AppliedTypeTree
                 val mainType = transform(currentTree)
                 //transform type parameters
@@ -203,7 +203,7 @@ final class MPDETransformer[C <: Context, T](
               //in our DSL
               case tTree @ _ ⇒ {
                 val expr: Tree = if (tTree != null) {
-                  println("*** Tree")
+                  log("*** Tree")
                   Select(This(newTypeName(className)), typeToLift.symbol.name)
                 } else null
                 expr
