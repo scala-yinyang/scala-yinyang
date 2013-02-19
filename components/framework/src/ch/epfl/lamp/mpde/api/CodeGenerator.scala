@@ -3,6 +3,8 @@ package ch.epfl.lamp.mpde.api
 trait CodeGenerator {
 
   def generateCode(className: String): String
+  
+  def main(): Any
 
   /**
    * Should be used in compile-time code generation to replace free variables.

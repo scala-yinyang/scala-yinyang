@@ -30,5 +30,20 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
         println(x + y + z)
         x + y + z
       } == 7) // should print "7" and return "7"
+     
+     |
+     V
+    val x = 1
+    val y = 2
+    assert({
+      object staged$1 extends dsl.print.PrintDSL {
+        def apply(p1: Int, p2: Int) = {
+          val z = 4
+          println(p1 + p2 + z)
+          p1 + p2 + z
+        }
+      }
+      staged$1(x, y)
+    } == 7)
   }*/
 }
