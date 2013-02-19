@@ -3,7 +3,7 @@ package ch.epfl.lamp.mpde.api
 trait CodeGenerator {
 
   def generateCode(className: String): String
-  
+
   def main(): Any
 
   /**
