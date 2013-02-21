@@ -238,29 +238,22 @@ final class MPDETransformer[C <: Context, T](
         case TypeApply(mth, targs) ⇒ // TODO this needs to be changed for LMS to include a type transformer
           transform(mth)
 
-        // Removes all import statements for now. TODO later it will figure out the DSL modules and will include them into the cake.
+        // Removes all import statements for now. 
+        // TODO later it will figure out the DSL modules and will include them into the cake.
         case Import(_, _) ⇒
           EmptyTree
 
-        // TODO does not work because resetAllAttrs does not remove types from lambdas.
         case f @ Function(params, body) ⇒
-          // TODO for LMS we will put here an explicit type for all the arguments to avoid
-          // inferencer errors.
-          // For polymorphic embedding we will just null it out.
-          log("Function type: " + f.symbol.typeSignature.toString)
-          log("Argument type: " + params.head.symbol.typeSignature.toString)
-
-          //transform params definitions
+          // TODO transform ValDef types here with an explicit type tree.
           val functionParams: List[ValDef] = params map { x ⇒ transform(x).asInstanceOf[ValDef] }
 
-          c.resetAllAttrs(f) // this does not re-infer the type. Why?
+          c.resetAllAttrs(f)
           Function(functionParams, transform(body))
         // re-wire language feature `if` to the method __ifThenElse
         case t @ If(cond, then, elze) ⇒
           Apply(Select(This(newTypeName(className)), newTermName("__ifThenElse")), List(transform(cond), transform(then), transform(elze)))
 
-        // TODO var, while, do while, return, partial functions, try catch, pattern matching
-
+        // TODO partial functions, try catch, pattern matching
         case _ ⇒
           super.transform(tree)
       }
