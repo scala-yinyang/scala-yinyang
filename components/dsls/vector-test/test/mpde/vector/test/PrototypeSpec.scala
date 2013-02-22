@@ -48,15 +48,18 @@ class PrototypeSpec extends FlatSpec with ShouldMatchers {
     }
   }
 
-  /*it should "rewire object applications with our own numeric and class tag" in {
-      val x = dsl.la.laLift {
+  /*
+   * Pending type trees out of types.
+   * 
+   * it should "rewire object applications with our own numeric and class tag" in {
+      val x = dsl.la.laDebug {
       val y = dsl.la.DenseVector(1, 2, 3)
       import dsl.la
       val z = la.DenseVector(1, 2, 3)
       import dsl.la.TestObject
       val dv = DenseVector(1, 2, 3)
       ()
-    }
+    }    
   }*/
 
   it should "rewire language features to methods" in {
@@ -68,12 +71,7 @@ class PrototypeSpec extends FlatSpec with ShouldMatchers {
 
   it should "closures should be converted into a cake" in {
     val x = dsl.la.laLift {
-      //      new VectorDSL {
-      //        def main = {
-      //          DenseVector(liftTerm(1)).map(x => x + 1)
-      //        }
-      //      }
-      //            dsl.la.DenseVector(1,2,3).map(x => x + 1)
+      dsl.la.DenseVector(1, 2, 3).map(x ⇒ x + 1)
     }
     ()
   }
