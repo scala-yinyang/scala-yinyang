@@ -12,5 +12,5 @@ trait CodeGenerator {
    * TODO (Duy) Should we provide the hole evidence like we do with literals?
    * Probably not.
    */
-  def hole[T](varName: String): T
+  def hole(varName: String, varType: String): Nothing
 }

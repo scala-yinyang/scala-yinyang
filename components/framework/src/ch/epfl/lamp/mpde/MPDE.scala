@@ -1,8 +1,8 @@
 package ch.epfl.lamp
 package mpde
 
-import scala.reflect.macros.Context
 import scala.collection.mutable.ListBuffer
+import scala.reflect.macros.Context
 import language.experimental.macros
 import mpde.api._
 
@@ -30,6 +30,7 @@ final class MPDETransformer[C <: Context, T](
    */
   def apply[T](block: c.Expr[T]): c.Expr[T] = {
     log("Body: " + show(block.tree))
+
     val transfBody = new ScopeInjectionTransformer().transform(block.tree)
     log("Transformed Body: " + show(transfBody))
     // generates the Embedded DSL cake with the transformed "main" method.
@@ -42,6 +43,8 @@ final class MPDETransformer[C <: Context, T](
 
     val dslTree = if (canCompileDSL(block.tree)) {
       val generated = dslInstance(dslClass).asInstanceOf[CodeGenerator].generateCode(className)
+
+      // we cane compile and run the code here
 
       // TODO (Duy) for now we do not do any external parameter tracking.
       /* 2) Code that we generate needs to link to variables. E.g:
@@ -56,15 +59,20 @@ final class MPDETransformer[C <: Context, T](
        * 
        *    ii) Then we produce the following
        *         object uniqueIdName {
-       *            def apply(p1: String, ...) = {
+       *            def method(p1: String, ...) = {
        *              matches(p1, "abc*") // In real world this would be compiled of course
        *            }
        *         }
-       *         apply(x)
+       *         method(x)
        */
+
       val parsed = c parse generated
-      val filled = new HoleFillerTransformer(freeVariables(block.tree)) transform parsed
+      log(s"generated: ${parsed.toString}")
+      val filled = new HoleFillerTransformer().fill(parsed, List(c.literal(7).tree))
+      log(s"filled: ${filled.toString}")
       filled
+      //val filled = new HoleFillerTransformer(freeVariables(block.tree)) transform parsed
+      //filled
     } else {
       Block(dslClass,
         Apply(
@@ -72,31 +80,15 @@ final class MPDETransformer[C <: Context, T](
             Select(dslConstructor, newTermName(interpretMethod)),
             List(TypeTree(block.tree.tpe))),
           List())) // TODO Duy this needs to be filled in with parameters
-      // No need. This block will replace `lift { block }` where the external variables are available.
     }
 
-    log("Final tree: " + show(c.typeCheck(c.resetAllAttrs(dslTree))))
+    try {
+      log("Final tree: " + show(c.typeCheck(c.resetAllAttrs(dslTree))))
+    } catch {
+      case x: Throwable ⇒ log(x.toString)
+    }
     c.Expr[T](c.resetAllAttrs(dslTree))
   }
-
-  def freeVariables(tree: Tree): List[Ident] = new FreeVariableCollector().freeVariables(tree)
-
-  /**
-   * Should pass in transformed body.
-   */
-  def externalVariables(tree: Tree): List[Ident] =
-    freeVariables(tree) filter (v ⇒
-      /* Current solution:
-       * Creates an instance of DSL class with the `main` body accesses the variable.
-       * If it causes an exception, it is an external variable.
-       */
-      try {
-        val body = invoke(v, newTermName("toString"), List())
-        dslInstance(dslClass(body)).asInstanceOf[CodeGenerator].main()
-        false
-      } catch {
-        case _: Throwable ⇒ true
-      })
 
   /**
    * 1) TODO (Duy) Should be analyze(block)
@@ -113,28 +105,55 @@ final class MPDETransformer[C <: Context, T](
    * - return true if all arguments true
    * - true if can generate code statically
    */
-  def canCompileDSL(tree: Tree): Boolean = externalVariables(tree).isEmpty
+  def canCompileDSL(tree: Tree): Boolean = {
+    val vs = externalVariables(tree)
+    //freeVariables(tree).isEmpty
+    log(s"external variables: ${vs.toString}")
+    vs.isEmpty
+    true
+  }
+
+  def freeVariables(tree: Tree): List[Symbol] = new FreeVariableCollector().freeVariables(tree)
+
+  /**
+   * Should pass in transformed body.
+   */
+  def externalVariables(tree: Tree): List[Symbol] =
+    freeVariables(tree) filter (v ⇒
+      /* Current solution:
+       * Creates an instance of DSL class with the `main` body accesses the variable.
+       * If it causes an exception, it is an external variable.
+       */
+      try {
+        val body = Ident(v) //invoke(Ident(v), newTermName("toString"), List())
+        val clazz = dslClass(body)
+        log(s"checker:\n ${clazz.toString}")
+        dslInstance(clazz).asInstanceOf[CodeGenerator].main()
+        false
+      } catch {
+        case _: Throwable ⇒ true
+      })
 
   class FreeVariableCollector extends Traverser {
 
-    private val collected = ListBuffer[Ident]()
+    private val collected = ListBuffer[Symbol]()
     private var defined = List[Symbol]()
 
-    private[this] final def isFree(id: Ident) = !defined.contains(id.symbol)
+    private[this] final def isFree(id: Symbol) = !defined.contains(id)
 
     override def traverse(tree: Tree) = tree match {
-      case i @ Ident(_) ⇒ {
+      case i @ Ident(s) ⇒ {
         val s = i.symbol
-        if (s.isTerm && !(s.isMethod || s.isModule || s.isPackage) && isFree(i)) collected append i
+        if (s.isTerm && !(s.isMethod || s.isModule || s.isPackage) && isFree(s)) collected append s
       }
       case _ ⇒ super.traverse(tree)
     }
 
-    def freeVariables(tree: Tree): List[Ident] = {
+    def freeVariables(tree: Tree): List[Symbol] = {
       collected.clear()
       defined = new LocalDefCollector().definedSymbols(tree)
       traverse(tree)
-      collected.toList
+      collected.toList.distinct
     }
 
   }
@@ -189,20 +208,43 @@ final class MPDETransformer[C <: Context, T](
    * $$(arguments)
    * }}}
    */
-  private final class HoleFillerTransformer(arguments: List[Tree]) extends Transformer {
+  private final class HoleFillerTransformer extends Transformer {
 
-    override def transform(tree: Tree): Tree = {
+    val parameters = ListBuffer[(String, String)]()
 
-      /* Traverse the tree to find `hole("v"`)
-       * Update `v` in the map ard replace `hole("v")` by Ident("v")
-       */
-      val holeFilled = tree match {
-        case _ ⇒ ???
-      }
+    /* Traverse the tree to find `hole("v"`)
+     * Update `v` in the map ard replace `hole("v")` by Ident("v")
+     * 
+     * The hole should be `hole("var", "type") `
+     */
+    override def transform(tree: Tree): Tree = tree match {
+      case Apply(Ident(hole), List(Literal(Constant(id: String)), Literal(Constant(idType: String)))) if hole.decoded == "hole" ⇒
+        parameters += ((id, idType))
+        Ident(newTermName(id)) // may update sth
+      case _ ⇒
+        log(s"Not hole: ${showRaw(tree)}")
+        super.transform(tree)
+    }
+
+    def fill(tree: Tree, arguments: List[Tree]): Tree = {
       val outerClassName = "$outer$scope"
       val method = newTermName("apply")
+
+      val transformed = transform(tree)
+      val paramList = parameters map (p ⇒ s"${p._1}: ${p._2}")
+
+      // def apply(var: type, ...) {}
+      val defCode = s"def $method(${paramList mkString ","}) = {}"
+      val methodTree = c parse defCode match {
+        case DefDef(mods, _, tparams, vparamss, tpt, _) ⇒
+          log(s"Type: ${showRaw(tpt)}")
+          DefDef(mods, method, tparams, vparamss, TypeTree(), transformed)
+        case t ⇒ t
+      }
+
+      log(s"Transformed apply: ${methodTree}")
       val outerClass = // class definition of outer scope
-        // class MyDSL extends DSL {
+        // class $outer$scope {
         ClassDef(Modifiers(), newTypeName(outerClassName), List(), Template(
           List(),
           emptyValDef,
@@ -211,19 +253,13 @@ final class MPDETransformer[C <: Context, T](
               Block(
                 List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List())),
                 Literal(Constant(())))),
-            // def apply = {
-            DefDef(
-              Modifiers(),
-              method,
-              List(),
-              List(List()),
-              TypeTree(),
-              holeFilled) // }
-              )))
-      // }
+            methodTree // def apply()
+            )))
       val invocation = invoke(constructor(outerClassName, List()), method, arguments)
       Block(List(outerClass), invocation)
     }
+
+    def holes: List[Ident] = parameters.toList map (p ⇒ Ident(p._1))
 
   }
 
@@ -446,4 +482,3 @@ final class MPDETransformer[C <: Context, T](
   def log(s: String) = if (debug) println(s)
 
 }
-
