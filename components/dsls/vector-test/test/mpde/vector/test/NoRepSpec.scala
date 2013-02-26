@@ -31,19 +31,25 @@ class NoRepSpec extends FlatSpec with ShouldMatchers {
   //    }
   //  }
 
-  //  it should "lift Vector to NoRep" in {
-  //
-  //    val x = dsl.la.laDebugNoRep {
-  //      //val a: Vector[Int] = DenseVector(1, 2)
-  //      val a: Vector[Double] = ???
-  //      //val a = DenseVector(1, 2)
-  //      //a.map(_ + 2)
-  //
-  //      //problem to transform
-  //      //==> def testing[T >: Nothing <: Any](a: Int, b: T): Nothing = scala.this.Predef.???
-  //      //def testing[T](a: Int, b: T) = ???
-  //    }
-  //
-  //    ()
-  //  }
+  it should "lift Vector to NoRep" in {
+
+    val x = dsl.la.laDebugNoRep {
+      //val a: Vector[Int] = DenseVector(1, 2)
+      //val a: Vector[Double] = ???
+      //val a = DenseVector(1, 2)
+      //a.map(_ + 2)
+
+      //val a = DenseVector(1, 2)
+      //val b = a
+      //val c: Vector[Int] = DenseVector(1, 2, 3)
+      //a.map(x ⇒ x + 2)
+      //b.map(_ + 2)
+
+      //problem to transform
+      //==> def testing[T >: Nothing <: Any](a: Int, b: T): Nothing = scala.this.Predef.???
+      //def testing[T](a: Int, b: T) = ???
+    }
+
+    ()
+  }
 }

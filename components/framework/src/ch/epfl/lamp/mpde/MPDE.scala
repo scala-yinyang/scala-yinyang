@@ -165,51 +165,25 @@ final class MPDETransformer[C <: Context, T](
         case typTree: TypTree ⇒ {
           //FOR NOREP type
           if (!rep) {
-
-            val typeToLift: Tree = typTree match {
-              //if tree is TypeTree and has original tree than process original tree
-              //TODO refactor this to case
-              case typeTree: TypeTree ⇒
-                if (typeTree.original != null) {
-                  typeTree.original
-                } else typeTree
-              case _ ⇒ typTree
-            }
-            log("*** typeToLift = " + typeToLift)
-
-            typeToLift match {
-              //see another possible type applications
-
-              //TODO (TOASK) - how to process bounds in Rep DSL? In NORep DSL we just need to change them to our types?
-              case tbTree: TypeBoundsTree ⇒ {
-                log("*** TypeBoundsTree")
-                //TODO process it later
-                tree
-              }
-
-              case atTree @ AppliedTypeTree(currentTree, typeTrees) ⇒ {
-                log("*** AppliedTypeTree")
-                //transform type of AppliedTypeTree
-                val mainType = transform(currentTree)
-                //transform type parameters
-                val typeParams = typeTrees map {
-                  x ⇒ transform(x)
+            def constructTree(inType: Type): Tree = {
+              val result = inType match {
+                case TypeRef(pre, sym, args) ⇒ {
+                  if (args.isEmpty) { //Simple type
+                    Select(This(newTypeName(className)), inType.typeSymbol.name)
+                  } else { //AppliedTypeTree
+                    val baseTree = Select(This(newTypeName(className)), sym.name)
+                    val typeTrees = args map { x ⇒ constructTree(x) }
+                    AppliedTypeTree(baseTree, typeTrees)
+                  }
                 }
-                AppliedTypeTree(mainType, typeParams)
+                case another @ _ ⇒ {
+                  TypeTree(another)
+                }
               }
-
-              //TODO find another way to get name
-              //get name of Type and produce AST for type with the same name
-              //in our DSL
-              case tTree @ _ ⇒ {
-                val expr: Tree = if (tTree != null) {
-                  log("*** Tree")
-                  Select(This(newTypeName(className)), typeToLift.symbol.name)
-                } else null
-                expr
-              }
+              result
             }
 
+            constructTree(typTree.tpe)
             //else if Rep DSL
           } else {
             //transform Type1[Type2[...]] => Rep[Type1[Type2[...]]]

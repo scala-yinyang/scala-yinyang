@@ -231,10 +231,7 @@ trait ArrayDSL extends Base {
 
 trait VectorDSL extends ArrayDSL with IntDSL with DoubleDSL with ClassTagVals with NumericOps with Base with Interpret {
 
-  override def interpret[T]() = {
-    val res = main().asInstanceOf[T]
-    res
-  }
+  def interpret[T]() = ???
 
   type Vector[T] = dsl.la.Vector[T]
 
