@@ -13,17 +13,21 @@ trait Base extends LiftBase {
   type Rep[+T]
 }
 
-//TODO problem with visibility
-//we need to transform Ident to Select(...)
-//it's temporary solution
-trait ClassTagVals {
-  object ClassTag {
-    val Int = scala.reflect.ClassTag.Int
-    val Double = scala.reflect.ClassTag.Double
-  }
+trait ClassTagOps extends Base {
+  //  ClassTags posed a bit of a challenge: You want to keep the original
+  //  class tags created by the compiler, as rewiring everything is too
+  //  cumbersome, but at the same time you want to bridge the types from
+  //  the original class tag to the new types in the dsl. The way to do
+  //  this is to have an implicit conversion from ClassTag[T] to ClassTag[U]
+  //  as long as there is a LiftEvidence[T, U] in scope.
+  implicit def classTagToOurClassTag[T, U](x: ClassTag[T])(implicit ev: LiftEvidence[T, U]): ClassTag[U] = x.asInstanceOf[ClassTag[U]]
+  type ClassTag[T] = scala.reflect.ClassTag[T]
+  val ClassTag = scala.reflect.ClassTag
 }
 
 trait NumericOps extends Base {
+  type Numeric[T] = NumericOps[T]
+
   trait NumericOps[T] {
     def plus(x: Rep[T], y: Rep[T]): Rep[T]
     def minus(x: Rep[T], y: Rep[T]): Rep[T]
@@ -55,15 +59,27 @@ trait NumericOps extends Base {
     implicit def mkNumericOps(lhs: Rep[T]): Ops
   }
 
-  trait NumericOpsOf[T] extends NumericOps[T] {
-    def plus(x: Rep[T], y: Rep[T]): Rep[T]
-    def minus(x: Rep[T], y: Rep[T]): Rep[T]
-    def times(x: Rep[T], y: Rep[T]): Rep[T]
-    def negate(x: Rep[T]): Rep[T]
-    def fromInt(x: Rep[Int]): Rep[T]
-    def toInt(x: Rep[T]): Rep[Int]
-    def toDouble(x: Rep[T]): Rep[Double]
+  //  val DoubleIsFractional = Numeric.DoubleIsFractional
+  //
+  //  implicit class NumericOpsOf[T](v: Numeric[T]) {
+  //    def plus(x: Rep[T], y: Rep[T]): Rep[T] = ???
+  //    def minus(x: Rep[T], y: Rep[T]): Rep[T] = ???
+  //    def times(x: Rep[T], y: Rep[T]): Rep[T] = ???
+  //    def negate(x: Rep[T]): Rep[T] = ???
+  //    def fromInt(x: Rep[Int]): Rep[T] = ???
+  //    def toInt(x: Rep[T]): Rep[Int] = ???
+  //    def toDouble(x: Rep[T]): Rep[Double] = ???
+  //
+  //    def zero: Rep[T] = ???
+  //    def one: Rep[T] = ???
+  //
+  //    def abs(x: Rep[T]): Rep[T] = ???
+  //    def signum(x: Rep[T]): Rep[Int] = ???
+  //
+  //    implicit def mkNumericOps(lhs: Rep[T]) = ???
+  //  }
 
+  trait NumericOpsOf[T] extends NumericOps[T] {
     def zero: Rep[T] = ???
     def one: Rep[T] = ???
 
@@ -73,30 +89,27 @@ trait NumericOps extends Base {
     override implicit def mkNumericOps(lhs: Rep[T]) = ???
   }
 
-  //concrete implicit objects for Numeric[Double] and Numeric[Int]
-  object NumericOpsOf {
-    implicit object NumericInt extends NumericOpsOf[Int] {
-      def plus(x: Rep[Int], y: Rep[Int]): Rep[Int] = ???
-      def minus(x: Rep[Int], y: Rep[Int]): Rep[Int] = ???
-      def times(x: Rep[Int], y: Rep[Int]): Rep[Int] = ???
-      def negate(x: Rep[Int]): Rep[Int] = ???
+  implicit object IntIsIntegral extends NumericOpsOf[Int] {
+    def plus(x: Rep[Int], y: Rep[Int]): Rep[Int] = ???
+    def minus(x: Rep[Int], y: Rep[Int]): Rep[Int] = ???
+    def times(x: Rep[Int], y: Rep[Int]): Rep[Int] = ???
+    def negate(x: Rep[Int]): Rep[Int] = ???
 
-      def fromInt(x: Rep[Int]): Rep[Int] = ???
-      def toInt(x: Rep[Int]): Rep[Int] = ???
-      def toDouble(x: Rep[Int]): Rep[Double] = ???
-    }
+    def fromInt(x: Rep[Int]): Rep[Int] = ???
+    def toInt(x: Rep[Int]): Rep[Int] = ???
+    def toDouble(x: Rep[Int]): Rep[Double] = ???
+  }
 
-    implicit object NumericDouble extends NumericOpsOf[Double] {
-      def plus(x: Rep[Double], y: Rep[Double]): Rep[Double] = ???
-      def minus(x: Rep[Double], y: Rep[Double]): Rep[Double] = ???
-      def times(x: Rep[Double], y: Rep[Double]): Rep[Double] = ???
-      def negate(x: Rep[Double]): Rep[Double] = ???
+  implicit object DoubleIsFractional extends NumericOpsOf[Double] {
+    def plus(x: Rep[Double], y: Rep[Double]): Rep[Double] = ???
+    def minus(x: Rep[Double], y: Rep[Double]): Rep[Double] = ???
+    def times(x: Rep[Double], y: Rep[Double]): Rep[Double] = ???
+    def negate(x: Rep[Double]): Rep[Double] = ???
 
-      def fromInt(x: Rep[Int]): Rep[Double] = ???
-      // TODO these need to return the lifted types. This means that Numeric Type needs to be changed to something else.
-      def toInt(x: Rep[Double]): Rep[Int] = ???
-      def toDouble(x: Rep[Double]): Rep[Double] = ???
-    }
+    def fromInt(x: Rep[Int]): Rep[Double] = ???
+    // TODO these need to return the lifted types. This means that Numeric Type needs to be changed to something else.
+    def toInt(x: Rep[Double]): Rep[Int] = ???
+    def toDouble(x: Rep[Double]): Rep[Double] = ???
   }
 }
 
@@ -229,7 +242,7 @@ trait ArrayDSL extends Base {
 //
 //}
 
-trait VectorDSL extends ArrayDSL with IntDSL with DoubleDSL with ClassTagVals with NumericOps with Base with Interpret {
+trait VectorDSL extends ArrayDSL with IntDSL with DoubleDSL with ClassTagOps with NumericOps with Base with Interpret {
 
   def interpret[T]() = ???
 

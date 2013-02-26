@@ -205,9 +205,7 @@ final class MPDETransformer[C <: Context, T](
           Select(transform(inn), name)
 
         // replaces objects with their cake counterparts
-        //TODO check for IntIsIntegral is temporary solution and should be changed
-        //for rep dsl we don't need to replace IntIsIntegral
-        case s @ Select(inn, name) if (!rep) || ((name != newTermName("IntIsIntegral")) && (name != newTermName("DoubleIsFractional"))) ⇒ // TODO this needs to be narrowed down if s.symbol.isModule =>
+        case s @ Select(inn, name) ⇒ // TODO this needs to be narrowed down if s.symbol.isModule =>
           Ident(name)
 
         case TypeApply(mth, targs) ⇒ // TODO this needs to be changed for LMS to include a type transformer
