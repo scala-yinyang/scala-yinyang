@@ -20,7 +20,7 @@ object MPDEBuild extends Build {
     .setPreference(AlignSingleLineCaseStatements, true)
   }
 
-  val defaults = Defaults.defaultSettings ++ formatSettings ++ Seq(
+  lazy val defaults = Defaults.defaultSettings ++ formatSettings ++ Seq(
     // scala version + resolver
     scalaVersion := "2.10.1-SNAPSHOT",
     resolvers in ThisBuild += ScalaToolsSnapshots,
@@ -48,9 +48,15 @@ object MPDEBuild extends Build {
     parallelExecution in Test := false
     // testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-oD")
   )
+  
+  // delite settings
+  lazy val deliteSettings = defaults ++ Seq(
+   libraryDependencies += "EPFL" % "lms_2.10" % "0.3-SNAPSHOT" // just LMS for now
+  )
 
   lazy val _mpde           = Project(id = "mpde",                  base = file(".")) aggregate (framework, vector_dsl, vector_dsl_test)
   lazy val framework       = Project(id = "mpde-framework",        base = file("components/framework"), settings = defaults)
   lazy val vector_dsl      = Project(id = "mpde-vector-dsl",       base = file("components/dsls/vector"), settings = defaults) dependsOn(framework)
   lazy val vector_dsl_test = Project(id = "mpde-vector-dsl-test",  base = file("components/dsls/vector-test"), settings = defaults) dependsOn(framework, vector_dsl)
+  lazy val delite_test = Project(id = "delite-test",  base = file("components/delite-test"), settings = deliteSettings) dependsOn(framework)
 }
