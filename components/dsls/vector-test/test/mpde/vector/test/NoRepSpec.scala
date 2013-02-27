@@ -33,7 +33,7 @@ class NoRepSpec extends FlatSpec with ShouldMatchers {
 
   it should "lift Vector to NoRep" in {
 
-    val x = dsl.la.laDebugNoRep {
+    val x = dsl.la.laLiftNoRep {
       //val a: Vector[Int] = DenseVector(1, 2)
       //val a: Vector[Double] = ???
       //val a = DenseVector(1, 2)

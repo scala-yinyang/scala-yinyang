@@ -19,10 +19,6 @@ final class MPDETransformer[C <: Context, T](
   val rep: Boolean = false) {
   import c.universe._
 
-  def methodExists(dsl: String, obj: Type, methodName: String, args: List[Type]): Boolean = {
-    false
-  }
-
   /**
    * Main MPDE method. Transforms the body of the DSL, makes the DSL cake out of the body and then executes the DSL code.
    * If the DSL supports static analysis of the DSL code this method will perform it during compilation. The errors
@@ -32,7 +28,6 @@ final class MPDETransformer[C <: Context, T](
    * if all required values are present, or at runtime.
    */
   def apply[T](block: c.Expr[T]): c.Expr[T] = {
-    println(methodExists(dslName, typeOf[Int], "$plus", List[Type](typeOf[Int])))
     log("Body: " + show(block.tree))
     val transfBody = new ScopeInjectionTransformer().transform(block.tree)
     log("Transformed Body: " + show(transfBody))
@@ -282,6 +277,23 @@ final class MPDETransformer[C <: Context, T](
         DefDef(Modifiers(), newTermName(dslMethod), List(), List(List()), Ident(newTypeName("Any")), transformedBody))))
   //     }
   // }
+
+  /*
+   * TODO Emmanuel this can be refined further to include other types of methods (the ones that include type params etc.). We do not care for performance for now. 
+   */
+  def methodExists(obj: Type, methodName: String, args: List[Type]): Boolean = {
+
+    def dummyTree(tpe: Type) = TypeApply(Select(Literal(Constant(())), newTermName("asInstanceOf")), List(constructTypeTree(tpe)))
+    def application(method: String) = Apply(Select(dummyTree(obj), newTermName(methodName)), args.map(dummyTree))
+
+    try { // this might be a performance problem later. For now it will do the work.
+      c.typeCheck(Block(composeDSL(application(methodName)), Literal(Constant(()))))
+      true
+    } catch {
+      case e: Throwable ⇒
+        false
+    }
+  }
 
   def log(s: String) = if (debug) println(s)
 

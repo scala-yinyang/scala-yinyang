@@ -26,7 +26,7 @@ class RepSpec extends FlatSpec with ShouldMatchers {
 
   it should "lift Vector to Rep" in {
 
-    val x = dsl.la.laDebugRep {
+    val x = dsl.la.laLiftRep {
       //      //val a: Vector[Int] = ???
       //      //val a: Vector[Int] = DenseVector(1, 2)
       //
