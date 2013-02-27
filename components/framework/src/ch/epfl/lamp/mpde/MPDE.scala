@@ -225,7 +225,7 @@ final class MPDETransformer[C <: Context, T](
         Select(This(newTypeName(className)), inType.typeSymbol.name)
       } else { //AppliedTypeTree
         val baseTree = Select(This(newTypeName(className)), sym.name)
-        val typeTrees = args map { x ⇒ constructRepTree(x) }
+        val typeTrees = args map { x ⇒ constructPolyTree(x) }
         AppliedTypeTree(baseTree, typeTrees)
       }
 
