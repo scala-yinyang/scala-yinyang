@@ -19,6 +19,10 @@ final class MPDETransformer[C <: Context, T](
   val rep: Boolean = false) {
   import c.universe._
 
+  def methodExists(dsl: String, obj: Type, methodName: String, args: List[Type]): Boolean = {
+    false
+  }
+
   /**
    * Main MPDE method. Transforms the body of the DSL, makes the DSL cake out of the body and then executes the DSL code.
    * If the DSL supports static analysis of the DSL code this method will perform it during compilation. The errors
@@ -28,6 +32,7 @@ final class MPDETransformer[C <: Context, T](
    * if all required values are present, or at runtime.
    */
   def apply[T](block: c.Expr[T]): c.Expr[T] = {
+    println(methodExists(dslName, typeOf[Int], "$plus", List[Type](typeOf[Int])))
     log("Body: " + show(block.tree))
     val transfBody = new ScopeInjectionTransformer().transform(block.tree)
     log("Transformed Body: " + show(transfBody))
@@ -101,7 +106,6 @@ final class MPDETransformer[C <: Context, T](
   /*
    * TODO (Duy)
    * 3) Enabling static analysis of the DSLs at compile time.
-   *
    */
   def staticallyCheck = false
 
@@ -162,37 +166,8 @@ final class MPDETransformer[C <: Context, T](
           retDef
         }
 
-        case typTree: TypTree ⇒ {
-          //FOR NOREP type
-          if (!rep) {
-            def constructTree(inType: Type): Tree = {
-              val result = inType match {
-                case TypeRef(pre, sym, args) ⇒ {
-                  if (args.isEmpty) { //Simple type
-                    Select(This(newTypeName(className)), inType.typeSymbol.name)
-                  } else { //AppliedTypeTree
-                    val baseTree = Select(This(newTypeName(className)), sym.name)
-                    val typeTrees = args map { x ⇒ constructTree(x) }
-                    AppliedTypeTree(baseTree, typeTrees)
-                  }
-                }
-                case another @ _ ⇒ {
-                  TypeTree(another)
-                }
-              }
-              result
-            }
-
-            constructTree(typTree.tpe)
-            //else if Rep DSL
-          } else {
-            //transform Type1[Type2[...]] => Rep[Type1[Type2[...]]]
-            val regenTree: TypeTree = TypeTree(typTree.tpe)
-            val expr: Tree =
-              AppliedTypeTree(Select(This(newTypeName(className)), newTypeName("Rep")), List(regenTree))
-            expr
-          }
-        }
+        case typTree: TypTree ⇒
+          constructTypeTree(typTree.tpe)
 
         // re-wire objects
         case s @ Select(Select(inn, t: TermName), name) if s.symbol.isMethod && t.toString == "package" /* ugh, no TermName extractor */ ⇒
@@ -244,6 +219,27 @@ final class MPDETransformer[C <: Context, T](
   def interpretMethod = "interpret"
   val dslMethod: String = "main"
   val className = "generated$" + dslName.filter(_ != '.') + MPDETransformer.uID.incrementAndGet
+  def constructTypeTree(inType: Type) = if (rep)
+    constructRepTree(inType)
+  else
+    constructPolyTree(inType)
+
+  def constructPolyTree(inType: Type): Tree = inType match {
+    case TypeRef(pre, sym, args) ⇒
+      if (args.isEmpty) { //Simple type
+        Select(This(newTypeName(className)), inType.typeSymbol.name)
+      } else { //AppliedTypeTree
+        val baseTree = Select(This(newTypeName(className)), sym.name)
+        val typeTrees = args map { x ⇒ constructRepTree(x) }
+        AppliedTypeTree(baseTree, typeTrees)
+      }
+
+    case another @ _ ⇒
+      TypeTree(another)
+  }
+
+  def constructRepTree(inType: Type): Tree = //transform Type1[Type2[...]] => Rep[Type1[Type2[...]]]
+    AppliedTypeTree(Select(This(newTypeName(className)), newTypeName("Rep")), List(TypeTree(inType)))
 
   /*
    * Utilities.
