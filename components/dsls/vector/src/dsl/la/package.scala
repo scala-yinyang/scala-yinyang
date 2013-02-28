@@ -6,7 +6,6 @@ import scala.reflect.macros.Context
 
 package object la {
 
-  // TODO (Vojin) should not return Unit but a value
   def laLift[T](block: ⇒ T): Unit = macro implementations.lift[T]
   def laDebug[T](block: ⇒ T): Unit = macro implementations.liftDebug[T]
 

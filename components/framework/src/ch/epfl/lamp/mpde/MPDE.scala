@@ -136,6 +136,7 @@ final class YYTransformer[C <: Context, T](
         finalBlock
     }
 
+    log("Final tree untyped: " + show(c.resetAllAttrs(dslTree)))
     log("Final tree: " + show(c.typeCheck(c.resetAllAttrs(dslTree))))
     c.Expr[T](c.resetAllAttrs(dslTree))
   }
