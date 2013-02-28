@@ -242,7 +242,17 @@ trait ArrayDSL extends Base {
 //
 //}
 
-trait VectorDSL extends ArrayDSL with IntDSL with DoubleDSL with ClassTagOps with NumericOps with Base with Interpret {
+trait BooleanDSL extends Base {
+  implicit object LiftBoolean extends LiftEvidence[Boolean, Rep[Boolean]] {
+    def lift(v: Boolean): Rep[Boolean] = ???
+  }
+}
+
+trait IfThenElseDSL extends Base with BooleanDSL {
+  def __ifThenElse[T](c: ⇒ Rep[Boolean], t: Rep[T], e: Rep[T]) = ???
+}
+
+trait VectorDSL extends ArrayDSL with IntDSL with DoubleDSL with ClassTagOps with NumericOps with Base with IfThenElseDSL with Interpret {
 
   def interpret[T]() = ???
 

@@ -29,16 +29,47 @@ class RepSpec extends FlatSpec with ShouldMatchers {
     val x = dsl.la.laLiftRep {
       //      //val a: Vector[Int] = ???
       //      //val a: Vector[Int] = DenseVector(1, 2)
-      //
+
+      //val a: Vector[Int] = ???
+      //a: Any
+
       val a = DenseVector(1, 2)
-      val b = a
-      val c: Vector[Int] = DenseVector(1, 2, 3)
+      //val b = a
+      //val c: Vector[Int] = DenseVector(1, 2, 3)
       a.map(x ⇒ x + 2)
-      b.map(_ + 2)
+      //b.map(_ + 2)
       //
       //      //problem to transform
       //      //==> def testing[T >: Nothing <: Any](a: Int, b: T): Nothing = scala.this.Predef.???
       //      //def testing[T](a: Int, b: T) = ???
+    }
+
+    ()
+  }
+
+  it should "test ascription lift" in {
+
+    val x = dsl.la.laLiftRep {
+      //DenseVector(1, 2)
+      DenseVector(1, 2): Vector[Int]
+      //DenseVector(1, 2): Any
+      //1
+      //1: Int
+      //1: Double
+      //1: Any
+      //1: Vector[Int]
+
+      //val a: Vector[Int] = ???
+      //a: Any
+    }
+
+    ()
+  }
+
+  it should "test __ifThenElse" in {
+
+    val x = dsl.la.laLiftRep {
+      if (true) 1: Int else 2.0: Double
     }
 
     ()
