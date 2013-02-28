@@ -19,12 +19,12 @@ object MPDEBuild extends Build {
     .setPreference(AlignParameters, true)
     .setPreference(AlignSingleLineCaseStatements, true)
   }
-  lazy val scalaOrg = "org.scala-lang"
+  lazy val scalaOrg = "org.scala-lang.virtualized"
   lazy val defaults = Defaults.defaultSettings ++ formatSettings ++ Seq(
     // scala version + resolver
     scalaHome := Some(file(Path.userHome + "/work/devl/scalac/myscala/build/pack")),
     scalaOrganization := scalaOrg,
-    scalaVersion := "2.10.1-SNAPSHOT",
+    scalaVersion := "2.10.1-RC1",
     resolvers in ThisBuild += ScalaToolsSnapshots,
     resolvers +=  "OSSH" at "https://oss.sonatype.org/content/groups/public",
     resolvers += Resolver.sonatypeRepo("snapshots"),
@@ -54,7 +54,7 @@ object MPDEBuild extends Build {
   
   // delite settings
   lazy val deliteSettings = defaults ++ Seq(
-   libraryDependencies += "EPFL" % "lms_2.10" % "0.3-SNAPSHOT" // just LMS for now
+   libraryDependencies += "EPFL" % "lms_2.10.1-RC1" % "0.3-SNAPSHOT" // just LMS for now
   )
 
   lazy val _mpde           = Project(id = "mpde",                  base = file(".")) aggregate (framework, vector_dsl, vector_dsl_test)

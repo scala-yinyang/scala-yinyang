@@ -162,6 +162,7 @@ final class MPDETransformer[C <: Context, T](
             holes.map(Ident(_))))
     }
 
+    log("Final tree untyped: " + show(c.resetAllAttrs(dslTree)))
     log("Final tree: " + show(c.typeCheck(c.resetAllAttrs(dslTree))))
     c.Expr[T](c.resetAllAttrs(dslTree))
   }
