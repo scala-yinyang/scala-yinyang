@@ -19,12 +19,14 @@ object MPDEBuild extends Build {
     .setPreference(AlignParameters, true)
     .setPreference(AlignSingleLineCaseStatements, true)
   }
-
+  lazy val scalaOrg = "org.scala-lang"
   lazy val defaults = Defaults.defaultSettings ++ formatSettings ++ Seq(
     // scala version + resolver
+    scalaOrganization := scalaOrg,
     scalaVersion := "2.10.1-SNAPSHOT",
     resolvers in ThisBuild += ScalaToolsSnapshots,
     resolvers +=  "OSSH" at "https://oss.sonatype.org/content/groups/public",
+    resolvers += Resolver.sonatypeRepo("snapshots"),
 
     // paths - so we don't need to have src/main/scala ... just src/ test/ and resources/
     scalaSource in Compile <<= baseDirectory(_ / "src"),
@@ -37,9 +39,9 @@ object MPDEBuild extends Build {
 
     // add the library, reflect and the compiler as libraries
     libraryDependencies <<= scalaVersion(ver => Seq(
-      "org.scala-lang" % "scala-library" % ver,
-      "org.scala-lang" % "scala-reflect" % ver,
-      "org.scala-lang" % "scala-compiler" % ver, 
+      scalaOrg % "scala-library" % ver,
+      scalaOrg % "scala-reflect" % ver,
+      scalaOrg % "scala-compiler" % ver, 
       "org.scalatest" % "scalatest_2.10" % "2.0.M6-SNAP7" % "test",
       "junit" % "junit" % "4.8.1" % "test" // we need JUnit explicitly
     )),
