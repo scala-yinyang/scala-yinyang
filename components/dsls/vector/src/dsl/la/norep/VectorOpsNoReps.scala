@@ -223,6 +223,7 @@ trait VectorDSL extends ClassTagOps with IfThenElseDSL with ArrayDSL with IntDSL
     def *(v: Vector[T]): Vector[T]
     def +(v: Vector[T]): Vector[T]
     def map[U: Numeric: ClassTag](v: T ⇒ U): Vector[U]
+    def reconstruct[U: Numeric: ClassTag](v: (T, T) ⇒ U): Vector[U]
 
     def baseVectors: Array[Vector[T]] //find base vectors
 

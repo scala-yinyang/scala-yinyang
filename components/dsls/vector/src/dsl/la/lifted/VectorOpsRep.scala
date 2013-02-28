@@ -262,6 +262,7 @@ trait VectorDSL extends ArrayDSL with IntDSL with DoubleDSL with ClassTagOps wit
     def *(v: Rep[Vector[T]]): Rep[Vector[T]]
     def +(v: Rep[Vector[T]]): Rep[Vector[T]]
     def map[U: Numeric: ClassTag](v: Rep[T] ⇒ Rep[U]): Rep[Vector[U]]
+    def reconstruct[U: Numeric: ClassTag](v: (Rep[T], Rep[T]) ⇒ Rep[U]): Rep[Vector[U]]
 
     def negate: Rep[Vector[T]]
     def length: Rep[Double]
@@ -298,6 +299,7 @@ trait VectorDSL extends ArrayDSL with IntDSL with DoubleDSL with ClassTagOps wit
     def *(v: Rep[Vector[T]]): Rep[Vector[T]] = ???
     def +(v: Rep[Vector[T]]): Rep[Vector[T]] = ???
     def map[U: Numeric: ClassTag](v: Rep[T] ⇒ Rep[U]): Rep[Vector[U]] = ???
+    def reconstruct[U: Numeric: ClassTag](v: (Rep[T], Rep[T]) ⇒ Rep[U]): Rep[Vector[U]] = ???
 
     def negate: Rep[Vector[T]] = ???
     def length: Rep[Double] = ???

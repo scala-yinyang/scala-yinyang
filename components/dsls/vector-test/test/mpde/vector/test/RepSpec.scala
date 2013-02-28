@@ -36,7 +36,9 @@ class RepSpec extends FlatSpec with ShouldMatchers {
       val a = DenseVector(1, 2)
       //val b = a
       //val c: Vector[Int] = DenseVector(1, 2, 3)
-      a.map(x ⇒ x + 2)
+      //a.map(x ⇒ x + 2)
+      a.reconstruct((x, y) ⇒ x + y)
+      a.reconstruct(_ + _)
       //b.map(_ + 2)
       //
       //      //problem to transform

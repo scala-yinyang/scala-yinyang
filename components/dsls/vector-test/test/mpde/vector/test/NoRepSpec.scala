@@ -42,8 +42,11 @@ class NoRepSpec extends FlatSpec with ShouldMatchers {
       val a = DenseVector(1, 2)
       //val b = a
       //val c: Vector[Int] = DenseVector(1, 2, 3)
-      a.map(x ⇒ x + 2)
+      //a.map(x ⇒ x + 2)
       //b.map(_ + 2)
+
+      a.reconstruct((x, y) ⇒ x + y)
+      a.reconstruct(_ + _)
 
       //problem to transform
       //==> def testing[T >: Nothing <: Any](a: Int, b: T): Nothing = scala.this.Predef.???
