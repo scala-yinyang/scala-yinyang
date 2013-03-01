@@ -7,10 +7,9 @@ import base._
 trait PrintDSL extends ScalaCompile with CodeGenerator with base.LiftBase with MiniIntDSL with MiniPrintDSL with base.Interpret {
 
   var sb: StringBuffer = new StringBuffer()
-  var currentName: String = ""
 
   // hey, we can refine println -- but we don't need it right now
-  def println(x: Any) = sb.append(s"scala.Predef.println(${fill(x)});\n")
+  def println(x: Any) = sb.append(s"scala.Predef.println(${x.toString});\n")
 
   def generateCode(className: String): String = {
     val res = main()
@@ -61,11 +60,6 @@ trait PrintDSL extends ScalaCompile with CodeGenerator with base.LiftBase with M
    *
    */
 
-  def hole[T](variable: String): T = {
-    currentName = variable
-    null.asInstanceOf[T]
-  }
-
   def fill(x: Any): String =
     if (x == null) currentName else x.toString
 
@@ -74,9 +68,13 @@ trait PrintDSL extends ScalaCompile with CodeGenerator with base.LiftBase with M
 trait MiniIntDSL extends base.LiftBase {
 
   type Int = IntOps
+  protected var currentName: String = null
 
   trait IntOps {
-    def +(that: Int): Int = IntPlus(IntOps.this, that)
+    val symbolic = false
+    def +(that: Int): Int =
+      if (that.symbolic) new IntPlus(IntOps.this, that) { override val symbolic = true }
+      else IntPlus(IntOps.this, that)
   }
 
   // actual classes that provide lifting
@@ -84,8 +82,23 @@ trait MiniIntDSL extends base.LiftBase {
   case class IntPlus(l: IntOps, r: IntOps) extends IntOps { override def toString = s"($l + $r)" }
 
   implicit object LiftInt extends LiftEvidence[scala.Int, Int] {
-    def lift(v: scala.Int): Int = IntConst(v)
+    def lift(v: scala.Int): Int = {
+      val intConst =
+        if (currentName != null) new IntConst(v) { // `hole` run
+          override val symbolic = true
+          override val toString = currentName
+        }
+        else IntConst(v)
+      currentName = null
+      intConst
+    }
   }
+
+  def hole[T](variable: String): T = {
+    currentName = variable
+    null.asInstanceOf[T]
+  }
+
 }
 
 trait MiniUnitDSL extends base.LiftBase {
