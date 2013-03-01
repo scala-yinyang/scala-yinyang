@@ -60,21 +60,15 @@ trait PrintDSL extends ScalaCompile with CodeGenerator with base.LiftBase with M
    *
    */
 
-  def fill(x: Any): String =
-    if (x == null) currentName else x.toString
-
 }
 
 trait MiniIntDSL extends base.LiftBase {
 
   type Int = IntOps
-  protected var currentName: String = null
+  private var currentName: String = null
 
   trait IntOps {
-    val symbolic = false
-    def +(that: Int): Int =
-      if (that.symbolic) new IntPlus(IntOps.this, that) { override val symbolic = true }
-      else IntPlus(IntOps.this, that)
+    def +(that: Int): Int = IntPlus(IntOps.this, that)
   }
 
   // actual classes that provide lifting
@@ -84,10 +78,7 @@ trait MiniIntDSL extends base.LiftBase {
   implicit object LiftInt extends LiftEvidence[scala.Int, Int] {
     def lift(v: scala.Int): Int = {
       val intConst =
-        if (currentName != null) new IntConst(v) { // `hole` run
-          override val symbolic = true
-          override val toString = currentName
-        }
+        if (currentName != null) new IntConst(v) { override val toString = currentName } // `hole` ran
         else IntConst(v)
       currentName = null
       intConst

@@ -45,7 +45,8 @@ final class MPDETransformer[C <: Context, T](
     //dslInstance(dslClass).asInstanceOf[StaticallyChecked].staticallyCheck(c)
 
     val dslTree = if (canCompileDSL(block.tree)) {
-      val marked = new HoleMarkerTransformer() mark transfBody
+      val marker = new HoleMarkerTransformer()
+      val marked = marker mark transfBody
       log(s"Holes: ${marked}")
       val dslClassMarked = c.resetAllAttrs(composeDSL(marked))
       log(s"Class with holes:$dslClassMarked")
@@ -70,19 +71,31 @@ final class MPDETransformer[C <: Context, T](
        *         }
        *         method(x)
        */
+      val outerScope = className + "$outer$scope"
+      val args: String = ("" /: marker.variableMap) { case (s, (outside, inside)) ⇒ s + s"val $inside = $outside\n" }
 
-      val parsed = c parse generated
+      val enscoped =
+        s"""
+          object $outerScope {
+            def apply() = {
+              ${args}
+              $generated
+            }
+          }
+          $outerScope.apply()
+        """
+
+      val parsed = c parse enscoped
       log(s"generated: ${parsed.toString}")
       //val filled = new HoleFillerTransformer().fill(parsed, List(c.literal(7).tree))
       //log(s"filled: ${filled.toString}")
+      // object $$ {
+      //   def apply() {
+      //     val p$1 = x
       parsed
-      /*Block(
-        c.parse(code),
-        Apply(
-          Select(constructor, newTermName("apply")),
-          List()) // TODO Duy this needs to be filled in with parameters
-      )*/
-
+      //   }
+      // }
+      // new $$.apply()
     } else {
       Block(dslClass,
         Apply(
@@ -273,7 +286,7 @@ final class MPDETransformer[C <: Context, T](
    * Ident -> hole
    * Select if quanlifier free -> hole
    *
-   * Replace all `node` with `hole(id)`
+   * Replace all "free" with `hole(id)`
    */
   private final class HoleMarkerTransformer extends Transformer {
 
