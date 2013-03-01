@@ -7,9 +7,10 @@ import base._
 trait PrintDSL extends ScalaCompile with CodeGenerator with base.LiftBase with MiniIntDSL with MiniPrintDSL with base.Interpret {
 
   var sb: StringBuffer = new StringBuffer()
+  var currentName: String = ""
 
   // hey, we can refine println -- but we don't need it right now
-  def println(x: Any) = sb.append(s"scala.Predef.println(${x.toString});\n")
+  def println(x: Any) = sb.append(s"scala.Predef.println(${fill(x)});\n")
 
   def generateCode(className: String): String = {
     val res = main()
@@ -28,10 +29,8 @@ trait PrintDSL extends ScalaCompile with CodeGenerator with base.LiftBase with M
   override def interpret[T](): T = {
     if (compiledCode == null) {
       val res = main()
-      scala.Predef.println("here")
       compiledCode = compile[T]
     }
-    scala.Predef.println("there")
     compiledCode.apply().asInstanceOf[T]
   }
 
@@ -62,10 +61,15 @@ trait PrintDSL extends ScalaCompile with CodeGenerator with base.LiftBase with M
    * }
    * staged$1(y, x.y)
    *
-   *
    */
 
-  def hole(variable: String, variableType: String): Nothing = ???
+  def hole[T](variable: String): T = {
+    currentName = variable
+    null.asInstanceOf[T]
+  }
+
+  def fill(x: Any): String =
+    if (x == null) currentName else x.toString
 
 }
 

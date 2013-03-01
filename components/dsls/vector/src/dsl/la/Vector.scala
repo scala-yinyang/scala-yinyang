@@ -12,6 +12,7 @@ trait Vector[T] {
   def *(v: Vector[T]): Vector[T]
   def +(v: Vector[T]): Vector[T]
   def map[U: Numeric: ClassTag](v: T ⇒ U): Vector[U]
+  def reconstruct[U: Numeric: ClassTag](v: (T, T) ⇒ U): Vector[U]
 
   //three simple methods just to example
   //method without parameters which should return List of Vectors (our type)
@@ -76,6 +77,8 @@ final private class DenseVector[T: Numeric: ClassTag](val x: Array[T]) extends V
     ((underlying zip v.underlying) map ((x: (T, T)) ⇒ num.times(x._1, x._2))).toArray)
 
   def map[U: Numeric: ClassTag](f: T ⇒ U): Vector[U] = new DenseVector(underlying.map(f).toArray)
+
+  def reconstruct[U: Numeric: ClassTag](v: (T, T) ⇒ U): Vector[U] = ???
 
   def negate = new DenseVector[T](underlying.map(num.negate(_)).toArray)
 
@@ -160,6 +163,8 @@ final private class SparseVector[T: Numeric: ClassTag](val x: List[T]) extends V
     ((underlying zip v.underlying) map ((x: (T, T)) ⇒ num.times(x._1, x._2))).toArray)
 
   def map[U: Numeric: ClassTag](f: T ⇒ U): Vector[U] = new SparseVector(underlying.map(f).toList)
+
+  def reconstruct[U: Numeric: ClassTag](v: (T, T) ⇒ U): Vector[U] = ???
 
   def negate = new SparseVector[T](underlying.map(num.negate(_)).toList)
 

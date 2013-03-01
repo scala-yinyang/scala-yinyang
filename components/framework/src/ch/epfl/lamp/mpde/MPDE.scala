@@ -2,8 +2,12 @@ package ch.epfl.lamp
 package mpde
 
 import scala.collection.mutable.ListBuffer
+import scala.collection.mutable.HashMap
+import scala.collection.immutable.Map
 import scala.reflect.macros.Context
+
 import language.experimental.macros
+
 import mpde.api._
 
 import java.util.concurrent.atomic.AtomicLong
@@ -30,7 +34,6 @@ final class MPDETransformer[C <: Context, T](
    */
   def apply[T](block: c.Expr[T]): c.Expr[T] = {
     log("Body: " + show(block.tree))
-
     val transfBody = new ScopeInjectionTransformer().transform(block.tree)
     log("Transformed Body: " + show(transfBody))
     // generates the Embedded DSL cake with the transformed "main" method.
@@ -43,8 +46,6 @@ final class MPDETransformer[C <: Context, T](
 
     val dslTree = if (canCompileDSL(block.tree)) {
       val generated = dslInstance(dslClass).asInstanceOf[CodeGenerator].generateCode(className)
-
-      // we cane compile and run the code here
 
       // TODO (Duy) for now we do not do any external parameter tracking.
       /* 2) Code that we generate needs to link to variables. E.g:
@@ -71,29 +72,32 @@ final class MPDETransformer[C <: Context, T](
       val filled = new HoleFillerTransformer().fill(parsed, List(c.literal(7).tree))
       log(s"filled: ${filled.toString}")
       filled
-      //val filled = new HoleFillerTransformer(freeVariables(block.tree)) transform parsed
-      //filled
+      /*Block(
+        c.parse(code),
+        Apply(
+          Select(constructor, newTermName("apply")),
+          List()) // TODO Duy this needs to be filled in with parameters
+      )*/
+
     } else {
       Block(dslClass,
         Apply(
           TypeApply(
-            Select(dslConstructor, newTermName(interpretMethod)),
+            Select(constructor, newTermName(interpretMethod)),
             List(TypeTree(block.tree.tpe))),
           List())) // TODO Duy this needs to be filled in with parameters
     }
 
-    try {
-      log("Final tree: " + show(c.typeCheck(c.resetAllAttrs(dslTree))))
-    } catch {
-      case x: Throwable ⇒ log(x.toString)
-    }
+    log("Final tree: " + show(c.typeCheck(c.resetAllAttrs(dslTree))))
     c.Expr[T](c.resetAllAttrs(dslTree))
   }
+
+  private def constructor = Apply(Select(New(Ident(newTypeName(className))), nme.CONSTRUCTOR), List())
 
   /**
    * 1) TODO (Duy) Should be analyze(block)
    * * true if regex is known at compile time. This needs to apply for the whole DSL body/program.
-   * * match(variable, "abc*")
+   *  * match(variable, "abc*")
    * * false otherwise
    *
    * The analysis requires to find methods in the DSL (cake of the DSL).
@@ -110,7 +114,7 @@ final class MPDETransformer[C <: Context, T](
     //freeVariables(tree).isEmpty
     log(s"external variables: ${vs.toString}")
     vs.isEmpty
-    true
+    false
   }
 
   def freeVariables(tree: Tree): List[Symbol] = new FreeVariableCollector().freeVariables(tree)
@@ -128,7 +132,7 @@ final class MPDETransformer[C <: Context, T](
         val body = Ident(v) //invoke(Ident(v), newTermName("toString"), List())
         val clazz = dslClass(body)
         log(s"checker:\n ${clazz.toString}")
-        dslInstance(clazz).asInstanceOf[CodeGenerator].main()
+        //dslInstance(clazz).asInstanceOf[CodeGenerator].main()
         false
       } catch {
         case _: Throwable ⇒ true
@@ -136,8 +140,8 @@ final class MPDETransformer[C <: Context, T](
 
   class FreeVariableCollector extends Traverser {
 
-    private val collected = ListBuffer[Symbol]()
-    private var defined = List[Symbol]()
+    private[this] val collected = ListBuffer[Symbol]()
+    private[this] var defined = List[Symbol]()
 
     private[this] final def isFree(id: Symbol) = !defined.contains(id)
 
@@ -160,7 +164,7 @@ final class MPDETransformer[C <: Context, T](
 
   class LocalDefCollector extends Traverser {
 
-    private val definedValues, definedMethods = ListBuffer[Symbol]()
+    private[this] val definedValues, definedMethods = ListBuffer[Symbol]()
 
     override def traverse(tree: Tree) = tree match {
       case _: ValDef ⇒ definedValues += tree.symbol
@@ -177,11 +181,9 @@ final class MPDETransformer[C <: Context, T](
 
   }
 
-  private def dslConstructor = constructor(className, List())
-
   private def dslClass(mainBody: Tree): Tree = c.resetAllAttrs(composeDSL(mainBody))
 
-  def constructor(classname: String, arguments: List[Tree]): Tree =
+  def makeConstructor(classname: String, arguments: List[Tree]): Tree =
     invoke(newClass(classname), nme.CONSTRUCTOR, arguments)
 
   def invoke(qualifier: Tree, method: TermName, arguments: List[Tree]): Tree =
@@ -193,7 +195,6 @@ final class MPDETransformer[C <: Context, T](
   /*
    * TODO (Duy)
    * 3) Enabling static analysis of the DSLs at compile time.
-   *
    */
   def staticallyCheck = false
 
@@ -255,11 +256,61 @@ final class MPDETransformer[C <: Context, T](
                 Literal(Constant(())))),
             methodTree // def apply()
             )))
-      val invocation = invoke(constructor(outerClassName, List()), method, arguments)
+      val invocation = invoke(makeConstructor(outerClassName, List()), method, arguments)
       Block(List(outerClass), invocation)
     }
 
     def holes: List[Ident] = parameters.toList map (p ⇒ Ident(p._1))
+
+  }
+
+  /**
+   * Ident -> hole
+   * Select if quanlifier free -> hole
+   *
+   * Replace all `node` with `hole(id)`
+   */
+  private final class HoleMarkerTransformer extends Transformer {
+
+    private val marked = HashMap[Symbol, String]()
+    private var toMark = List[Symbol]()
+
+    private var freshSuffix = 0
+    private def fresh(): String = {
+      freshSuffix += 1
+      "p$" + freshSuffix
+    }
+
+    private def mark(id: Symbol): Tree = {
+      val name = marked get id getOrElse {
+        marked += (id -> fresh())
+        marked(id)
+      }
+      ??? // type
+      Apply(Ident(newTermName("hole")), List(Literal(Constant(name))))
+    }
+
+    /* Traverse the tree to find `hole("v"`)
+     * Update `v` in the map and replace `hole("v")` by Ident("v")
+     * 
+     * The hole should be `hole("var", "type") `
+     */
+    override def transform(tree: Tree): Tree = tree match {
+      case id @ Ident(_) if toMark contains id.symbol ⇒
+        mark(id.symbol)
+      case s @ Select(id: Ident, _) if toMark contains id.symbol ⇒
+        mark(s.symbol)
+      case _ ⇒
+        log(s"Not hole: ${showRaw(tree)}")
+        super.transform(tree)
+    }
+
+    def mark(tree: Tree, arguments: List[Tree]): Tree = {
+      toMark = freeVariables(tree)
+      transform(tree)
+    }
+
+    def variableMap: Map[Symbol, String] = marked.toMap
 
   }
 
@@ -320,63 +371,8 @@ final class MPDETransformer[C <: Context, T](
           retDef
         }
 
-        case typTree: TypTree ⇒ {
-          //FOR NOREP type
-          if (!rep) {
-
-            val typeToLift: Tree = typTree match {
-              //if tree is TypeTree and has original tree than process original tree
-              //TODO refactor this to case
-              case typeTree: TypeTree ⇒
-                if (typeTree.original != null) {
-                  typeTree.original
-                } else typeTree
-              case _ ⇒ typTree
-            }
-            log("*** typeToLift = " + typeToLift)
-
-            typeToLift match {
-              //see another possible type applications
-
-              //TODO (TOASK) - how to process bounds in Rep DSL? In NORep DSL we just need to change them to our types?
-              case tbTree: TypeBoundsTree ⇒ {
-                log("*** TypeBoundsTree")
-                //TODO process it later
-                tree
-              }
-
-              case atTree @ AppliedTypeTree(currentTree, typeTrees) ⇒ {
-                log("*** AppliedTypeTree")
-                //transform type of AppliedTypeTree
-                val mainType = transform(currentTree)
-                //transform type parameters
-                val typeParams = typeTrees map {
-                  x ⇒ transform(x)
-                }
-                AppliedTypeTree(mainType, typeParams)
-              }
-
-              //TODO find another way to get name
-              //get name of Type and produce AST for type with the same name
-              //in our DSL
-              case tTree @ _ ⇒ {
-                val expr: Tree = if (tTree != null) {
-                  log("*** Tree")
-                  Select(This(newTypeName(className)), typeToLift.symbol.name)
-                } else null
-                expr
-              }
-            }
-
-            //else if Rep DSL
-          } else {
-            //transform Type1[Type2[...]] => Rep[Type1[Type2[...]]]
-            val regenTree: TypeTree = TypeTree(typTree.tpe)
-            val expr: Tree =
-              AppliedTypeTree(Select(This(newTypeName(className)), newTypeName("Rep")), List(regenTree))
-            expr
-          }
-        }
+        case typTree: TypTree ⇒
+          constructTypeTree(typTree.tpe)
 
         // re-wire objects
         case s @ Select(Select(inn, t: TermName), name) if s.symbol.isMethod && t.toString == "package" /* ugh, no TermName extractor */ ⇒
@@ -389,9 +385,7 @@ final class MPDETransformer[C <: Context, T](
           Select(transform(inn), name)
 
         // replaces objects with their cake counterparts
-        //TODO check for IntIsIntegral is temporary solution and should be changed
-        //for rep dsl we don't need to replace IntIsIntegral
-        case s @ Select(inn, name) if (!rep) || ((name != newTermName("IntIsIntegral")) && (name != newTermName("DoubleIsFractional"))) ⇒ // TODO this needs to be narrowed down if s.symbol.isModule =>
+        case s @ Select(inn, name) ⇒ // TODO this needs to be narrowed down if s.symbol.isModule =>
           Ident(name)
 
         case TypeApply(mth, targs) ⇒ // TODO this needs to be changed for LMS to include a type transformer
@@ -430,6 +424,27 @@ final class MPDETransformer[C <: Context, T](
   def interpretMethod = "interpret"
   val dslMethod: String = "main"
   val className = "generated$" + dslName.filter(_ != '.') + MPDETransformer.uID.incrementAndGet
+  def constructTypeTree(inType: Type) = if (rep)
+    constructRepTree(inType)
+  else
+    constructPolyTree(inType)
+
+  def constructPolyTree(inType: Type): Tree = inType match {
+    case TypeRef(pre, sym, args) ⇒
+      if (args.isEmpty) { //Simple type
+        Select(This(newTypeName(className)), inType.typeSymbol.name)
+      } else { //AppliedTypeTree
+        val baseTree = Select(This(newTypeName(className)), sym.name)
+        val typeTrees = args map { x ⇒ constructPolyTree(x) }
+        AppliedTypeTree(baseTree, typeTrees)
+      }
+
+    case another @ _ ⇒
+      TypeTree(another)
+  }
+
+  def constructRepTree(inType: Type): Tree = //transform Type1[Type2[...]] => Rep[Type1[Type2[...]]]
+    AppliedTypeTree(Select(This(newTypeName(className)), newTypeName("Rep")), List(TypeTree(inType)))
 
   /*
    * Utilities.
@@ -455,7 +470,7 @@ final class MPDETransformer[C <: Context, T](
     if (_dslInstance == None) {
       _dslInstance = Some(
         c.eval(
-          c.Expr(Block(dslDef, dslConstructor))))
+          c.Expr(Block(dslDef, constructor))))
     }
     _dslInstance.get
   }
@@ -473,6 +488,24 @@ final class MPDETransformer[C <: Context, T](
   //     }
   // }
 
+  /*
+   * TODO Emmanuel this can be refined further to include other types of methods (the ones that include type params etc.). We do not care for performance for now. 
+   */
+  def methodExists(obj: Type, methodName: String, args: List[Type]): Boolean = {
+
+    def dummyTree(tpe: Type) = TypeApply(Select(Literal(Constant(())), newTermName("asInstanceOf")), List(constructTypeTree(tpe)))
+    def application(method: String) = Apply(Select(dummyTree(obj), newTermName(methodName)), args.map(dummyTree))
+
+    try { // this might be a performance problem later. For now it will do the work.
+      c.typeCheck(Block(composeDSL(application(methodName)), Literal(Constant(()))))
+      true
+    } catch {
+      case e: Throwable ⇒
+        false
+    }
+  }
+
   def log(s: String) = if (debug) println(s)
 
 }
+
