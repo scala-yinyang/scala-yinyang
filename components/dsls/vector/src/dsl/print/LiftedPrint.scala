@@ -22,8 +22,6 @@ trait PrintDSL extends ScalaCompile with CodeGenerator with base.LiftBase with M
         }
       }
     """
-
-    "hole(\"x\", \"Int\")"
   }
 
   override def interpret[T](): T = {
