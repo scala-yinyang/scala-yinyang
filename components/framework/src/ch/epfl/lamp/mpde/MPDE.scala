@@ -179,7 +179,12 @@ final class MPDETransformer[C <: Context, T](
           Ident(name)
 
         case TypeApply(mth, targs) ⇒ // TODO this needs to be changed for LMS to include a type transformer
-          transform(mth)
+          if (rep)
+            TypeApply(transform(mth), targs)
+          else {
+            val liftedTargs = targs map (transform(_))
+            TypeApply(transform(mth), liftedTargs)
+          }
 
         // Removes all import statements for now. 
         // TODO later it will figure out the DSL modules and will include them into the cake.
