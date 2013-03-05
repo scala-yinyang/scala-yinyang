@@ -34,43 +34,28 @@ final class MPDETransformer[C <: Context, T](
    */
   def apply[T](block: c.Expr[T]): c.Expr[T] = {
     log("Body: " + show(block.tree))
-    val transfBody = new ScopeInjectionTransformer().transform(block.tree)
+    val marker = new HoleMarkerTransformer()
+    // marks allthe "holes" in the block
+    val marked = marker mark block.tree
+    log(s"Holes: ${marked}")
+
+    val canGenerate = canCompileDSL(block.tree)
+    val transfBody = new ScopeInjectionTransformer().transform(if (canGenerate) marked else block.tree)
     log("Transformed Body: " + show(transfBody))
+
     // generates the Embedded DSL cake with the transformed "main" method.
     val dslClass = c.resetAllAttrs(composeDSL(transfBody))
     log("DSL Class: " + show(dslClass))
 
     // if the DSL inherits the StaticallyChecked trait stage it and do the analysis
-    //if (staticallyCheck)
-    //dslInstance(dslClass).asInstanceOf[StaticallyChecked].staticallyCheck(c)
+    /* if (staticallyCheck)
+     * dslInstance(dslClass).asInstanceOf[StaticallyChecked].staticallyCheck(c)
+     */
 
-    val dslTree = if (canCompileDSL(block.tree)) {
-      val marker = new HoleMarkerTransformer()
-      val marked = marker mark transfBody
-      log(s"Holes: ${marked}")
-      val dslClassMarked = c.resetAllAttrs(composeDSL(marked))
-      log(s"Class with holes:$dslClassMarked")
-      val generated = dslInstance(dslClassMarked).asInstanceOf[CodeGenerator].generateCode(className)
+    val dslTree = if (canGenerate) {
 
-      // TODO (Duy) for now we do not do any external parameter tracking.
-      /* 2) Code that we generate needs to link to variables. E.g:
-       *   automaton.match(variable)
-       *    One solution:
-       *    i) re-link the variables in the generated code to method calls with literals
-       *       val parsed = ...
-       *       transform(parsed)
-       *       and the `transform` will do the re-linking. For example:
-       *         matches(x, "abc*") => matches(hole("p1"), "abc*")
-       *       where `hole` is a DSL method which will generate an identifier.
-       * 
-       *    ii) Then we produce the following
-       *         object uniqueIdName {
-       *            def method(p1: String, ...) = {
-       *              matches(p1, "abc*") // In real world this would be compiled of course
-       *            }
-       *         }
-       *         method(x)
-       */
+      val generated = dslInstance(dslClass).asInstanceOf[CodeGenerator].generateCode(className)
+      // TODO (Duy) external parameter tracking.
       val outerScope = className + "$outer$scope"
       val args: String = ("" /: marker.variableMap) { case (s, (outside, inside)) ⇒ s + s"val $inside = $outside\n" }
 
@@ -87,15 +72,7 @@ final class MPDETransformer[C <: Context, T](
 
       val parsed = c parse enscoped
       log(s"generated: ${parsed.toString}")
-      //val filled = new HoleFillerTransformer().fill(parsed, List(c.literal(7).tree))
-      //log(s"filled: ${filled.toString}")
-      // object $$ {
-      //   def apply() {
-      //     val p$1 = x
       parsed
-      //   }
-      // }
-      // new $$.apply()
     } else {
       Block(dslClass,
         Apply(
@@ -218,75 +195,7 @@ final class MPDETransformer[C <: Context, T](
   def staticallyCheck = false
 
   /**
-   * From `code` into
-   * {{{
-   * object $$ {
-   * def apply(variable) {
-   * [hole --> variable]code
-   * }
-   * }
-   * $$(arguments)
-   * }}}
-   */
-  private final class HoleFillerTransformer extends Transformer {
-
-    val parameters = ListBuffer[(String, String)]()
-
-    /* Traverse the tree to find `hole("v"`)
-     * Update `v` in the map ard replace `hole("v")` by Ident("v")
-     * 
-     * The hole should be `hole("var", "type") `
-     */
-    override def transform(tree: Tree): Tree = tree match {
-      case Apply(Ident(hole), List(Literal(Constant(id: String)), Literal(Constant(idType: String)))) if hole.decoded == "hole" ⇒
-        parameters += ((id, idType))
-        Ident(newTermName(id)) // may update sth
-      case _ ⇒
-        super.transform(tree)
-    }
-
-    def fill(tree: Tree, arguments: List[Tree]): Tree = {
-      val outerClassName = "$outer$scope"
-      val method = newTermName("apply")
-
-      val transformed = transform(tree)
-      val paramList = parameters map (p ⇒ s"${p._1}: ${p._2}")
-
-      // def apply(var: type, ...) {}
-      val defCode = s"def $method(${paramList mkString ","}) = {}"
-      val methodTree = c parse defCode match {
-        case DefDef(mods, _, tparams, vparamss, tpt, _) ⇒
-          log(s"Type: ${showRaw(tpt)}")
-          DefDef(mods, method, tparams, vparamss, TypeTree(), transformed)
-        case t ⇒ t
-      }
-
-      log(s"Transformed apply: ${methodTree}")
-      val outerClass = // class definition of outer scope
-        // class $outer$scope {
-        ClassDef(Modifiers(), newTypeName(outerClassName), List(), Template(
-          List(),
-          emptyValDef,
-          List(
-            DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(List()), TypeTree(),
-              Block(
-                List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List())),
-                Literal(Constant(())))),
-            methodTree // def apply()
-            )))
-      val invocation = invoke(makeConstructor(outerClassName, List()), method, arguments)
-      Block(List(outerClass), invocation)
-    }
-
-    def holes: List[Ident] = parameters.toList map (p ⇒ Ident(p._1))
-
-  }
-
-  /**
-   * Ident -> hole
-   * Select if quanlifier free -> hole
-   *
-   * Replace all "free" with `hole(id)`
+   * Replace all captured variables with `hole(id)`
    */
   private final class HoleMarkerTransformer extends Transformer {
 
@@ -299,39 +208,19 @@ final class MPDETransformer[C <: Context, T](
       "p$" + freshSuffix
     }
 
-    private def mark(id: String, tpTree: List[Tree]): Tree = {
+    private def mark(id: String): Tree = {
       val name = marked get id getOrElse {
         marked += (id -> fresh())
         marked(id)
       }
-      Apply(TypeApply(Ident(newTermName("hole")), tpTree), List(Literal(Constant(name))))
+      Apply(
+        TypeApply(Select(This(newTypeName(className)), newTermName(holeMethod)), List(TypeTree())),
+        List(Literal(Constant(name))))
     }
 
     override def transform(tree: Tree): Tree = tree match {
       case id @ Ident(s) if toMark contains s.decoded ⇒
-        c.typeCheck(id)
-        log(s"Hole type $id: ${id.tpe}")
-        log(s"Hole type termSymbol $id: ${id.tpe.termSymbol}")
-        log(s"Hole type typeConstructor $id: ${id.tpe.typeConstructor}")
-        log(s"Hole type typeSymbol $id: ${id.tpe.typeSymbol}")
-
-        id.tpe match {
-          case ThisType(s)            ⇒ log(s"Hole type ThisType $id: ${s}")
-          case SingleType(t, s)       ⇒ log(s"Hole type SingleType $id: ($t, ${s})")
-          case ConstantType(s)        ⇒ log(s"Hole type ConstantType $id: ${s}")
-          case TypeRef(p, s, a)       ⇒ log(s"Hole type TypeRef $id: ($p, $s, $a)")
-          case RefinedType(p, c)      ⇒ log(s"Hole type RefinedType $id: ($p, $c)")
-          case ClassInfoType(p, s, a) ⇒ log(s"Hole type ClassInfoType $id: ($p, $s, $a)")
-          case PolyType(p, s)         ⇒ log(s"Hole type PolyType $id: ($p, $s)")
-          case ExistentialType(p, s)  ⇒ log(s"Hole type ExistentialType $id: ($p, $s)")
-        }
-
-        val tpConstructor = TypeTree(id.tpe.typeConstructor)
-        val tp =
-          if (id.tpe.takesTypeArgs) throw new Exception("Can't do")
-          else tpConstructor
-        log(s"Hole type type tree $id: ${TypeTree(id.tpe)}")
-        mark(s.decoded, List(tp))
+        mark(s.decoded)
       //case s @ Select(id: Ident, _) if toMark contains id.symbol ⇒
       //mark(s.symbol)
       case _ ⇒
@@ -371,6 +260,14 @@ final class MPDETransformer[C <: Context, T](
     }
 
     private[this] final def isFree(s: Symbol) = !(definedValues.contains(s) || definedMethods.contains(s))
+
+    private[this] final def isHole(tree: Tree): Boolean =
+      tree match {
+        case Apply(
+          TypeApply(Select(This(_), methodName), List(TypeTree())),
+          List(Literal(Constant(_: String)))) if methodName.decoded == holeMethod ⇒ true
+        case _ ⇒ false
+      }
 
     var ident = 0
 
@@ -440,6 +337,9 @@ final class MPDETransformer[C <: Context, T](
         case t @ If(cond, then, elze) ⇒
           Apply(Select(This(newTypeName(className)), newTermName("__ifThenElse")), List(transform(cond), transform(then), transform(elze)))
 
+        // ignore the hole
+        case _ if isHole(tree) ⇒ tree
+
         // TODO partial functions, try catch, pattern matching
         case _ ⇒
           super.transform(tree)
@@ -457,6 +357,7 @@ final class MPDETransformer[C <: Context, T](
   */
   def interpretMethod = "interpret"
   val dslMethod: String = "main"
+  val holeMethod = "hole"
   val className = "generated$" + dslName.filter(_ != '.') + MPDETransformer.uID.incrementAndGet
   def constructTypeTree(inType: Type) = if (rep)
     constructRepTree(inType)

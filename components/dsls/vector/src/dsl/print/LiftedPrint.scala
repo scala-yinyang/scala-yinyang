@@ -20,6 +20,7 @@ trait PrintDSL extends ScalaCompile with CodeGenerator with base.LiftBase with M
           ${sb.toString} + ${res.toString}
         }
       }
+      new $className() apply()
     """
   }
 
@@ -65,7 +66,19 @@ trait PrintDSL extends ScalaCompile with CodeGenerator with base.LiftBase with M
 trait MiniIntDSL extends base.LiftBase {
 
   type Int = IntOps
-  private var currentName: String = null
+
+  /*
+   * Supposed to be in `LiftBase`.
+   */
+  trait HoleEvidence[Ret] {
+    def emit(variable: String): Ret
+  }
+
+  /*
+   * This too.
+   */
+  def hole[Ret](variable: String)(implicit holeEv: HoleEvidence[Ret]): Ret =
+    holeEv emit variable
 
   trait IntOps {
     def +(that: Int): Int = IntPlus(IntOps.this, that)
@@ -76,18 +89,11 @@ trait MiniIntDSL extends base.LiftBase {
   case class IntPlus(l: IntOps, r: IntOps) extends IntOps { override def toString = s"($l + $r)" }
 
   implicit object LiftInt extends LiftEvidence[scala.Int, Int] {
-    def lift(v: scala.Int): Int = {
-      val intConst =
-        if (currentName != null) new IntConst(v) { override val toString = currentName } // `hole` ran
-        else IntConst(v)
-      currentName = null
-      intConst
-    }
+    def lift(v: scala.Int): Int = IntConst(v)
   }
 
-  def hole[T](variable: String): T = {
-    currentName = variable
-    null.asInstanceOf[T]
+  implicit object HoleInt extends HoleEvidence[Int] {
+    def emit(variable: String): Int = new IntConst(0) { override val toString = variable }
   }
 
 }
