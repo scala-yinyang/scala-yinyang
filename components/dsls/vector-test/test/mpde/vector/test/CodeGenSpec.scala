@@ -31,4 +31,18 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
         x + y + z
       } == 7) // should print "7" and return "7"
   }
+
+  /*
+  "Runtime code generating" should "work" in { //
+    val x = 1
+    val y = 2
+    assert(
+      liftPrint {
+        val b = x
+        println(b)
+        break(y)
+        x
+      } == 1)
+  }
+  */
 }

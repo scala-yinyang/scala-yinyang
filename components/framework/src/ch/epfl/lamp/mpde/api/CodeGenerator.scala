@@ -8,6 +8,8 @@ trait CodeGenerator {
 
   def generateCode(className: String): String
 
+  def generateName(id: Int): String = s"generated$$bridge$$$id"
+
   //def main(): Any
 
   /**
@@ -16,11 +18,6 @@ trait CodeGenerator {
    * TODO (Duy) Should we provide the hole evidence like we do with literals?
    * Probably not.
    */
-  //def hole[T](varName: String): T
-
-  /**
-   * `x` must be a `hole("some string literal")`.
-   */
-  //def fill(x: Any): String
+  //def hole[T](symbolId: Int): T
 
 }

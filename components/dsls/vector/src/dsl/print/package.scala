@@ -14,5 +14,6 @@ object `package` {
   // The only thing we declare here
   def println(x: Any) = ???
 
-}
+  def break(x: Int) = ???
 
+}

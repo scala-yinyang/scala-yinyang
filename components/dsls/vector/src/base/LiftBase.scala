@@ -14,5 +14,4 @@ trait LiftBase {
   }
 
   def liftTerm[T, Ret](v: T)(implicit liftEv: LiftEvidence[T, Ret]): Ret = liftEv.lift(v)
-
 }

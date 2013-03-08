@@ -34,13 +34,31 @@ final class MPDETransformer[C <: Context, T](
    */
   def apply[T](block: c.Expr[T]): c.Expr[T] = {
     log("Body: " + show(block.tree))
-    val marker = new HoleMarkerTransformer()
-    // marks allthe "holes" in the block
-    val marked = marker mark block.tree
-    log(s"Holes: ${marked}")
 
-    val canGenerate = canCompileDSL(block.tree)
-    val transfBody = new ScopeInjectionTransformer().transform(if (canGenerate) marked else block.tree)
+    val allCaptured = freeVariables(block.tree)
+    val holeMarker = new HoleMarkerTransformer(allCaptured map symbolId)
+    val allMarkedAsHoles = holeMarker mark block.tree
+    log(s"Body with all captured variables marked: ${allMarkedAsHoles}")
+
+    /* stagingAnalyze
+     *   if all captured lifted, cannot run
+     *   if some holes, do not know which are holes yet
+     *   -> all holes
+     * 
+     * compile time compilation
+     *   all captured become holes
+     * 
+     * run time compilation
+     *   some captured lifted, some become holes
+     */
+    val neededSymIds = stagingAnalyze(allMarkedAsHoles)
+    val canStage = neededSymIds.isEmpty
+
+    val toTransform =
+      if (canStage) allMarkedAsHoles
+      else new HoleMarkerTransformer(allCaptured diff neededSymIds map symbolId).mark(block.tree)
+
+    val transfBody = new ScopeInjectionTransformer().transform(toTransform)
     log("Transformed Body: " + show(transfBody))
 
     // generates the Embedded DSL cake with the transformed "main" method.
@@ -52,12 +70,17 @@ final class MPDETransformer[C <: Context, T](
      * dslInstance(dslClass).asInstanceOf[StaticallyChecked].staticallyCheck(c)
      */
 
-    val dslTree = if (canGenerate) {
+    val dslTree = if (canStage) {
+      val codeGenerator = dslInstance(dslClass).asInstanceOf[CodeGenerator]
+      val generated = codeGenerator generateCode className
 
-      val generated = dslInstance(dslClass).asInstanceOf[CodeGenerator].generateCode(className)
       // TODO (Duy) external parameter tracking.
       val outerScope = className + "$outer$scope"
-      val args: String = ("" /: marker.variableMap) { case (s, (outside, inside)) ⇒ s + s"val $inside = $outside\n" }
+      val args = ("" /: allCaptured) {
+        case (s, symbol) ⇒ s + s"val ${codeGenerator.generateName(symbolId(symbol))} = ${symbol.name.decoded};\n"
+      }
+
+      // val arg = allCaptured map (symbol => s"val ${codeGenerator.generateName(symbolId(symbol))} = ${symbol.name.decoded};\n") reduce (_ + _)
 
       val enscoped =
         s"""
@@ -84,6 +107,20 @@ final class MPDETransformer[C <: Context, T](
 
     log("Final tree: " + show(c.typeCheck(c.resetAllAttrs(dslTree))))
     c.Expr[T](c.resetAllAttrs(dslTree))
+    /* val lifted = transformHoles(cake, paramSyms)
+       reify{
+         def recompile() =splice(lifted).compile[(Any*paramSyms.length =>T)]
+
+         var dsl: (Any*paramSyms.length =>T) = _ 
+         var previousGuard = _
+
+         if(guard(splice(liftedSyms))
+           dsl = recompile()
+
+         previousGuard = splice(liftedSyms)
+  
+         dsl.apply(splice(paramSyms))
+       } */
   }
 
   private def constructor = Apply(Select(New(Ident(newTypeName(className))), nme.CONSTRUCTOR), List())
@@ -103,52 +140,30 @@ final class MPDETransformer[C <: Context, T](
    * - return true if all arguments true
    * - true if can generate code statically
    */
-  def canCompileDSL(tree: Tree): Boolean = {
-    //val vs = externalVariables(tree)
-    //freeVariables(tree).isEmpty
-    //log(s"external variables: ${freeVariables(tree).toString}")
-    //vs.isEmpty
-    debug
+  def stagingAnalyze(tree: Tree): List[Symbol] = {
+    val capturedVariables = freeVariables(tree)
+    val neededVariables = List[Symbol]() //instance(DSL).variableINeed(capturedVariables)
+    neededVariables
   }
 
-  def freeVariables(tree: Tree): List[String] = new FreeVariableCollector().freeVariables(tree)
+  def freeVariables(tree: Tree): List[Symbol] = new FreeVariableCollector().collect(tree)
 
-  /**
-   * Should pass in transformed body.
-   */
-  def externalVariables(tree: Tree): List[String] =
-    freeVariables(tree) filter (v ⇒
-      /* Current solution:
-       * Creates an instance of DSL class with the `main` body accesses the variable.
-       * If it causes an exception, it is an external variable.
-       */
-      try {
-        val body = Ident(v) //invoke(Ident(v), newTermName("toString"), List())
-        val clazz = dslClass(body)
-        log(s"checker:\n ${clazz.toString}")
-        //dslInstance(clazz).asInstanceOf[CodeGenerator].main()
-        false
-      } catch {
-        case _: Throwable ⇒ true
-      })
+  private final class FreeVariableCollector extends Traverser {
 
-  class FreeVariableCollector extends Traverser {
+    private[this] val collected = ListBuffer[Symbol]()
+    private[this] var defined = List[Symbol]()
 
-    private[this] val collected = ListBuffer[String]()
-    private[this] var defined = List[String]()
-
-    private[this] final def isFree(id: String) = !defined.contains(id)
+    private[this] final def isFree(id: Symbol) = !defined.contains(id)
 
     override def traverse(tree: Tree) = tree match {
       case i @ Ident(s) ⇒ {
         val sym = i.symbol
-        val name = s.decoded
-        if (sym.isTerm && !(sym.isMethod || sym.isPackage) && isFree(name)) collected append name
+        if (sym.isTerm && !(sym.isMethod || sym.isPackage) && isFree(sym)) collected append sym
       }
       case _ ⇒ super.traverse(tree)
     }
 
-    def freeVariables(tree: Tree): List[String] = {
+    def collect(tree: Tree): List[Symbol] = {
       collected.clear()
       defined = new LocalDefCollector().definedSymbols(tree)
       log(s"Defined: $defined")
@@ -158,17 +173,17 @@ final class MPDETransformer[C <: Context, T](
 
   }
 
-  class LocalDefCollector extends Traverser {
+  private final class LocalDefCollector extends Traverser {
 
-    private[this] val definedValues, definedMethods = ListBuffer[String]()
+    private[this] val definedValues, definedMethods = ListBuffer[Symbol]()
 
     override def traverse(tree: Tree) = tree match {
-      case vd: ValDef ⇒ definedValues += vd.name.decoded
-      case dd: DefDef ⇒ definedMethods += dd.name.decoded
+      case vd: ValDef ⇒ definedValues += vd.symbol
+      case dd: DefDef ⇒ definedMethods += dd.symbol
       case _          ⇒ super.traverse(tree)
     }
 
-    def definedSymbols(tree: Tree): List[String] = {
+    def definedSymbols(tree: Tree): List[Symbol] = {
       definedValues.clear()
       definedMethods.clear()
       traverse(tree)
@@ -177,17 +192,6 @@ final class MPDETransformer[C <: Context, T](
 
   }
 
-  private def dslClass(mainBody: Tree): Tree = c.resetAllAttrs(composeDSL(mainBody))
-
-  def makeConstructor(classname: String, arguments: List[Tree]): Tree =
-    invoke(newClass(classname), nme.CONSTRUCTOR, arguments)
-
-  def invoke(qualifier: Tree, method: TermName, arguments: List[Tree]): Tree =
-    Apply(Select(qualifier, method), arguments)
-
-  def newClass(classname: String) =
-    New(Ident(newTypeName(classname)))
-
   /*
    * TODO (Duy)
    * 3) Enabling static analysis of the DSLs at compile time.
@@ -195,32 +199,19 @@ final class MPDETransformer[C <: Context, T](
   def staticallyCheck = false
 
   /**
-   * Replace all captured variables with `hole(id)`
+   * Replace all variables in `toMark` with `hole[](id)`
    */
-  private final class HoleMarkerTransformer extends Transformer {
-
-    private val marked = HashMap[String, String]()
-    private var toMark = List[String]()
-
-    private var freshSuffix = 0
-    private def fresh(): String = {
-      freshSuffix += 1
-      "p$" + freshSuffix
-    }
-
-    private def mark(id: String): Tree = {
-      val name = marked get id getOrElse {
-        marked += (id -> fresh())
-        marked(id)
-      }
-      Apply(
-        TypeApply(Select(This(newTypeName(className)), newTermName(holeMethod)), List(TypeTree())),
-        List(Literal(Constant(name))))
-    }
+  private final class HoleMarkerTransformer(toMark: List[Int]) extends Transformer {
 
     override def transform(tree: Tree): Tree = tree match {
-      case id @ Ident(s) if toMark contains s.decoded ⇒
-        mark(s.decoded)
+      case i @ Ident(s) ⇒
+        val id = symbolId(i)
+        if (toMark contains id)
+          Apply(
+            TypeApply(Select(This(newTypeName(className)), newTermName(holeMethod)), List(TypeTree())),
+            List(Literal(Constant(id))))
+        else
+          super.transform(tree)
       //case s @ Select(id: Ident, _) if toMark contains id.symbol ⇒
       //mark(s.symbol)
       case _ ⇒
@@ -228,12 +219,9 @@ final class MPDETransformer[C <: Context, T](
     }
 
     def mark(tree: Tree): Tree = {
-      toMark = freeVariables(tree)
       log(s"To mark: ${toMark.toString}")
       transform(tree)
     }
-
-    def variableMap: Map[String, String] = marked.toMap
 
   }
 
@@ -265,7 +253,7 @@ final class MPDETransformer[C <: Context, T](
       tree match {
         case Apply(
           TypeApply(Select(This(_), methodName), List(TypeTree())),
-          List(Literal(Constant(_: String)))) if methodName.decoded == holeMethod ⇒ true
+          List(Literal(Constant(_: Int)))) if methodName.decoded == holeMethod ⇒ true
         case _ ⇒ false
       }
 
@@ -337,10 +325,10 @@ final class MPDETransformer[C <: Context, T](
         case t @ If(cond, then, elze) ⇒
           Apply(Select(This(newTypeName(className)), newTermName("__ifThenElse")), List(transform(cond), transform(then), transform(elze)))
 
+        // TODO partial functions, try catch, pattern matching
+
         // ignore the hole
         case _ if isHole(tree) ⇒ tree
-
-        // TODO partial functions, try catch, pattern matching
         case _ ⇒
           super.transform(tree)
       }
@@ -384,6 +372,23 @@ final class MPDETransformer[C <: Context, T](
   /*
    * Utilities.
    */
+  private def symbolId(symbol: Symbol): Int =
+    symbol.asInstanceOf[scala.reflect.internal.Symbols#Symbol].id
+
+  private def symbolId(tree: Tree): Int =
+    symbolId(tree.symbol)
+
+  private def dslClass(mainBody: Tree): Tree = c.resetAllAttrs(composeDSL(mainBody))
+
+  def makeConstructor(classname: String, arguments: List[Tree]): Tree =
+    invoke(newClass(classname), nme.CONSTRUCTOR, arguments)
+
+  def invoke(qualifier: Tree, method: TermName, arguments: List[Tree]): Tree =
+    Apply(Select(qualifier, method), arguments)
+
+  def newClass(classname: String) =
+    New(Ident(newTypeName(classname)))
+
   private lazy val dslTrait = {
     val names = dslName.split("\\.").toList.reverse
     assert(names.length >= 1, "DSL trait name must be in the valid format. DSL trait name is " + dslName)
