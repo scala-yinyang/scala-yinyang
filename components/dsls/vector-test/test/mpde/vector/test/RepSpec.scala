@@ -76,4 +76,17 @@ class RepSpec extends FlatSpec with ShouldMatchers {
 
     ()
   }
+
+  it should "test function type lift" in {
+
+    val x = dsl.la.laLiftRep {
+      val a = (x: Int) ⇒ x + 5 //generated$dsllarepVectorDSL12.this.Rep[Int] => generated$dsllarepVectorDSL12.this.Rep[Int]
+      val b: Int ⇒ Byte ⇒ Double = ??? //generated$dsllarepVectorDSL12.this.Rep[Int] => generated$dsllarepVectorDSL12.this.Rep[Byte => Double]
+      val c: (Int, Byte) ⇒ Double = ??? //(generated$dsllarepVectorDSL12.this.Rep[Int], generated$dsllarepVectorDSL12.this.Rep[Byte]) => generated$dsllarepVectorDSL12.this.Rep[Double]
+      val d: Vector[Int] ⇒ Vector[Double] = ??? //generated$dsllarepVectorDSL12.this.Rep[dsl.la.Vector[Int]] => generated$dsllarepVectorDSL12.this.Rep[dsl.la.Vector[Double]]
+      val e: List[Int ⇒ Int] = ??? //generated$dsllarepVectorDSL12.this.Rep[List[Int => Int]]
+    }
+
+    ()
+  }
 }

@@ -224,12 +224,27 @@ final class MPDETransformer[C <: Context, T](
   else
     constructPolyTree(inType)
 
+  //TODO (TOASK) - do we need tp.normalize here?
+  private def isFunctionType(tp: Type): Boolean = tp.normalize match {
+    case TypeRef(pre, sym, args) if args.nonEmpty ⇒
+      val arity = args.length - 1
+      import scala.reflect.runtime.universe.definitions._
+      val MaxFunctionArity = 22
+      //TODO (TOASK) - problem with symbol comparision
+      arity <= MaxFunctionArity && arity >= 0 && sym.fullName == FunctionClass(arity).fullName
+    case _ ⇒
+      false
+  }
+
   def constructPolyTree(inType: Type): Tree = inType match {
     case TypeRef(pre, sym, args) ⇒
       if (args.isEmpty) { //Simple type
         Select(This(newTypeName(className)), inType.typeSymbol.name)
       } else { //AppliedTypeTree
-        val baseTree = Select(This(newTypeName(className)), sym.name)
+        val baseTree =
+          if (!isFunctionType(inType))
+            Select(This(newTypeName(className)), sym.name)
+          else Select(Ident(newTermName("scala")), sym.name)
         val typeTrees = args map { x ⇒ constructPolyTree(x) }
         AppliedTypeTree(baseTree, typeTrees)
       }
@@ -238,8 +253,22 @@ final class MPDETransformer[C <: Context, T](
       TypeTree(another)
   }
 
-  def constructRepTree(inType: Type): Tree = //transform Type1[Type2[...]] => Rep[Type1[Type2[...]]]
-    AppliedTypeTree(Select(This(newTypeName(className)), newTypeName("Rep")), List(TypeTree(inType)))
+  def constructRepTree(inType: Type): Tree = { //transform Type1[Type2[...]] => Rep[Type1[Type2[...]]] for non-function types
+    def wrapInRep(inType: Type): Tree =
+      AppliedTypeTree(Select(This(newTypeName(className)), newTypeName("Rep")), List(TypeTree(inType)))
+
+    if (isFunctionType(inType)) {
+      val TypeRef(pre, sym, args) = inType
+      val typeTrees = args map { x ⇒ wrapInRep(x) }
+      //TODO (TOASK) - why we can't construnct baseTree using TypeTree(pre) - why pre is only scala.type not FunctionN?
+      //val baseTree = TypeTree(pre) //pre = scala.type
+      //using such baseTree we get val a: scala.type[generated$dsllarepVectorDSL13.this.Rep[Int], generated$dsllarepVectorDSL13.this.Rep[Int]] = ...
+      val baseTree = Select(Ident(newTermName("scala")), sym.name)
+      AppliedTypeTree(baseTree, typeTrees)
+    } else {
+      wrapInRep(inType)
+    }
+  }
 
   /*
    * Utilities.

@@ -85,4 +85,17 @@ class NoRepSpec extends FlatSpec with ShouldMatchers {
 
     ()
   }
+
+  it should "test function type lift" in {
+
+    val x = dsl.la.laLiftNoRep {
+      val a = (x: Int) ⇒ x + 5
+      val b: Int ⇒ Int ⇒ Double = ???
+      val c: (Int, Int) ⇒ Double = ???
+      val d: Vector[Int] ⇒ Vector[Double] = ???
+      val e: Array[Int ⇒ Int] = ???
+    }
+
+    ()
+  }
 }
