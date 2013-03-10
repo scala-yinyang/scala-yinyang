@@ -39,7 +39,7 @@ final class MPDETransformer[C <: Context, T](
     if (staticallyCheck)
       dslInstance(dslClass).asInstanceOf[StaticallyChecked].staticallyCheck(c)
 
-    val dslTree = if (canCompileDSL(block.tree)) {
+    val dslTree = if (canCompileDSL(block.tree) && dslInstance(dslClass).isInstanceOf[CodeGenerator]) {
       val code = dslInstance(dslClass).asInstanceOf[CodeGenerator].generateCode(className)
       // TODO (Duy) for now we do not do any external parameter tracking.
       /* 2) Code that we generate needs to link to variables. E.g:
@@ -93,8 +93,9 @@ final class MPDETransformer[C <: Context, T](
    *
    */
   private def canCompileDSL(body: Tree): Boolean = dslName match {
-    case "dsl.print.PrintDSL" ⇒ true
-    case _                    ⇒ false
+    case "dsl.print.PrintDSL"   ⇒ true
+    case "dsl.la.rep.VectorDSL" ⇒ true
+    case _                      ⇒ false
   }
 
   /*
@@ -292,8 +293,7 @@ final class MPDETransformer[C <: Context, T](
   private def dslInstance(dslDef: Tree) = {
     if (_dslInstance == None) {
       _dslInstance = Some(
-        c.eval(
-          c.Expr(Block(dslDef, constructor))))
+        c.eval(c.Expr(c.resetAllAttrs(Block(dslDef, constructor)))))
     }
     _dslInstance.get
   }
