@@ -9,7 +9,6 @@ import scala.collection.mutable
 import language.experimental.macros
 
 import mpde.api._
-
 import java.util.concurrent.atomic.AtomicLong
 
 object MPDETransformer {
@@ -192,6 +191,7 @@ final class MPDETransformer[C <: Context, T](
       collected.toList.distinct
     }
 
+<<<<<<< HEAD
   }
 
   private final class LocalDefCollector extends Traverser {
@@ -599,12 +599,10 @@ final class MPDETransformer[C <: Context, T](
       c.typeCheck(Block(composeDSL(application(methodName)), Literal(Constant(()))))
       true
     } catch {
-      case e: Throwable ⇒
-        false
+      case e: Throwable ⇒ false
     }
   }
 
   def log(s: String) = if (debug) println(s)
 
 }
-

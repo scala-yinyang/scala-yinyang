@@ -22,7 +22,7 @@ object MPDEBuild extends Build {
   lazy val scalaOrg = "org.scala-lang.virtualized"
   lazy val defaults = Defaults.defaultSettings ++ formatSettings ++ Seq(
     // scala version + resolver
-    scalaHome := Some(file(Path.userHome + "/work/devl/scalac/myscala/build/pack")),
+    scalaHome := Some(file(Path.userHome + "/work/devl/scalac/scala-virtualized/build/pack")),
     scalaOrganization := scalaOrg,
     scalaVersion := "2.10.1-RC1",
     resolvers in ThisBuild += ScalaToolsSnapshots,
@@ -54,7 +54,8 @@ object MPDEBuild extends Build {
   
   // delite settings
   lazy val deliteSettings = defaults ++ Seq(
-   libraryDependencies += "EPFL" % "lms_2.10.1-RC1" % "0.3-SNAPSHOT" // just LMS for now
+   libraryDependencies += "stanford-ppl" % "optiml_2.10" % "0.1-SNAPSHOT",
+   libraryDependencies += "EPFL" % "lms_2.10.1-RC1" % "0.3-SNAPSHOT"
   )
 
   lazy val _mpde           = Project(id = "mpde",                  base = file(".")) aggregate (framework, vector_dsl, vector_dsl_test)
