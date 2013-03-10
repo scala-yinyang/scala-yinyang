@@ -20,7 +20,7 @@ object MPDETransformer {
 final class MPDETransformer[C <: Context, T](
   val c: C,
   dslName: String,
-  val debug: Boolean = true,
+  val debug: Boolean = false,
   val rep: Boolean = false) {
   import c.universe._
 
@@ -51,79 +51,120 @@ final class MPDETransformer[C <: Context, T](
      * run time compilation
      *   some captured lifted, some become holes
      */
-    val neededSymIds = stagingAnalyze(allMarkedAsHoles)
-    val canStage = neededSymIds.isEmpty
+    val requiredVariables = stagingAnalyze(block.tree) //stagingAnalyze(allMarkedAsHoles)
+    val canStage = requiredVariables.isEmpty
 
+    val holes = allCaptured diff requiredVariables
     val toTransform =
       if (canStage) allMarkedAsHoles
-      else new HoleMarkerTransformer(allCaptured diff neededSymIds map symbolId).mark(block.tree)
+      else new HoleMarkerTransformer(holes map symbolId).mark(block.tree)
 
     val transfBody = new ScopeInjectionTransformer().transform(toTransform)
     log("Transformed Body: " + show(transfBody))
 
     // generates the Embedded DSL cake with the transformed "main" method.
     val dslClass = c.resetAllAttrs(composeDSL(transfBody))
+
     log("DSL Class: " + show(dslClass))
 
-    // if the DSL inherits the StaticallyChecked trait stage it and do the analysis
-    /* if (staticallyCheck)
-     * dslInstance(dslClass).asInstanceOf[StaticallyChecked].staticallyCheck(c)
-     */
+    def args(holes: List[Symbol], nameGenerator: CodeGenerator): List[String] =
+      holes map (symbol ⇒ s"val ${nameGenerator.generateName(symbolId(symbol))} = ${symbol.name.decoded};\n")
 
     val dslTree = if (canStage) {
       val codeGenerator = dslInstance(dslClass).asInstanceOf[CodeGenerator]
-      val generated = codeGenerator generateCode className
-
-      // TODO (Duy) external parameter tracking.
       val outerScope = className + "$outer$scope"
-      val args = ("" /: allCaptured) {
-        case (s, symbol) ⇒ s + s"val ${codeGenerator.generateName(symbolId(symbol))} = ${symbol.name.decoded};\n"
-      }
 
-      // val arg = allCaptured map (symbol => s"val ${codeGenerator.generateName(symbolId(symbol))} = ${symbol.name.decoded};\n") reduce (_ + _)
-
+      val generated = codeGenerator generateCode className
+      // TODO (Duy) external parameter tracking.
       val enscoped =
         s"""
           object $outerScope {
             def apply() = {
-              ${args}
+              ${args(allCaptured, codeGenerator) mkString ";\n"}
               $generated
             }
           }
           $outerScope.apply()
         """
-
       val parsed = c parse enscoped
       log(s"generated: ${parsed.toString}")
       parsed
     } else {
-      Block(dslClass,
-        Apply(
-          TypeApply(
-            Select(constructor, newTermName(interpretMethod)),
-            List(TypeTree(block.tree.tpe))),
-          List())) // TODO Duy this needs to be filled in with parameters
+      val nameGenerator = new CodeGenerator { def generateCode(className: String) = "" }
+      val nameCurrent = "current"
+      val nameClassName = "className"
+      val nameDSLInstance = "dslInstance"
+      val nameDSLProgram = "dslProgram"
+      val nameCompileStorage = "__compileStorage"
+      val nameRecompile = "recompile"
+
+      val typeT = TypeTree(block.tree.tpe)
+      //println(s"type T: $typeT")
+
+      val valClassName = c parse (s"val $nameClassName = " + "\"" + className + "\"")
+      //println(s"className:$valClassName")
+
+      val valCurrent =
+        c parse s"val $nameCurrent: List[Any] = List(${requiredVariables map (_.name.decoded) mkString ", "})"
+      //println(s"current: $valCurrent")
+
+      val valDslInstance = c parse s"val $nameDSLInstance = new $className()"
+      println(s"dslInstance: ${showRaw(valDslInstance)}")
+      println("Apply(Select(New(Ident(newTypeName(className))), nme.CONSTRUCTOR), List())")
+
+      val defRecompile = c parse s"def $nameRecompile(): () => Int = $nameDSLInstance.compile[() => Int]()" match {
+        case DefDef(mods, name, tparams, vparamss, AppliedTypeTree(function0, _), Apply(
+          TypeApply(compile, List(AppliedTypeTree(function0ret, _))), args)) ⇒
+          DefDef(mods, name, tparams, vparamss, AppliedTypeTree(function0, List(typeT)), Apply(
+            TypeApply(compile, List(AppliedTypeTree(function0ret, List(typeT)))), args))
+      }
+      //println(s"recompile: $defRecompile")
+
+      val valDslProgram = c parse s"""
+        val $nameDSLProgram: () => Int =
+          $nameCompileStorage.checkAndUpdate[Int]($nameClassName, $nameCurrent, $nameRecompile)""" match {
+        case ValDef(modes, name, AppliedTypeTree(function0ret, _), Apply(TypeApply(function0, _), args)) ⇒
+          ValDef(modes, name, AppliedTypeTree(function0ret, List(typeT)), Apply(TypeApply(function0, List(typeT)), args))
+      }
+      //println(s"dslProgram: $valDslProgram")
+
+      val valHoles = args(holes, nameGenerator) map c.parse
+      //println(s"holes: $valHoles")
+
+      val runDSL = c parse s"$nameDSLProgram.apply()"
+      //println(s"apply: $runDSL")
+
+      val finalBlock = Block(
+        valHoles ++ List(dslClass, valClassName, valCurrent, valDslInstance, defRecompile, valDslProgram),
+        runDSL)
+      println(s"Runtime block: $finalBlock")
+
+      s"""
+        type T = block.tree.tpe
+
+        dslClass
+
+        val $nameClassName = $className
+        val $nameCurrent: List[Any] = List(${requiredVariables map (_.name.decoded) mkString ", "})
+
+        val $nameDSLInstance = new $className()
+
+        def $nameRecompile(): () => T = $nameDSLInstance.compile[() => T]()
+
+        // Solution for 1. in the email: we can define values for the holes here.
+        ${args(holes, nameGenerator) mkString ";\n"}
+
+        val $nameDSLProgram: () => T =
+          $nameCompileStorage.checkAndUpdate[T]($nameClassName, $nameCurrent, $nameRecompile)
+
+        $nameDSLProgram.apply()
+      """
+      finalBlock
     }
 
     log("Final tree: " + show(c.typeCheck(c.resetAllAttrs(dslTree))))
     c.Expr[T](c.resetAllAttrs(dslTree))
-    /* val lifted = transformHoles(cake, paramSyms)
-       reify{
-         def recompile() =splice(lifted).compile[(Any*paramSyms.length =>T)]
-
-         var dsl: (Any*paramSyms.length =>T) = _ 
-         var previousGuard = _
-
-         if(guard(splice(liftedSyms))
-           dsl = recompile()
-
-         previousGuard = splice(liftedSyms)
-  
-         dsl.apply(splice(paramSyms))
-       } */
   }
-
-  private def constructor = Apply(Select(New(Ident(newTypeName(className))), nme.CONSTRUCTOR), List())
 
   /**
    * 1) TODO (Duy) Should be analyze(block)
@@ -142,8 +183,11 @@ final class MPDETransformer[C <: Context, T](
    */
   def stagingAnalyze(tree: Tree): List[Symbol] = {
     val capturedVariables = freeVariables(tree)
+    println(tree)
     val neededVariables = List[Symbol]() //instance(DSL).variableINeed(capturedVariables)
-    neededVariables
+    //neededVariables
+    println(capturedVariables)
+    capturedVariables
   }
 
   def freeVariables(tree: Tree): List[Symbol] = new FreeVariableCollector().collect(tree)
@@ -414,6 +458,8 @@ final class MPDETransformer[C <: Context, T](
     }
     _dslInstance.get
   }
+
+  private def constructor = Apply(Select(New(Ident(newTypeName(className))), nme.CONSTRUCTOR), List())
 
   def composeDSL(transformedBody: Tree) =
     // class MyDSL extends DSL {

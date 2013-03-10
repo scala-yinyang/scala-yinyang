@@ -28,7 +28,6 @@ trait PrintDSL extends ScalaCompile with CodeGenerator with base.LiftBase with M
 
   override def interpret[T](): T = {
     if (compiledCode == null) {
-      val res = main()
       compiledCode = compile[T]
     }
     compiledCode.apply().asInstanceOf[T]

@@ -19,6 +19,7 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
     assert(x == 7, "Should return the value 7!")
   }*/
 
+  /*
   // TODO (Duy) This should work after the holes are made. 
   "Dynamic code insertion" should "work" in {
     val x = 1
@@ -31,18 +32,17 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
         x + y + z
       } == 7) // should print "7" and return "7"
   }
+  */
 
-  /*
-  "Runtime code generating" should "work" in { //
-    val x = 1
+  "Runtime code generating" should "work" in {
     val y = 2
     assert(
       liftPrint {
-        val b = x
+        val b = 0
         println(b)
         break(y)
-        x
+        1
       } == 1)
   }
-  */
+
 }
