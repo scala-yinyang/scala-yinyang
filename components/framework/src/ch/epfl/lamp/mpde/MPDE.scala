@@ -39,7 +39,8 @@ final class MPDETransformer[C <: Context, T](
     if (staticallyCheck)
       dslInstance(dslClass).asInstanceOf[StaticallyChecked].staticallyCheck(c)
 
-    val dslTree = if (canCompileDSL(block.tree) && dslInstance(dslClass).isInstanceOf[CodeGenerator]) {
+    val dslTree = if (canCompileDSL(block.tree) &&
+      dslInstance(dslClass).isInstanceOf[CodeGenerator]) {
       val code = dslInstance(dslClass).asInstanceOf[CodeGenerator].generateCode(className)
       // TODO (Duy) for now we do not do any external parameter tracking.
       /* 2) Code that we generate needs to link to variables. E.g:
@@ -93,9 +94,9 @@ final class MPDETransformer[C <: Context, T](
    *
    */
   private def canCompileDSL(body: Tree): Boolean = dslName match {
-    case "dsl.print.PrintDSL"   ⇒ true
-    case "dsl.la.rep.VectorDSL" ⇒ true
-    case _                      ⇒ false
+    case "dsl.print.PrintDSL" ⇒ true
+    case "dsl.la.rep.VectorDSL" ⇒ false
+    case _ ⇒ false
   }
 
   /*
@@ -123,7 +124,7 @@ final class MPDETransformer[C <: Context, T](
     def markDSLDefinition(tree: Tree) = tree match {
       case _: ValDef ⇒ definedValues += tree.symbol
       case _: DefDef ⇒ definedMethods += tree.symbol
-      case _         ⇒
+      case _ ⇒
     }
 
     private[this] final def isFree(s: Symbol) = !(definedValues.contains(s) || definedMethods.contains(s))
