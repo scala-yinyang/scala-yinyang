@@ -9,7 +9,6 @@ import scala.collection.mutable
 import language.experimental.macros
 
 import yinyang.api._
-
 import java.util.concurrent.atomic.AtomicLong
 
 object YYTransformer {
@@ -166,6 +165,7 @@ final class YYTransformer[C <: Context, T](
       collected.toList.distinct
     }
 
+<<<<<<< HEAD
   }
 
   private final class LocalDefCollector extends Traverser {
@@ -626,8 +626,7 @@ final class YYTransformer[C <: Context, T](
       c.typeCheck(Block(composeDSL(Block(feature.map(x ⇒ application(x._1, x._2, x._3, x._4)).toSeq: _*)), Literal(Constant(()))))
       true
     } catch {
-      case e: Throwable ⇒
-        false
+      case e: Throwable ⇒ false
     }
     println(s"Feature checking time: ${(System.currentTimeMillis() - st)}")
     res
@@ -636,4 +635,3 @@ final class YYTransformer[C <: Context, T](
   def log(s: String) = if (debug) println(s)
 
 }
-
