@@ -92,7 +92,7 @@ class RepSpec extends FlatSpec with ShouldMatchers {
 
   it should "test ascription transformation" in {
 
-    val x = dsl.la.laDebugRep {
+    val x = dsl.la.laLiftRep {
       val a = 5
       val bvar: Int = 5
       val cvar = DenseVector(1, 2)
