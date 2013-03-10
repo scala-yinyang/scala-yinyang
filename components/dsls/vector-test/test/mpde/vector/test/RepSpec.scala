@@ -89,4 +89,17 @@ class RepSpec extends FlatSpec with ShouldMatchers {
 
     ()
   }
+
+  it should "test ascription transformation" in {
+
+    val x = dsl.la.laDebugRep {
+      val a = 5
+      val bvar: Int = 5
+      val cvar = DenseVector(1, 2)
+      def testMethod(a: Any, c: Vector[Int])(d: Int): Vector[Int] = DenseVector(1, bvar, 3)
+      testMethod(bvar, cvar)(2)
+    }
+
+    ()
+  }
 }

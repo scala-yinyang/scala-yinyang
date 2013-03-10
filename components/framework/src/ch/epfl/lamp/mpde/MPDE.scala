@@ -29,6 +29,8 @@ final class MPDETransformer[C <: Context, T](
    */
   def apply[T](block: c.Expr[T]): c.Expr[T] = {
     log("Body: " + show(block.tree))
+    val ascrBody = new AscriptionTransformer().injectAscription(block.tree)
+    log("Ascription: " + show(ascrBody))
     val transfBody = new ScopeInjectionTransformer().transform(block.tree)
     log("Transformed Body: " + show(transfBody))
     // generates the Embedded DSL cake with the transformed "main" method.
@@ -94,9 +96,9 @@ final class MPDETransformer[C <: Context, T](
    *
    */
   private def canCompileDSL(body: Tree): Boolean = dslName match {
-    case "dsl.print.PrintDSL" ⇒ true
+    case "dsl.print.PrintDSL"   ⇒ true
     case "dsl.la.rep.VectorDSL" ⇒ false
-    case _ ⇒ false
+    case _                      ⇒ false
   }
 
   /*
@@ -104,6 +106,64 @@ final class MPDETransformer[C <: Context, T](
    * 3) Enabling static analysis of the DSLs at compile time.
    */
   def staticallyCheck = false
+
+  private final class AscriptionTransformer extends Transformer {
+    var ident = 0
+    var externalApplyFound = false
+
+    def injectAscription(tree: Tree): Tree = {
+      val ascrTree = transform(tree)
+      ascrTree
+    }
+
+    override def transform(tree: Tree): Tree = {
+      log(" " * ident + " ==> " + tree)
+      ident += 1
+
+      val result = tree match {
+        case vd @ ValDef(mods, name, tpt, rhs) ⇒ {
+          val retDef = ValDef(mods, name, tpt, Typed(transform(rhs), TypeTree(tpt.tpe)))
+
+          //provide Def trees with NoSymbol (for correct show(tree)
+          //retDef.setSymbol(NoSymbol)
+          retDef
+        }
+
+        case dd @ DefDef(mods, name, tparams, vparamss, tpt, rhs) ⇒ {
+          val retDef = DefDef(mods, name, tparams, vparamss, tpt, Typed(transform(rhs), TypeTree(tpt.tpe)))
+
+          //provide Def trees with NoSymbol (for correct show(tree)
+          //retDef.setSymbol(NoSymbol)
+          retDef
+        }
+
+        //TODO refactor this in more functional way
+        case ap @ Apply(fun, args) ⇒ {
+          val ascrArgs = args map { x ⇒ Typed(transform(x), TypeTree(x.tpe)) }
+          val retApply = if (externalApplyFound) {
+            //TODO find types for method parameters
+            Apply(transform(fun), ascrArgs)
+          } else {
+            externalApplyFound = true
+            //TODO find types for method parameters
+            val baseTree = Apply(transform(fun), ascrArgs)
+            externalApplyFound = false
+            //TODO change type for TypeTree to method type
+            Typed(baseTree, TypeTree(ap.tpe))
+          }
+          retApply
+        }
+
+        case _ ⇒
+          super.transform(tree)
+      }
+
+      ident -= 1
+      log(" " * ident + " <== " + result)
+
+      result
+    }
+  }
 
   /*
    * This transformer needs to do the following:
@@ -124,7 +184,7 @@ final class MPDETransformer[C <: Context, T](
     def markDSLDefinition(tree: Tree) = tree match {
       case _: ValDef ⇒ definedValues += tree.symbol
       case _: DefDef ⇒ definedMethods += tree.symbol
-      case _ ⇒
+      case _         ⇒
     }
 
     private[this] final def isFree(s: Symbol) = !(definedValues.contains(s) || definedMethods.contains(s))
