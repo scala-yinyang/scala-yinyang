@@ -41,7 +41,6 @@ final class MPDETransformer[C <: Context, T](
 
     val dslTree = if (canCompileDSL(block.tree)) {
       val code = dslInstance(dslClass).asInstanceOf[CodeGenerator].generateCode(className)
-
       // TODO (Duy) for now we do not do any external parameter tracking.
       /* 2) Code that we generate needs to link to variables. E.g:
        *   automaton.match(variable)
@@ -94,7 +93,7 @@ final class MPDETransformer[C <: Context, T](
    *
    */
   private def canCompileDSL(body: Tree): Boolean = dslName match {
-    case "dsl.print.PrintDSL" ⇒ false
+    case "dsl.print.PrintDSL" ⇒ true
     case _                    ⇒ false
   }
 
