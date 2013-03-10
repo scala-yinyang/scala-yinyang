@@ -99,18 +99,13 @@ final class MPDETransformer[C <: Context, T](
       val nameRecompile = "recompile"
 
       val typeT = TypeTree(block.tree.tpe)
-      //println(s"type T: $typeT")
 
-      val valClassName = c parse (s"val $nameClassName = " + "\"" + className + "\"")
-      //println(s"className:$valClassName")
+      val valClassName = c parse (s"val $nameClassName = ${"\"" + className + "\""}")
 
       val valCurrent =
         c parse s"val $nameCurrent: List[Any] = List(${requiredVariables map (_.name.decoded) mkString ", "})"
-      //println(s"current: $valCurrent")
 
       val valDslInstance = c parse s"val $nameDSLInstance = new $className()"
-      println(s"dslInstance: ${showRaw(valDslInstance)}")
-      println("Apply(Select(New(Ident(newTypeName(className))), nme.CONSTRUCTOR), List())")
 
       val defRecompile = c parse s"def $nameRecompile(): () => Int = $nameDSLInstance.compile[() => Int]()" match {
         case DefDef(mods, name, tparams, vparamss, AppliedTypeTree(function0, _), Apply(
@@ -118,7 +113,6 @@ final class MPDETransformer[C <: Context, T](
           DefDef(mods, name, tparams, vparamss, AppliedTypeTree(function0, List(typeT)), Apply(
             TypeApply(compile, List(AppliedTypeTree(function0ret, List(typeT)))), args))
       }
-      //println(s"recompile: $defRecompile")
 
       val valDslProgram = c parse s"""
         val $nameDSLProgram: () => Int =
@@ -126,19 +120,17 @@ final class MPDETransformer[C <: Context, T](
         case ValDef(modes, name, AppliedTypeTree(function0ret, _), Apply(TypeApply(function0, _), args)) ⇒
           ValDef(modes, name, AppliedTypeTree(function0ret, List(typeT)), Apply(TypeApply(function0, List(typeT)), args))
       }
-      //println(s"dslProgram: $valDslProgram")
 
       val valHoles = args(holes, nameGenerator) map c.parse
-      //println(s"holes: $valHoles")
 
       val runDSL = c parse s"$nameDSLProgram.apply()"
-      //println(s"apply: $runDSL")
 
       val finalBlock = Block(
         valHoles ++ List(dslClass, valClassName, valCurrent, valDslInstance, defRecompile, valDslProgram),
         runDSL)
-      println(s"Runtime block: $finalBlock")
 
+      /*
+      // this is what it looks like if written by user
       s"""
         type T = block.tree.tpe
 
@@ -159,6 +151,8 @@ final class MPDETransformer[C <: Context, T](
 
         $nameDSLProgram.apply()
       """
+      */
+
       finalBlock
     }
 
