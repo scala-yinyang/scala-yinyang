@@ -21,13 +21,17 @@ trait PrintDSL extends ScalaCompile with CodeGenerator with base.LiftBase with M
         }
       }
     """
+
+    "hole(\"x\", \"Int\")"
   }
 
   override def interpret[T](): T = {
     if (compiledCode == null) {
       val res = main()
+      scala.Predef.println("here")
       compiledCode = compile[T]
     }
+    scala.Predef.println("there")
     compiledCode.apply().asInstanceOf[T]
   }
 
@@ -42,16 +46,15 @@ trait PrintDSL extends ScalaCompile with CodeGenerator with base.LiftBase with M
    *   print(y + x.y)
    * }
    *
-   * -
    * |
-   * U
+   * V
    *
    * liftDSL {
    *   print(hole("p$1") + hole("p$2"))
    * }
-   * -
+   * 
    * |
-   * U
+   * V
    *
    * object staged$1 {
    *   def apply(p$1: Int, p$2: String): Any =
@@ -62,7 +65,7 @@ trait PrintDSL extends ScalaCompile with CodeGenerator with base.LiftBase with M
    *
    */
 
-  def hole[T](variable: String): T = ???
+  def hole(variable: String, variableType: String): Nothing = ???
 
 }
 
