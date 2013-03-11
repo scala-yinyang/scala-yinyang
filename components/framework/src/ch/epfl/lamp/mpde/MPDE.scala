@@ -82,6 +82,7 @@ final class MPDETransformer[C <: Context, T](
             def apply() = {
               ${args(allCaptured, codeGenerator) mkString ";\n"}
               $generated
+              // put an apply here
             }
           }
           $outerScope.apply()
@@ -95,7 +96,7 @@ final class MPDETransformer[C <: Context, T](
       val nameClassName = "className"
       val nameDSLInstance = "dslInstance"
       val nameDSLProgram = "dslProgram"
-      val nameCompileStorage = "__compileStorage"
+      val nameCompileStorage = "__compiledStorage"
       val nameRecompile = "recompile"
 
       val typeT = TypeTree(block.tree.tpe)
@@ -107,19 +108,16 @@ final class MPDETransformer[C <: Context, T](
 
       val valDslInstance = c parse s"val $nameDSLInstance = new $className()"
 
-      val defRecompile = c parse s"def $nameRecompile(): () => Int = $nameDSLInstance.compile[() => Int]()" match {
-        case DefDef(mods, name, tparams, vparamss, AppliedTypeTree(function0, _), Apply(
-          TypeApply(compile, List(AppliedTypeTree(function0ret, _))), args)) ⇒
-          DefDef(mods, name, tparams, vparamss, AppliedTypeTree(function0, List(typeT)), Apply(
-            TypeApply(compile, List(AppliedTypeTree(function0ret, List(typeT)))), args))
+      val defRecompile = c parse s"def $nameRecompile(): () => Int = $nameDSLInstance.compile[Int]" match {
+        case DefDef(mods, name, tparams, vparamss, AppliedTypeTree(function0, _), TypeApply(compile, _)) ⇒
+          DefDef(mods, name, tparams, vparamss, AppliedTypeTree(function0, List(typeT)), TypeApply(compile, List(typeT)))
       }
 
-      val valDslProgram = c parse s"""
-        val $nameDSLProgram: () => Int =
-          $nameCompileStorage.checkAndUpdate[Int]($nameClassName, $nameCurrent, $nameRecompile)""" match {
-        case ValDef(modes, name, AppliedTypeTree(function0ret, _), Apply(TypeApply(function0, _), args)) ⇒
-          ValDef(modes, name, AppliedTypeTree(function0ret, List(typeT)), Apply(TypeApply(function0, List(typeT)), args))
-      }
+      val valDslProgram = c parse s"val $nameDSLProgram =" +
+        s" $nameCompileStorage.checkAndUpdate[Int]($nameClassName, $nameCurrent, $nameRecompile)" match {
+          case ValDef(modes, name, tp, Apply(TypeApply(check, _), args)) ⇒
+            ValDef(modes, name, tp, Apply(TypeApply(check, List(typeT)), args))
+        }
 
       val valHoles = args(holes, nameGenerator) map c.parse
 
@@ -141,13 +139,12 @@ final class MPDETransformer[C <: Context, T](
 
         val $nameDSLInstance = new $className()
 
-        def $nameRecompile(): () => T = $nameDSLInstance.compile[() => T]()
+        def $nameRecompile() = $nameDSLInstance.compile[T]
 
         // Solution for 1. in the email: we can define values for the holes here.
         ${args(holes, nameGenerator) mkString ";\n"}
 
-        val $nameDSLProgram: () => T =
-          $nameCompileStorage.checkAndUpdate[T]($nameClassName, $nameCurrent, $nameRecompile)
+        val $nameDSLProgram = $nameCompileStorage.checkAndUpdate[T]($nameClassName, $nameCurrent, $nameRecompile)
 
         $nameDSLProgram.apply()
       """
@@ -177,10 +174,8 @@ final class MPDETransformer[C <: Context, T](
    */
   def stagingAnalyze(tree: Tree): List[Symbol] = {
     val capturedVariables = freeVariables(tree)
-    println(tree)
     val neededVariables = List[Symbol]() //instance(DSL).variableINeed(capturedVariables)
     //neededVariables
-    println(capturedVariables)
     capturedVariables
   }
 

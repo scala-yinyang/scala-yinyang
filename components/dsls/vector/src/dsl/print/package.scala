@@ -9,7 +9,7 @@ import scala.tools.reflect.ToolBoxFactory
 
 object `package` {
 
-  val __compileStorage = CompiledStorage
+  val __compiledStorage = CompiledStorage
 
   def liftPrint[T](block: ⇒ T): T = macro _liftPrint[T]
   def _liftPrint[T](c: Context)(block: c.Expr[T]): c.Expr[T] =

@@ -11,18 +11,17 @@ trait PrintDSL extends ScalaCompile with CodeGenerator with base.LiftBase with M
   // hey, we can refine println -- but we don't need it right now
   def println(x: Any) = sb.append(s"scala.Predef.println(${x.toString});\n")
 
-  def break(x: Int) = sb.append("scala.Predef.println(\"_\");\n" * x.value)
+  def break(x: Int) = sb.append("scala.Predef.println(\"--\");\n" * x.value)
 
   def generateCode(className: String): String = {
     val res = main()
-
     s"""
       class $className extends Function0[Any] {
         def apply() = {
           ${sb.toString} + ${res.toString}
         }
       }
-      new $className() apply()
+      // new $className().apply()
     """
   }
 

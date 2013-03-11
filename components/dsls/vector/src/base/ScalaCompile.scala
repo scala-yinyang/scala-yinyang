@@ -13,18 +13,20 @@ trait ScalaCompile extends CodeGenerator {
 
   var compiler: Global = _
   var reporter: ConsoleReporter = _
+  val COLON = System getProperty "path.separator"
 
   def setupCompiler() = {
     val settings = new Settings()
 
     settings.classpath.value = this.getClass.getClassLoader match {
-      case ctx: java.net.URLClassLoader ⇒ ctx.getURLs.map(_.getPath).mkString(":")
+      case ctx: java.net.URLClassLoader ⇒ ctx.getURLs.map(_.getPath).mkString(COLON)
       case _                            ⇒ System.getProperty("java.class.path")
     }
     settings.bootclasspath.value = Predef.getClass.getClassLoader match {
-      case ctx: java.net.URLClassLoader ⇒ ctx.getURLs.map(_.getPath).mkString(":")
+      case ctx: java.net.URLClassLoader ⇒ ctx.getURLs.map(_.getPath).mkString(COLON)
       case _                            ⇒ System.getProperty("sun.boot.class.path")
     }
+
     settings.encoding.value = "UTF-8"
     settings.outdir.value = "."
     settings.extdirs.value = ""

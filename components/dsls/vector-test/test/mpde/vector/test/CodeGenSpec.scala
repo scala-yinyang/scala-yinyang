@@ -35,7 +35,7 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
   */
 
   "Runtime code generating" should "work" in {
-    val y = 2
+    val y = 3
     assert(
       liftPrint {
         val b = 0
@@ -43,6 +43,33 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
         break(y)
         1
       } == 1)
+
+  }
+
+  "Runtime code generating" should "not recompile" in {
+    val y = 3
+    for (i ← 0 to 2) {
+      assert(
+        liftPrint {
+          val b = 0
+          println(b)
+          break(y)
+          1
+        } == 1)
+    }
+  }
+
+  "Runtime code generating" should "recompile" in {
+    val y = 3
+    for (i ← 0 to 2) {
+      assert(
+        liftPrint {
+          val b = 0
+          println(b)
+          break(i)
+          1
+        } == 1)
+    }
   }
 
 }
