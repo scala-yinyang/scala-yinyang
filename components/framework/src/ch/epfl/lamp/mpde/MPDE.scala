@@ -39,7 +39,7 @@ final class MPDETransformer[C <: Context, T](
     log("DSL Class: " + show(dslClass))
 
     // if the DSL inherits the StaticallyChecked trait stage it and do the analysis
-    if (staticallyCheck)
+    if (dslInstance(dslClass).isInstanceOf[StaticallyChecked])
       dslInstance(dslClass).asInstanceOf[StaticallyChecked].staticallyCheck(c)
 
     val dslTree = if (canCompileDSL(block.tree) &&
@@ -168,12 +168,6 @@ final class MPDETransformer[C <: Context, T](
 
   def newClass(classname: String) =
     New(Ident(newTypeName(classname)))
-
-  /*
-   * TODO (Duy)
-   * 3) Enabling static analysis of the DSLs at compile time.
-   */
-  def staticallyCheck = false
 
   private final class AscriptionTransformer extends Transformer {
     var ident = 0

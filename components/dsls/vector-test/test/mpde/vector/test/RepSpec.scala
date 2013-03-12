@@ -24,7 +24,7 @@ class RepSpec extends FlatSpec with ShouldMatchers {
     //    }
   }
 
-  it should "lift Vector to Rep" in {
+  /*  it should "lift Vector to Rep" in {
 
     val x = dsl.la.laLiftRep {
       //      //val a: Vector[Int] = ???
@@ -47,9 +47,9 @@ class RepSpec extends FlatSpec with ShouldMatchers {
     }
 
     ()
-  }
+  }*/
 
-  it should "test ascription lift" in {
+  /* it should "test ascription lift" in {
 
     val x = dsl.la.laLiftRep {
       //DenseVector(1, 2)
@@ -66,18 +66,17 @@ class RepSpec extends FlatSpec with ShouldMatchers {
     }
 
     ()
-  }
+  }*/
 
-  it should "test __ifThenElse" in {
+  /* it should "test __ifThenElse" in {
 
     val x = dsl.la.laLiftRep {
       if (true) 1: Int else 2.0: Double
     }
 
     ()
-  }
-
-  it should "test function type lift" in {
+  }*/
+  /*it should "test function type lift" in {
 
     val x = dsl.la.laLiftRep {
       val a = (x: Int) ⇒ x + 5 //generated$dsllarepVectorDSL12.this.Rep[Int] => generated$dsllarepVectorDSL12.this.Rep[Int]
@@ -88,9 +87,9 @@ class RepSpec extends FlatSpec with ShouldMatchers {
     }
 
     ()
-  }
+  }*/
 
-  it should "test ascription transformation" in {
+  /*it should "test ascription transformation" in {
 
     val x = dsl.la.laLiftRep {
       val a = 5
@@ -101,5 +100,5 @@ class RepSpec extends FlatSpec with ShouldMatchers {
     }
 
     ()
-  }
+  }*/
 }

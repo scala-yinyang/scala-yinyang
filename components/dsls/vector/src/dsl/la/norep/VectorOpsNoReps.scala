@@ -217,6 +217,8 @@ trait IfThenElseDSL extends BooleanDSL with Base {
 trait VectorDSL extends ClassTagOps with IfThenElseDSL with ArrayDSL with IntDSL with DoubleDSL with NumericOps with Base with Interpret {
   type Vector[T] = VectorOps[T]
 
+  def hole[T](symId: Long): Nothing = ???
+
   //TODO (NEW) (TOASK) - where should we provide implementation for methods of VectorOps
   trait VectorOps[T] {
 

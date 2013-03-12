@@ -26,7 +26,7 @@ class PrototypeSpec extends FlatSpec with ShouldMatchers {
     x should equal(DenseVector(20, 31, 44))
   }
 
-  it should "lift only fields, functions, and variables that are not bound in the DSL scope" in {
+  /*it should "lift only fields, functions, and variables that are not bound in the DSL scope" in {
     import dsl.la._
     def y(i: Int) = { 1 }
     def function = 1
@@ -46,21 +46,18 @@ class PrototypeSpec extends FlatSpec with ShouldMatchers {
       function
       t1
     }
-  }
-
-  /*
-   * Pending type trees out of types.
-   * 
-   * it should "rewire object applications with our own numeric and class tag" in {
-      val x = dsl.la.laDebug {
-      val y = dsl.la.DenseVector(1, 2, 3)
+  }*/
+  val k = 1
+  it should "rewire object applications with our own numeric and class tag" in {
+    val x = dsl.la.laDebug {
+      val y = dsl.la.DenseVector(k, 2, 3)
       import dsl.la
       val z = la.DenseVector(1, 2, 3)
       import dsl.la.TestObject
       val dv = DenseVector(1, 2, 3)
       ()
-    }    
-  }*/
+    }
+  }
 
   it should "rewire language features to methods" in {
     val x = dsl.la.laLift {
