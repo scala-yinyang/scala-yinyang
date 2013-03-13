@@ -74,14 +74,18 @@ final class MPDETransformer[C <: Context, T](
     val toTransform =
       if (canCompile) allMarkedAsHoles
       else new HoleMarkerTransformer(holes map symbolId).mark(block.tree)
-    val dslClass = c.resetAllAttrs(composeDSL(
-      new ScopeInjectionTransformer().transform(toTransform)))
+    val dslClass = c.resetAllAttrs(composeDSL(new ScopeInjectionTransformer().transform(toTransform)))
     log("DSL Class: " + show(dslClass))
 
     def args(holes: List[Symbol], nameGenerator: CodeGenerator): List[String] =
       holes map (symbol ⇒ s"val ${nameGenerator.generateName(symbolId(symbol))} = ${symbol.name.decoded};\n")
 
-    val dslTree = if (dslInstance(dslClass).isInstanceOf[CodeGenerator]) {
+    val dslTree = if (dslInstance(dslClass).isInstanceOf[CodeGenerator] &&
+      requiredVariables == Nil) {
+      /*
+       * If DSL does not require run-time data it can be completely
+       * generated at compile time and wired for execution. 
+       */
       val codeGenerator = dslInstance(dslClass).asInstanceOf[CodeGenerator]
       val outerScope = className + "$outer$scope"
 
