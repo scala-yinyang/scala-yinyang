@@ -77,8 +77,7 @@ final class MPDETransformer[C <: Context, T](
     val dslClass = c.resetAllAttrs(composeDSL(new ScopeInjectionTransformer().transform(toTransform)))
     log("DSL Class: " + show(dslClass))
 
-    def args(holes: List[Symbol], nameGenerator: CodeGenerator): List[String] =
-      holes map (symbol ⇒ s"val ${nameGenerator.generateName(symbolId(symbol))} = ${symbol.name.decoded};\n")
+    def args(holes: List[Symbol]): String = holes.map({ y: Symbol ⇒ y.name.decoded }).mkString("", ",", "")
 
     val dslTree = if (dslInstance(dslClass).isInstanceOf[CodeGenerator] &&
       requiredVariables == Nil) {
@@ -86,27 +85,20 @@ final class MPDETransformer[C <: Context, T](
        * If DSL does not require run-time data it can be completely
        * generated at compile time and wired for execution. 
        */
-      val codeGenerator = dslInstance(dslClass).asInstanceOf[CodeGenerator]
-      val outerScope = className + "$outer$scope"
-
-      val generated = codeGenerator generateCode className
-      // TODO (Duy) external parameter tracking.
-      val enscoped =
+      val codeGenerator = dslInstance(dslClass).asInstanceOf[CodeGenerator]      
+       
+      val parsed = c parse(
         s"""
-          object $outerScope {
-            def apply() = {
-              ${args(allCaptured, codeGenerator) mkString ";\n"}
-              $generated
-              // put an apply here
-            }
-          }
-          $outerScope.apply()
+          ${codeGenerator generateCode className}          
+          new $className().apply(${args(allCaptured)})
         """
-      val parsed = c parse enscoped
+      )       
       log(s"generated: ${parsed.toString}")
       parsed
     } else {
-      val nameGenerator = new CodeGenerator { def generateCode(className: String) = "" }
+      /*
+       * If DSL need runtime info send it to run-time and install a guard for re-compilation based on required symbols. 
+       */
       val nameCurrent = "current"
       val nameClassName = "className"
       val nameDSLInstance = "dslInstance"
@@ -132,14 +124,12 @@ final class MPDETransformer[C <: Context, T](
         s" $nameCompileStorage.checkAndUpdate[Int]($nameClassName, $nameCurrent, $nameRecompile)" match {
           case ValDef(modes, name, tp, Apply(TypeApply(check, _), args)) ⇒
             ValDef(modes, name, tp, Apply(TypeApply(check, List(typeT)), args))
-        }
+        }      
 
-      val valHoles = args(holes, nameGenerator) map c.parse
-
-      val runDSL = c parse s"$nameDSLProgram.apply()"
+      val runDSL = c parse s"$nameDSLProgram.apply(${args(holes)})"
 
       val finalBlock = Block(
-        valHoles ++ List(dslClass, valClassName, valCurrent, valDslInstance, defRecompile, valDslProgram),
+        List(dslClass, valClassName, valCurrent, valDslInstance, defRecompile, valDslProgram),
         runDSL)
 
       /*
