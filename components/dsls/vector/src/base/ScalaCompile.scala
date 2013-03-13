@@ -39,7 +39,7 @@ trait ScalaCompile extends CodeGenerator {
 
   var dumpGeneratedCode = false
 
-  def compile[T]: () ⇒ T = {
+  def compile[T: Manifest, Ret]: Ret = {
     if (this.compiler eq null)
       setupCompiler()
 
@@ -69,7 +69,7 @@ trait ScalaCompile extends CodeGenerator {
     val loader = new AbstractFileClassLoader(fileSystem, this.getClass.getClassLoader)
 
     val cls: Class[_] = loader.loadClass(className)
-    cls.getConstructor().newInstance().asInstanceOf[() ⇒ T]
+    cls.getConstructor().newInstance().asInstanceOf[Ret]
   }
 
 }

@@ -221,8 +221,6 @@ trait VectorDSL
   with Interpret with BaseYinYang {
   type Vector[T] = VectorOps[T]
 
-  def hole[T](symId: Long): Nothing = ???
-
   //TODO (NEW) (TOASK) - where should we provide implementation for methods of VectorOps
   trait VectorOps[T] {
 
@@ -262,7 +260,7 @@ trait VectorDSL
     //    def apply[T <: AnyVal: Numeric: ClassTag](a: Map[Int, T]): Vector[T] = ???
   }
 
-  def interpret[T](): T = ???
+  def interpret[T: Manifest](params: Any*): T = ???
 
   /**
    * TODO how are we going to translate to objects and yet remain modular and reusable.

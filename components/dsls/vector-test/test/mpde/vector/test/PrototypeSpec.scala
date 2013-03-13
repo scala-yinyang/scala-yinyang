@@ -17,7 +17,7 @@ class PrototypeSpec extends FlatSpec with ShouldMatchers {
   def method = 1
   def paramMethod(i: Int) = i
 
-  "A shallow embedding of la" should "produce values" in {
+  /*"A shallow embedding of la" should "produce values" in {
     val x = /*laLift*/ {
       val v1 = DenseVector(1, 2, 3)
       (v1 + (DenseVector(3, 4, 5) * SparseVector[Int](6, 7, 8)): Vector[Int]).map(_ + 1)
@@ -72,6 +72,6 @@ class PrototypeSpec extends FlatSpec with ShouldMatchers {
     }
     ()
   }
-
+*/
 }
 

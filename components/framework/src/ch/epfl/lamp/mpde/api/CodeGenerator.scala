@@ -6,9 +6,16 @@ import scala.reflect.macros.Context
 
 trait BaseYinYang {
 
-  def stagingAnalyze(): List[Long]
+  def manifest[T]()(implicit m: Manifest[T]) = m
 
-  def hole[T](symbolId: Int): T
+  def stagingAnalyze(): List[Int]
+
+  trait HoleEvidence[T, Ret] {
+    def emit(tpe: Manifest[Any], symbolId: scala.Int): Ret
+  }
+
+  def hole[T, Ret](tpe: Manifest[T], symbolId: scala.Int)(implicit holeEv: HoleEvidence[T, Ret]): Ret =
+    holeEv emit (tpe.asInstanceOf[Manifest[Any]], symbolId)
 
 }
 
@@ -16,7 +23,7 @@ trait CodeGenerator {
 
   def generateCode(className: String): String
 
-  def generateName(id: Int): String = s"generated$$bridge$$$id"
+  def compile[T: Manifest, Ret]: Ret
 
   //def main(): Any
 

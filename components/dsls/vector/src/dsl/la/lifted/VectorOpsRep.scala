@@ -258,7 +258,7 @@ trait VectorDSL
   with NumericOps with Base with IfThenElseDSL with Interpret
   with BaseYinYang {
 
-  def interpret[T]() = ???
+  def interpret[T](params: Any*) = ???
 
   type Vector[T] = dsl.la.Vector[T]
 

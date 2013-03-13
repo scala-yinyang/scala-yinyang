@@ -11,7 +11,7 @@ import org.scalatest.junit.JUnitRunner
  */
 @RunWith(classOf[JUnitRunner])
 class NoRepSpec extends FlatSpec with ShouldMatchers {
-
+  /*
   //  "A deep embedding of la without Rep types" should "compile" in {
   //    val x = new VectorDSL {
   //      def main = {
@@ -97,5 +97,5 @@ class NoRepSpec extends FlatSpec with ShouldMatchers {
     }
 
     ()
-  }
+  }*/
 }

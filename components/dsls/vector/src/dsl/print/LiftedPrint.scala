@@ -2,34 +2,59 @@ package dsl.print
 
 import ch.epfl.lamp.mpde.api._
 import base._
+import scala.collection._
 
 /** The int printing DSL */
 trait PrintDSL
   extends ScalaCompile with CodeGenerator with base.LiftBase with MiniIntDSL
-  with MiniPrintDSL with base.Interpret with BaseYinYang {
+  with base.Interpret with BaseYinYang {
 
   var sb: StringBuffer = new StringBuffer()
 
-  // hey, we can refine println -- but we don't need it right now
-  def println(x: Any) = sb.append(s"scala.Predef.println(${x.toString});\n")
+  val recompileHoles = mutable.Set[scala.Int]()
 
-  def break(x: Int) = sb.append("scala.Predef.println(\"--\");\n" * x.value)
+  // hey, we can refine println -- but we don't need it right now
+  def println(x: Int) = sb.append(s"scala.Predef.println(${x.toString});\n")
+
+  def break(x: Int) = {
+    sb.append("scala.Predef.println(\"break called with " + x.toString + "\");\n")
+    x match {
+      case Hole(tpe, id) ⇒
+        recompileHoles += id
+      case _ ⇒
+    }
+  }
+
+  def reset() = {
+    sb = new StringBuffer()
+    recompileHoles.clear
+    holes.clear
+  }
+
+  def stagingAnalyze(): List[scala.Int] = {
+    reset()
+    main()
+
+    recompileHoles.toList
+  }
 
   def generateCode(className: String): String = {
+    reset()
     val res = main()
     s"""
-      class $className extends Function0[Any] {
-        def apply() = {
-          ${sb.toString} + ${res.toString}
+      class $className extends Function${holes.size}[${"Int, " * holes.size} Int] {
+        def apply(${holes.map(y ⇒ y.toString + ": " + y.tpe.toString).mkString("", ",", "")}) = {
+          ${sb.toString} 
+          ${res.toString}
         }
       }
-      // new $className().apply()
     """
   }
 
-  override def interpret[T](): T = {
+  // TODO make a super trait
+  override def interpret[T: Manifest](params: Any*): T = {
     if (compiledCode == null) {
-      compiledCode = compile[T]
+      compiledCode = compile[T, () ⇒ T]
     }
     compiledCode.apply().asInstanceOf[T]
   }
@@ -37,22 +62,11 @@ trait PrintDSL
   var compiledCode: () ⇒ Any = _
 }
 
-trait MiniIntDSL extends base.LiftBase { self: CodeGenerator ⇒
+trait MiniIntDSL extends BaseYinYang with base.LiftBase { self: CodeGenerator ⇒
 
   type Int = IntOps
 
-  /*
-   * Supposed to be in `LiftBase`.
-   */
-  trait HoleEvidence[Ret] {
-    def emit(symbolId: scala.Int): Ret
-  }
-
-  /*
-   * This too.
-   */
-  def hole[Ret](symbolId: scala.Int)(implicit holeEv: HoleEvidence[Ret]): Ret =
-    holeEv emit symbolId
+  val holes: mutable.ArrayBuffer[Hole] = new mutable.ArrayBuffer()
 
   trait IntOps {
     def +(that: Int): Int = IntPlus(IntOps.this, that)
@@ -74,11 +88,18 @@ trait MiniIntDSL extends base.LiftBase { self: CodeGenerator ⇒
     def lift(v: scala.Int): Int = IntConst(v)
   }
 
-  implicit object HoleInt extends HoleEvidence[Int] {
-    def emit(symbolId: scala.Int): Int = new IntConst(0) {
-      override def value = throw new Exception("This value cannot be used.")
-      override val toString = generateName(symbolId)
-    }
+  case class Hole(tpe: Manifest[Any], symbolId: scala.Int) extends IntOps {
+    override def toString = "x" + symbolId
+    def value = -1
+  }
+
+  implicit object HoleInt extends HoleEvidence[scala.Int, this.Int] {
+    def emit(tpe: Manifest[Any], symbolId: scala.Int): Int =
+      {
+        val h = Hole(tpe, symbolId)
+        holes += h
+        h
+      }
   }
 
 }
@@ -87,8 +108,4 @@ trait MiniUnitDSL extends base.LiftBase {
   implicit object LiftUnit extends LiftEvidence[scala.Unit, Unit] {
     def lift(v: Unit): Unit = ()
   }
-}
-
-trait MiniPrintDSL extends base.LiftBase {
-  def println(x: Any): Unit
 }
