@@ -1,5 +1,6 @@
 package dsl.la.rep
 
+import ch.epfl.lamp.mpde.api._
 import base._
 import scala.reflect.ClassTag
 
@@ -252,7 +253,10 @@ trait IfThenElseDSL extends Base with BooleanDSL {
   def __ifThenElse[T](c: ⇒ Rep[Boolean], t: Rep[T], e: Rep[T]) = ???
 }
 
-trait VectorDSL extends ArrayDSL with IntDSL with DoubleDSL with ClassTagOps with NumericOps with Base with IfThenElseDSL with Interpret {
+trait VectorDSL
+  extends ArrayDSL with IntDSL with DoubleDSL with ClassTagOps
+  with NumericOps with Base with IfThenElseDSL with Interpret
+  with BaseYinYang {
 
   def interpret[T]() = ???
 

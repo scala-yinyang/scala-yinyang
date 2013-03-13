@@ -2,6 +2,7 @@ package dsl.la.norep
 
 import scala.reflect.ClassTag
 import base._
+import ch.epfl.lamp.mpde.api._
 
 trait Base extends LiftBase
 
@@ -214,7 +215,10 @@ trait IfThenElseDSL extends BooleanDSL with Base {
 //  }
 //}
 
-trait VectorDSL extends ClassTagOps with IfThenElseDSL with ArrayDSL with IntDSL with DoubleDSL with NumericOps with Base with Interpret {
+trait VectorDSL
+  extends ClassTagOps with IfThenElseDSL with ArrayDSL
+  with IntDSL with DoubleDSL with NumericOps with Base
+  with Interpret with BaseYinYang {
   type Vector[T] = VectorOps[T]
 
   def hole[T](symId: Long): Nothing = ???

@@ -66,6 +66,15 @@ class RepSpec extends FlatSpec with ShouldMatchers {
     }
 
     ()
+  }
+
+  it should "test __ifThenElse" in {
+
+    val x = dsl.la.laLiftRep {
+      if (true) 1: Int else 2.0: Double
+    }
+
+    ()
   }*/
 
   /* it should "test __ifThenElse" in {
