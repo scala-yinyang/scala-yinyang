@@ -37,40 +37,40 @@ final class MPDETransformer[C <: Context, T](
    */
   def apply[T](block: c.Expr[T]): c.Expr[T] = {
     log("Body: " + show(block.tree))
-    val ascrBody = new AscriptionTransformer().injectAscription(block.tree)
-    log("Ascription: " + show(ascrBody))
-    val allCaptured = freeVariables(block.tree)
-    val holeMarker = new HoleMarkerTransformer(allCaptured map symbolId)
+    // TODO language feature check should go first and fail with error!
 
-    val allMarkedAsHoles = holeMarker mark block.tree
+    // ascription according to original types
+    val ascribed = if (rep) {
+      val ascrBody = new AscriptionTransformer().injectAscription(block.tree)
+      log("Ascription: " + show(ascrBody))
+      ascrBody
+    } else {
+      block.tree
+    }
+
+    // mark captured variables as holes
+    val allCaptured = freeVariables(block.tree)
+    val allMarkedAsHoles = new HoleMarkerTransformer(allCaptured map symbolId) mark ascribed
     log(s"Body with all captured variables marked: ${allMarkedAsHoles}")
 
+    // put the body into the cake and re-wire
     val transfBody = new ScopeInjectionTransformer().transform(allMarkedAsHoles)
     log("Transformed Body: " + show(transfBody))
 
     // generates the Embedded DSL cake with the transformed "main" method.
     val dslClassPre = c.resetAllAttrs(composeDSL(transfBody)) // TODO this should not exist
 
-    // if the DSL inherits the StaticallyChecked trait stage it and do the analysis
+    // if the DSL inherits the StaticallyChecked trait stage it and do the static analysis
     if (dslInstance(dslClassPre).isInstanceOf[StaticallyChecked])
       dslInstance(dslClassPre).asInstanceOf[StaticallyChecked].staticallyCheck(c)
 
-    /* stagingAnalyze
-     *   if all captured lifted, cannot run
-     *   if some holes, do not know which are holes yet
-     *   -> all holes
-     * 
-     * compile time compilation
-     *   all captured become holes
-     * 
-     * run time compilation
-     *   some captured lifted, some become holes
-     */
-    val requiredIds = dslInstance(dslClassPre).asInstanceOf[BaseYinYang].stagingAnalyze()
-    val requiredVariables = requiredIds.map(symbolById)
+    // DSL returns what holes it needs
+    val requiredVariables = dslInstance(dslClassPre).asInstanceOf[BaseYinYang].stagingAnalyze().map(symbolById)
     val canCompile = requiredVariables.isEmpty
 
     val holes = allCaptured diff requiredVariables
+
+    // re-transform the tree with new holes
     val toTransform =
       if (canCompile) allMarkedAsHoles
       else new HoleMarkerTransformer(holes map symbolId).mark(block.tree)
@@ -238,35 +238,45 @@ final class MPDETransformer[C <: Context, T](
         case vd @ ValDef(mods, name, tpt, rhs) ⇒ {
           val retDef = ValDef(mods, name, tpt, Typed(transform(rhs), TypeTree(tpt.tpe)))
 
-          //provide Def trees with NoSymbol (for correct show(tree)
-          //retDef.setSymbol(NoSymbol)
+          //TODO (TOASK) - we need way to save symbols and types
+          retDef.setType(vd.tpe)
+          retDef.setSymbol(vd.symbol)
           retDef
         }
 
         case dd @ DefDef(mods, name, tparams, vparamss, tpt, rhs) ⇒ {
           val retDef = DefDef(mods, name, tparams, vparamss, tpt, Typed(transform(rhs), TypeTree(tpt.tpe)))
 
-          //provide Def trees with NoSymbol (for correct show(tree)
-          //retDef.setSymbol(NoSymbol)
+          retDef.setType(dd.tpe)
+          retDef.setSymbol(dd.symbol)
           retDef
         }
 
         //TODO refactor this in more functional way
         case ap @ Apply(fun, args) ⇒ {
-          val ascrArgs = args map { x ⇒ Typed(transform(x), TypeTree(x.tpe)) }
+          val ascrArgs = args map {
+            x ⇒
+              //TODO refactor to use isConstant
+              //x ⇒ Typed(transform(x), TypeTree(if (x.symbol != null && x.symbol.asInstanceOf[scala.reflect.internal.Symbols#Symbol].isConstant) x.tpe.erasure else x.tpe)) //working solution
+              val auniverse = c.universe.asInstanceOf[scala.reflect.internal.Types]
+              log("scala.reflect.runtime.universe.asInstanceOf[scala.reflect.internal.Types].isConstantType(x.tpe) = " +
+                auniverse.isConstantType(tree.tpe.asInstanceOf[auniverse.Type]))
+              Typed(transform(x), TypeTree(if (x.tpe != null && auniverse.isConstantType(x.tpe.asInstanceOf[auniverse.Type])) x.tpe.erasure else x.tpe))
+          }
           val retApply = if (externalApplyFound) {
-            //TODO find types for method parameters
             Apply(transform(fun), ascrArgs)
           } else {
             externalApplyFound = true
-            //TODO find types for method parameters
             val baseTree = Apply(transform(fun), ascrArgs)
             externalApplyFound = false
-            //TODO change type for TypeTree to method type
             Typed(baseTree, TypeTree(ap.tpe))
           }
           retApply
         }
+        //
+        //case lit @ Literal(Constant(_)) ⇒ {
+        //  Typed(lit, TypeTree(lit.tpe.erasure))
+        //}
 
         case _ ⇒
           super.transform(tree)
@@ -320,6 +330,14 @@ final class MPDETransformer[C <: Context, T](
 
     private val definedValues, definedMethods = collection.mutable.HashSet[Symbol]()
 
+    val notLiftedTypes: Set[Type] = Set(
+      c.universe.typeOf[scala.math.Numeric.IntIsIntegral.type],
+      c.universe.typeOf[scala.math.Numeric.DoubleIsFractional.type],
+      c.universe.typeOf[scala.reflect.ClassTag[Int]].erasure)
+
+    def isLifted(tp: Type): Boolean =
+      !(notLiftedTypes exists (_ =:= tp.erasure))
+
     /**
      * Current solution for finding outer scope idents.
      */
@@ -365,7 +383,12 @@ final class MPDETransformer[C <: Context, T](
         }
 
         case typTree: TypTree ⇒
-          constructTypeTree(typTree.tpe)
+          if (isLifted(typTree.tpe)) {
+            constructTypeTree(typTree.tpe)
+          } else {
+            //TODO move it to tree construction methods (and inject to them)
+            constructNotLiftedTree(typTree.tpe)
+          }
 
         // re-wire objects
         case s @ Select(Select(inn, t: TermName), name) if s.symbol.isMethod && t.toString == "package" /* ugh, no TermName extractor */ ⇒
@@ -437,10 +460,37 @@ final class MPDETransformer[C <: Context, T](
       val arity = args.length - 1
       import scala.reflect.runtime.universe.definitions._
       val MaxFunctionArity = 22
-      //TODO (TOASK) - problem with symbol comparision
+      //TODO refactor symbol comparision
+      //val myuniverse2 = c.universe.asInstanceOf[scala.reflect.internal.Definitions with scala.reflect.internal.Types]
+      //log("isFunctionType = " + myuniverse2.definitions.isFunctionType(tp.asInstanceOf[myuniverse2.Type]))
+      //if (myuniverse2.definitions.isFunctionType(tp.asInstanceOf[myuniverse2.Type])) {
+      //log("sym.id = " + sym.asInstanceOf[scala.reflect.internal.Symbols#Symbol].id)
+      //log("FunctionClass(arity).id = " + FunctionClass(arity).asInstanceOf[scala.reflect.internal.Symbols#Symbol].id)
+      //}
+      FunctionClass(arity).fullName
       arity <= MaxFunctionArity && arity >= 0 && sym.fullName == FunctionClass(arity).fullName
     case _ ⇒
       false
+  }
+
+  def constructNotLiftedTree(inType: Type): Tree = inType match {
+    case TypeRef(pre, sym, args) ⇒
+      if (args.isEmpty) { //Simple type
+        Select(This(newTypeName(className)), inType.typeSymbol.name)
+      } else { //AppliedTypeTree
+        val baseTree =
+          if (!isFunctionType(inType))
+            Select(This(newTypeName(className)), sym.name)
+          else Select(Ident(newTermName("scala")), sym.name)
+        val typeTrees = args map { x ⇒ TypeTree(x) }
+        AppliedTypeTree(baseTree, typeTrees)
+      }
+
+    case q @ SingleType(pre, sym) ⇒
+      Select(This(newTypeName(className)), sym.name)
+
+    case another @ _ ⇒
+      TypeTree(another)
   }
 
   def constructPolyTree(inType: Type): Tree = inType match {
@@ -467,7 +517,7 @@ final class MPDETransformer[C <: Context, T](
     if (isFunctionType(inType)) {
       val TypeRef(pre, sym, args) = inType
       val typeTrees = args map { x ⇒ wrapInRep(x) }
-      //TODO (TOASK) - why we can't construnct baseTree using TypeTree(pre) - why pre is only scala.type not FunctionN?
+      //we can't construnct baseTree using TypeTree(pre) - pre is only scala.type not FunctionN
       //val baseTree = TypeTree(pre) //pre = scala.type
       //using such baseTree we get val a: scala.type[generated$dsllarepVectorDSL13.this.Rep[Int], generated$dsllarepVectorDSL13.this.Rep[Int]] = ...
       val baseTree = Select(Ident(newTermName("scala")), sym.name)

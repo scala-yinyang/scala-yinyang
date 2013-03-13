@@ -102,10 +102,17 @@ class RepSpec extends FlatSpec with ShouldMatchers {
 
     val x = dsl.la.laLiftRep {
       val a = 5
+      val b = 3 + a
+      val e: Int ⇒ Int = ???
+      val f = a
+      a + b
       val bvar: Int = 5
       val cvar = DenseVector(1, 2)
-      def testMethod(a: Any, c: Vector[Int])(d: Int): Vector[Int] = DenseVector(1, bvar, 3)
-      testMethod(bvar, cvar)(2)
+      val dvar = DenseVector(1.0, 2.0)
+      def testMethod(a: Any, c: Vector[Int])(d: Double): Vector[Int] = DenseVector(1, bvar, 3)
+      testMethod(bvar, cvar)(bvar)
+      def testMethod2(a: Double, b: Vector[Double]): Vector[Double] = DenseVector(1.0)
+      val g = testMethod2(1.0, dvar)
     }
 
     ()
