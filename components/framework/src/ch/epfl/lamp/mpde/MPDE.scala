@@ -191,7 +191,6 @@ final class MPDETransformer[C <: Context, T](
       collected.toList.distinct
     }
 
-<<<<<<< HEAD
   }
 
   private final class LocalDefCollector extends Traverser {
