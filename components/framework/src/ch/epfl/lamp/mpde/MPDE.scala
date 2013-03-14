@@ -165,7 +165,6 @@ final class YYTransformer[C <: Context, T](
       collected.toList.distinct
     }
 
-<<<<<<< HEAD
   }
 
   private final class LocalDefCollector extends Traverser {
