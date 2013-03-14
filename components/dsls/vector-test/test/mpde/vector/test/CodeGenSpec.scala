@@ -8,7 +8,7 @@ import org.scalatest.junit.JUnitRunner
 @RunWith(classOf[JUnitRunner])
 class CodeGenSpec extends FlatSpec with ShouldMatchers {
 
-  /*"Static code staging" should "work" in {
+  "Static code staging" should "work" in {
     val x = liftPrint {
       val x = 1
       val y = 2
@@ -17,22 +17,19 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
       x + y + z
     }
     assert(x == 7, "Should return the value 7!")
-  }*/
+  }
 
-  /*
-  // TODO (Duy) This should work after the holes are made. 
   "Dynamic code insertion" should "work" in {
     val x = 1
     val y = 2
 
     assert(
-      liftPrint {
+      liftPrintDebug {
         val z = 4
-        println(x + y + z)
-        x + y + z
-      } == 7) // should print "7" and return "7"
+        println(z + x + y) // TODO x + y + z fails miserably
+        z + x + y
+      } == 7)
   }
-  */
 
   "Compile time code generating" should "work" in {
     val y = 3

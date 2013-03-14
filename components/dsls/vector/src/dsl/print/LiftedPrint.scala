@@ -41,9 +41,10 @@ trait PrintDSL
   def generateCode(className: String): String = {
     reset()
     val res = main()
+    val distinctHoles = holes.distinct
     s"""
-      class $className extends Function${holes.size}[${"Int, " * holes.size} Int] {
-        def apply(${holes.map(y ⇒ y.toString + ": " + y.tpe.toString).mkString("", ",", "")}) = {
+      class $className extends Function${distinctHoles.size}[${"Int, " * distinctHoles.size} Int] {
+        def apply(${distinctHoles.map(y ⇒ y.toString + ": " + y.tpe.toString).mkString("", ",", "")}) = {
           ${sb.toString} 
           ${res.toString}
         }

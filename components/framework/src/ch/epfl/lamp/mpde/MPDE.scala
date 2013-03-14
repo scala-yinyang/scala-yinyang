@@ -59,6 +59,7 @@ final class MPDETransformer[C <: Context, T](
     // generates the Embedded DSL cake with the transformed "main" method.
     val dslClassPre = c.resetAllAttrs(composeDSL(transfBody)) // TODO this should not exist
 
+    log(s"Pre eval: \n ${show(dslClassPre)}")
     // if the DSL inherits the StaticallyChecked trait stage it and do the static analysis
     if (dslInstance(dslClassPre).isInstanceOf[StaticallyChecked])
       dslInstance(dslClassPre).asInstanceOf[StaticallyChecked].staticallyCheck(c)
