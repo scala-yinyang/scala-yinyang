@@ -4,7 +4,9 @@ import scala.reflect.ClassTag
 import base._
 import ch.epfl.lamp.mpde.api._
 
-trait Base extends LiftBase
+trait Base extends BaseYinYang {
+  def main(): Any
+}
 
 trait IntDSL extends Base {
   self: DoubleDSL with BooleanDSL ⇒
@@ -31,10 +33,12 @@ trait IntDSL extends Base {
   // v: Else Scala won't let you declare the object with abstract methods
   implicit object LiftInt extends LiftEvidence[scala.Int, Int] {
     def lift(v: scala.Int): Int = null // TODO: Wouldn't this better be a ???
+    def hole(tpe: Manifest[Any], symbolId: scala.Int): Int = null
   }
 
   implicit object LiftUnit extends LiftEvidence[scala.Unit, Unit] {
     def lift(v: Unit): Unit = ()
+    def hole(tpe: Manifest[Any], symbolId: scala.Int): Unit = ()
   }
 
   implicit object IntOrdering extends Ordering[Int] {
@@ -72,6 +76,7 @@ trait DoubleDSL extends Base {
   //TODO (TOASK) maybe extends LiftEvidence[scala.Double, DoubleDSL#Double]
   implicit object LiftDouble extends LiftEvidence[scala.Double, Double] {
     def lift(v: scala.Double): Double = ???
+    def hole(tpe: Manifest[Any], symbolId: scala.Int): Double = ???
   }
 
   implicit object DoubleOrdering extends Ordering[Double] {
@@ -107,8 +112,8 @@ trait NumericOps extends IntDSL with DoubleDSL with BooleanDSL with Base {
     def toInt(x: T): Int
     def toDouble(x: T): Double
 
-    def zero = fromInt(liftTerm(0))
-    def one = fromInt(liftTerm(1))
+    def zero = fromInt(lift(0))
+    def one = fromInt(lift(1))
 
     def abs(x: T): T = ???
     def signum(x: T): Int = ???
@@ -186,6 +191,7 @@ trait BooleanDSL extends Base {
 
   implicit object LiftBoolean extends LiftEvidence[scala.Boolean, Boolean] {
     def lift(v: scala.Boolean): Boolean = ???
+    def hole(tpe: Manifest[Any], symbolId: Int): Boolean = ???
   }
 }
 
@@ -218,7 +224,7 @@ trait IfThenElseDSL extends BooleanDSL with Base {
 trait VectorDSL
   extends ClassTagOps with IfThenElseDSL with ArrayDSL
   with IntDSL with DoubleDSL with NumericOps with Base
-  with Interpret with BaseYinYang {
+  with Interpreted {
   type Vector[T] = VectorOps[T]
 
   //TODO (NEW) (TOASK) - where should we provide implementation for methods of VectorOps

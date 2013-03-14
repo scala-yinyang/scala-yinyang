@@ -24,7 +24,7 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
     val y = 2
 
     assert(
-      liftPrintDebug {
+      liftPrint {
         val z = 4
         println(z + x + y) // TODO x + y + z fails miserably
         z + x + y

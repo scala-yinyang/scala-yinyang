@@ -64,90 +64,94 @@ final class MPDETransformer[C <: Context, T](
     if (dslInstance(dslClassPre).isInstanceOf[StaticallyChecked])
       dslInstance(dslClassPre).asInstanceOf[StaticallyChecked].staticallyCheck(c)
 
-    // DSL returns what holes it needs
-    val requiredVariables = dslInstance(dslClassPre).asInstanceOf[BaseYinYang].stagingAnalyze().map(symbolById)
-    val canCompile = requiredVariables.isEmpty
+    val dslTree = dslInstance(dslClassPre) match {
+      case dsl: CodeGenerator ⇒
 
-    val holes = allCaptured diff requiredVariables
+        // DSL returns what holes it needs
+        val requiredVariables = dslInstance(dslClassPre).asInstanceOf[BaseYinYang].stagingAnalyze().map(symbolById)
+        val canCompile = requiredVariables.isEmpty
 
-    // re-transform the tree with new holes
-    val toTransform =
-      if (canCompile) transfBody
-      else {
-        val lifted = LiftLiteralTransformer(ascribed, idents = requiredVariables, free = allCaptured)
-        val injected = new ScopeInjectionTransformer().transform(lifted)
-        val transfBody = new HoleMarkerTransformer(holes map symbolId).mark(injected)
-        transfBody
-      }
-    log("toTransform: " + show(toTransform))
-    val dslClass = c.resetAllAttrs(composeDSL(toTransform))
-    log("DSL Class: " + show(dslClass))
+        val holes = allCaptured diff requiredVariables
 
-    def args(holes: List[Symbol]): String = holes.map({ y: Symbol ⇒ y.name.decoded }).mkString("", ",", "")
+        // re-transform the tree with new holes
+        val toTransform =
+          if (canCompile) transfBody
+          else {
+            // TODO Duy this is not clean. Maybe we could make a new transformer to just flip the hole into lift.
+            val lifted = LiftLiteralTransformer(ascribed, idents = requiredVariables, free = allCaptured)
+            val injected = new ScopeInjectionTransformer().transform(lifted)
+            val transfBody = new HoleMarkerTransformer(holes map symbolId).mark(injected)
+            transfBody
+          }
+        log("toTransform: " + show(toTransform))
+        val dslClass = c.resetAllAttrs(composeDSL(toTransform))
+        log("DSL Class: " + show(dslClass))
 
-    val dslTree = if (dslInstance(dslClass).isInstanceOf[CodeGenerator] &&
-      canCompile) {
-      /*
+        def args(holes: List[Symbol]): String = holes.map({ y: Symbol ⇒ y.name.decoded }).mkString("", ",", "")
+
+        if (dslInstance(dslClass).isInstanceOf[CodeGenerator] &&
+          canCompile) {
+          /*
        * If DSL does not require run-time data it can be completely
        * generated at compile time and wired for execution. 
        */
-      val codeGenerator = dslInstance(dslClass).asInstanceOf[CodeGenerator]
+          val codeGenerator = dslInstance(dslClass).asInstanceOf[CodeGenerator]
 
-      val code = s"""
+          val code = s"""
           ${codeGenerator generateCode className}          
           new $className().apply(${args(allCaptured)})
         """
-      log(s"generated: ${code}")
-      val parsed = c parse (code)
+          log(s"generated: ${code}")
+          val parsed = c parse (code)
 
-      parsed
-    } else {
-      /*
+          parsed
+        } else {
+          /*
        * If DSL need runtime info send it to run-time and install a guard for re-compilation based on required symbols. 
        */
-      val nameCurrent = "current"
-      val nameClassName = "className"
-      val nameDSLInstance = "dslInstance"
-      val nameDSLProgram = "dslProgram"
-      val nameCompileStorage = "__compiledStorage"
-      val nameRecompile = "recompile"
+          val nameCurrent = "current"
+          val nameClassName = "className"
+          val nameDSLInstance = "dslInstance"
+          val nameDSLProgram = "dslProgram"
+          val nameCompileStorage = "__compiledStorage"
+          val nameRecompile = "recompile"
 
-      val typeT = TypeTree(block.tree.tpe)
+          val typeT = TypeTree(block.tree.tpe)
 
-      val valCurrent =
-        c parse s"val $nameCurrent: List[Any] = List(${requiredVariables map (_.name.decoded) mkString ", "})"
+          val valCurrent =
+            c parse s"val $nameCurrent: List[Any] = List(${requiredVariables map (_.name.decoded) mkString ", "})"
 
-      val valDslInstance = c parse s"val $nameDSLInstance = new $className()"
+          val valDslInstance = c parse s"val $nameDSLInstance = new $className()"
 
-      val retTypeTree: Tree = TypeTree(block.tree.tpe)
+          val retTypeTree: Tree = TypeTree(block.tree.tpe)
 
-      val argsCnt = args(holes).length
-      val functionTypeTree =
-        AppliedTypeTree(Select(Select(Ident("_root_"), "scala"), newTypeName("Function" + argsCnt)),
-          (0 until argsCnt).map(y ⇒ Ident(newTermName("scala.Any"))).toList ::: List(retTypeTree))
+          val argsCnt = args(holes).length
+          val functionTypeTree =
+            AppliedTypeTree(Select(Select(Ident("_root_"), "scala"), newTypeName("Function" + argsCnt)),
+              (0 until argsCnt).map(y ⇒ Ident(newTermName("scala.Any"))).toList ::: List(retTypeTree))
 
-      val recompileF = c parse s"def $nameRecompile(): () => Any = $nameDSLInstance.compile[Int]" match {
-        case DefDef(mods, name, tparams, vparamss, AppliedTypeTree(function0, _), TypeApply(compile, _)) ⇒
-          DefDef(mods, name, tparams, vparamss, AppliedTypeTree(function0, List(typeT)), TypeApply(compile, List(typeT, functionTypeTree)))
-      }
+          val recompileF = c parse s"def $nameRecompile(): () => Any = $nameDSLInstance.compile[Int]" match {
+            case DefDef(mods, name, tparams, vparamss, AppliedTypeTree(function0, _), TypeApply(compile, _)) ⇒
+              DefDef(mods, name, tparams, vparamss, AppliedTypeTree(function0, List(typeT)), TypeApply(compile, List(typeT, functionTypeTree)))
+          }
 
-      val guard = c parse s"""val $nameDSLProgram = 
+          val guard = c parse s"""val $nameDSLProgram = 
         $nameCompileStorage.checkAndUpdate[Int](${new scala.util.Random().nextInt}, $nameCurrent, $nameRecompile)""" match {
-        case ValDef(modes, name, tp, Apply(TypeApply(check, _), args)) ⇒
-          ValDef(modes, name, tp, Apply(TypeApply(check, List(functionTypeTree)), args))
-      }
+            case ValDef(modes, name, tp, Apply(TypeApply(check, _), args)) ⇒
+              ValDef(modes, name, tp, Apply(TypeApply(check, List(functionTypeTree)), args))
+          }
 
-      val DSL = c parse s"$nameDSLProgram.apply(${args(holes)})"
-      val finalBlock = Block(
-        dslClass,
-        valCurrent,
-        valDslInstance,
-        recompileF,
-        guard,
-        DSL)
+          val DSL = c parse s"$nameDSLProgram.apply(${args(holes)})"
+          val finalBlock = Block(
+            dslClass,
+            valCurrent,
+            valDslInstance,
+            recompileF,
+            guard,
+            DSL)
 
-      log("Guarded block:" + show(finalBlock))
-      /*
+          log("Guarded block:" + show(finalBlock))
+          /*
       // this is what it looks like if written by user
       s"""
         type T = block.tree.tpe
@@ -173,7 +177,10 @@ final class MPDETransformer[C <: Context, T](
       """
       */
 
-      finalBlock
+          finalBlock
+        }
+      case dsl: Interpreted ⇒
+        ???
     }
 
     log("Final tree: " + show(c.typeCheck(c.resetAllAttrs(dslTree))))
@@ -311,9 +318,9 @@ final class MPDETransformer[C <: Context, T](
     override def transform(tree: Tree): Tree = {
       tree match {
         case t @ Literal(Constant(v)) ⇒
-          Apply(Select(This(newTypeName(className)), newTermName("liftTerm")), List(t))
+          Apply(Select(This(newTypeName(className)), newTermName("lift")), List(t))
         case t @ Ident(v) if free.contains(t.symbol) && idents.contains(t.symbol) ⇒
-          Apply(Select(This(newTypeName(className)), newTermName("liftTerm")), List(t))
+          Apply(Select(This(newTypeName(className)), newTermName("lift")), List(t))
         case _ ⇒
 
           super.transform(tree)
@@ -353,15 +360,6 @@ final class MPDETransformer[C <: Context, T](
 
   }
 
-  /*
-   * This transformer needs to do the following:
-   *   - lift all identifiers and constants with a liftTerm method
-   *   - rewire all top-level objects to DSL objects
-   *   - rewire all method selections to DSL method
-   *   - convert all language constructs to method calls (__ifThenElse, __while, ...)
-   *   - rewire types to their cake counterparts (in case of type ascription and type application etc.)
-   *   ...
-   */
   private final class ScopeInjectionTransformer extends Transformer {
 
     private val definedValues, definedMethods = collection.mutable.HashSet[Symbol]()
@@ -402,12 +400,6 @@ final class MPDETransformer[C <: Context, T](
       ident += 1
 
       val result = tree match {
-        // lifting of literals
-        //        // If the identifier is a val or var outside the scope of the DSL we will lift it.
-        //        // This approach does no cover the case of methods with parameters. For now they will be disallowed.
-        //        case t @ Ident(v) if isFree(t.symbol) && !t.symbol.isModule ⇒
-        //          Apply(TypeApply(Select(This(newTypeName(className)), newTermName("liftTerm")), List(TypeTree(), TypeTree())), List(t))
-
         //provide Def trees with NoSymbol (for correct show(tree)
         case vdDef: ValOrDefDef ⇒ {
           val retDef = super.transform(tree)

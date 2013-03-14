@@ -6,8 +6,7 @@ import scala.collection._
 
 /** The int printing DSL */
 trait PrintDSL
-  extends ScalaCompile with CodeGenerator with base.LiftBase with MiniIntDSL
-  with base.Interpret with BaseYinYang {
+  extends ScalaCompile with CodeGenerator with MiniIntDSL with Interpreted with BaseYinYang with Base {
 
   var sb: StringBuffer = new StringBuffer()
 
@@ -52,7 +51,6 @@ trait PrintDSL
     """
   }
 
-  // TODO make a super trait
   override def interpret[T: Manifest](params: Any*): T = {
     if (compiledCode == null) {
       compiledCode = compile[T, () ⇒ T]
@@ -63,7 +61,7 @@ trait PrintDSL
   var compiledCode: () ⇒ Any = _
 }
 
-trait MiniIntDSL extends BaseYinYang with base.LiftBase { self: CodeGenerator ⇒
+trait MiniIntDSL extends BaseYinYang { self: CodeGenerator ⇒
 
   type Int = IntOps
 
@@ -87,6 +85,11 @@ trait MiniIntDSL extends BaseYinYang with base.LiftBase { self: CodeGenerator �
 
   implicit object LiftInt extends LiftEvidence[scala.Int, Int] {
     def lift(v: scala.Int): Int = IntConst(v)
+    def hole(tpe: Manifest[Any], symbolId: scala.Int): Int = {
+      val h = Hole(tpe, symbolId)
+      holes += h
+      h
+    }
   }
 
   case class Hole(tpe: Manifest[Any], symbolId: scala.Int) extends IntOps {
@@ -94,19 +97,13 @@ trait MiniIntDSL extends BaseYinYang with base.LiftBase { self: CodeGenerator �
     def value = -1
   }
 
-  implicit object HoleInt extends HoleEvidence[scala.Int, this.Int] {
-    def emit(tpe: Manifest[Any], symbolId: scala.Int): Int =
-      {
-        val h = Hole(tpe, symbolId)
-        holes += h
-        h
-      }
-  }
-
 }
 
-trait MiniUnitDSL extends base.LiftBase {
+trait MiniUnitDSL extends BaseYinYang {
   implicit object LiftUnit extends LiftEvidence[scala.Unit, Unit] {
-    def lift(v: Unit): Unit = ()
+    def lift(v: scala.Unit): Unit = ()
+    def hole(tpe: Manifest[Any], symbolId: scala.Int): Unit = {
+      ()
+    }
   }
 }
