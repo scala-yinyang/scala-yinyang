@@ -9,7 +9,7 @@ import org.scalatest.junit.JUnitRunner
 class CodeGenSpec extends FlatSpec with ShouldMatchers {
 
   "Static code staging" should "work" in {
-    val x = liftPrint {
+    val x = liftPrintDebug {
       val x = 1
       val y = 2
       val z = 4

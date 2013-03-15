@@ -7,7 +7,7 @@ trait BaseYinYang {
 
   def stagingAnalyze(): List[Int]
 
-  trait LiftEvidence[T, Ret] {
+  abstract class LiftEvidence[T: Manifest, Ret] {
     def hole(tpe: Manifest[Any], symbolId: Int): Ret
     def lift(v: T): Ret
   }
