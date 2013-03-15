@@ -13,11 +13,11 @@ package object lifted {
   object implementations {
     def lift[T](c: Context)(block: c.Expr[T]): c.Expr[T] = new MPDETransformer[c.type, T](c, "lifted.ScalaDSL", debug = false, rep = true)(block)
     def liftDebug[T](c: Context)(block: c.Expr[T]): c.Expr[T] = new MPDETransformer[c.type, T](c, "lifted.ScalaDSL", debug = true, rep = true)(block)
-    def optiML[T](c: Context)(block: c.Expr[T]): c.Expr[T] = new MPDETransformer[c.type, T](c, "lifted.OptiML", debug = false, rep = true)(block)
-    def optiMLDebug[T](c: Context)(block: c.Expr[T]): c.Expr[T] = new MPDETransformer[c.type, T](c, "lifted.OptiML", debug = true, rep = true)(block)
+    def optiML[T](c: Context)(block: c.Expr[T]): c.Expr[T] = new MPDETransformer[c.type, T](c, "lifted.OptiML", debug = false, rep = true, mainMethod = "mainDelite")(block)
+    def optiMLDebug[T](c: Context)(block: c.Expr[T]): c.Expr[T] = new MPDETransformer[c.type, T](c, "lifted.OptiML", debug = true, rep = true, mainMethod = "mainDelite")(block)
 
-    def optiGraph[T](c: Context)(block: c.Expr[T]): c.Expr[T] = new MPDETransformer[c.type, T](c, "lifted.OptiGraph", debug = false, rep = true)(block)
-    def optiGraphDebug[T](c: Context)(block: c.Expr[T]): c.Expr[T] = new MPDETransformer[c.type, T](c, "lifted.OptiGraph", debug = true, rep = true)(block)
+    def optiGraph[T](c: Context)(block: c.Expr[T]): c.Expr[T] = new MPDETransformer[c.type, T](c, "lifted.OptiGraph", debug = false, rep = true, mainMethod = "mainDelite")(block)
+    def optiGraphDebug[T](c: Context)(block: c.Expr[T]): c.Expr[T] = new MPDETransformer[c.type, T](c, "lifted.OptiGraph", debug = true, rep = true, mainMethod = "mainDelite")(block)
   }
 
 }

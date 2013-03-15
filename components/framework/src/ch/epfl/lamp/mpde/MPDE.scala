@@ -24,7 +24,8 @@ final class YYTransformer[C <: Context, T](
   val c: C,
   dslName: String,
   val debug: Boolean = false,
-  val rep: Boolean = false) {
+  val rep: Boolean = false,
+  val mainMethod: String = "main") {
   import c.universe._
 
   val symbolIds: mutable.HashMap[Int, Symbol] = new mutable.HashMap()
@@ -456,7 +457,6 @@ final class YYTransformer[C <: Context, T](
   * Configuration parameters.
   */
   def interpretMethod = "interpret"
-  val dslMethod: String = "main"
   val holeMethod = "hole"
   val className = "generated$" + dslName.filter(_ != '.') + YYTransformer.uID.incrementAndGet
   def constructTypeTree(inType: Type) = if (rep)
@@ -596,7 +596,7 @@ final class YYTransformer[C <: Context, T](
         DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(List()), TypeTree(),
           Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List())), Literal(Constant(())))),
         // def main = {
-        DefDef(Modifiers(), newTermName(dslMethod), List(), List(List()), Ident(newTypeName("Any")), transformedBody))))
+        DefDef(Modifiers(), newTermName(mainMethod), List(), List(List()), Ident(newTypeName("Any")), transformedBody))))
   //     }
   // }
 
