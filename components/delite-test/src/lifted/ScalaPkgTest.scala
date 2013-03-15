@@ -11,45 +11,20 @@ import scala.tools.nsc.io._
 import scala.tools.nsc.interpreter.AbstractFileClassLoader
 import java.io._
 
-/*
- * This is a prototype implementation of the embedded DSL. In this prototype we will use the of
- * polymorphic embedding of DSLs.
- *
- * DSL. Once the library is complete all method implementations should
- * remain empty so users can build their own embedded compilers. There is need to enforce more than lifting on the library user.
- */
-trait LiftBase {
-
-  abstract class LiftEvidence[T: Manifest, U] {
-    def lift(v: T): U
-  }
-
-  abstract class HoleEvidence[T: Manifest, U] {
-    def hole(v: Long): U
-  }
-
-  def liftTerm[T, Ret](v: T)(implicit liftEv: LiftEvidence[T, Ret]): Ret =
-    liftEv.lift(v)
-
-  //  private def hole[T: Manifest, Ret](symId: Long)(holeEv: HoleEvidence[T, Ret]): Ret =
-  //    holeEv.hole(symId)
-}
-
-trait ScalaDSL extends ScalaOpsPkg with ScalaOpsPkgExp with LiftBase with Base
-  with ScalaCompile { self ⇒
-
+trait LMSYinYang extends BaseYinYang with BaseExp { self ⇒
   case class Hole[+T: Manifest](symId: Long) extends Def[T]
 
   implicit def liftAny[T: Manifest]: LiftEvidence[T, Rep[T]] =
     new LiftEvidence[T, Rep[T]] {
       def lift(v: T): Rep[T] = unit(v)
+      def hole(m: Manifest[Any], symId: Int): Rep[T] = toAtom(Hole(symId))
     }
 
-  def hole[T: Manifest](symId: Long): Rep[T] = toAtom(Hole(symId))
-  //  implicit def holeAny[T: Manifest]: HoleEvidence[T, Rep[T]] =
-  //    new HoleEvidence[T, Rep[T]] {
-  //      def hole(v: Long): Rep[T] = toAtom(Hole(v))
-  //    }
+  def stagingAnalyze() = Nil
+}
+
+trait ScalaDSL extends ScalaOpsPkg with ScalaOpsPkgExp with LMSYinYang with CodeGenerator
+  with ScalaCompile { self ⇒
 
   def main(): Any
 
@@ -123,3 +98,24 @@ trait ScalaDSL extends ScalaOpsPkg with ScalaOpsPkgExp with LiftBase with Base
   }
 
 }
+
+import ppl.dsl.optiml._
+
+trait OptiML extends OptiMLApplicationRunner with LMSYinYang with Interpreted {
+  def mainDelite(): Any
+
+  override def main(): Unit = ???
+
+  def interpret[T: Manifest](params: Any*) = 0.asInstanceOf[T]
+}
+
+import ppl.dsl.optigraph._
+
+trait OptiGraph extends OptiGraphApplicationRunner with LMSYinYang with Interpreted {   
+  def mainDelite(): Any
+
+  override def main(): Unit = ???
+
+  def interpret[T: Manifest](params: Any*) = 0.asInstanceOf[T]
+}
+
