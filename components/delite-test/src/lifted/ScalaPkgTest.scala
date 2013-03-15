@@ -111,7 +111,7 @@ trait OptiML extends OptiMLApplicationRunner with LMSYinYang with Interpreted {
 
 import ppl.dsl.optigraph._
 
-trait OptiGraph extends OptiGraphApplicationRunner with LMSYinYang with Interpreted {   
+trait OptiGraph extends OptiGraphApplicationRunner with LMSYinYang with Interpreted {
   def mainDelite(): Any
 
   override def main(): Unit = ???
