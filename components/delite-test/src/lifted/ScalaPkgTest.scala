@@ -107,6 +107,11 @@ trait OptiML extends OptiMLApplicationRunner with LMSYinYang with Interpreted {
   override def main(): Unit = ???
 
   def interpret[T: Manifest](params: Any*) = 0.asInstanceOf[T]
+
+  type Int = scala.Int
+  type Unit = scala.Unit
+  type Nothing = scala.Nothing
+  type Any = scala.Any
 }
 
 import ppl.dsl.optigraph._
@@ -117,5 +122,18 @@ trait OptiGraph extends OptiGraphApplicationRunner with LMSYinYang with Interpre
   override def main(): Unit = ???
 
   def interpret[T: Manifest](params: Any*) = 0.asInstanceOf[T]
+
+  type Int = scala.Int
+  type Double = scala.Double
+  type Unit = scala.Unit
+  type Nothing = scala.Nothing
+  type Any = scala.Any
+  type Graph = ppl.dsl.optigraph.Graph
+  type Node = ppl.dsl.optigraph.Node
+  type Edge = ppl.dsl.optigraph.Edge
+  type GSet[T] = ppl.dsl.optigraph.GSet[T]
+  type Deferrable[T] = ppl.dsl.optigraph.Deferrable[T]
+  type ManifestFactory = scala.reflect.ManifestFactory.type
+  //  type shallow.optiml.Graph = this.Graph
 }
 

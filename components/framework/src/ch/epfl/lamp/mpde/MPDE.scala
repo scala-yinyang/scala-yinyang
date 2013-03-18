@@ -516,7 +516,8 @@ final class MPDETransformer[C <: Context, T](
 
   def constructRepTree(inType: Type): Tree = { //transform Type1[Type2[...]] => Rep[Type1[Type2[...]]] for non-function types
     def wrapInRep(inType: Type): Tree =
-      AppliedTypeTree(Select(This(newTypeName(className)), newTypeName("Rep")), List(TypeTree(inType)))
+      AppliedTypeTree(Select(This(newTypeName(className)), newTypeName("Rep")), List(constructPolyTree(inType)))
+    //AppliedTypeTree(Select(This(newTypeName(className)), newTypeName("Rep")), List(TypeTree(inType)))
 
     if (isFunctionType(inType)) {
       val TypeRef(pre, sym, args) = inType
