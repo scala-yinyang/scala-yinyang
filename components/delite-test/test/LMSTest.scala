@@ -20,7 +20,7 @@ class OptiMLSpec extends FlatSpec with ShouldMatchers {
 
 }
 
-class OptiGraphSpec extends FlatSpec with ShouldMatchers {
+class OptiGraphSpec extends FlatSpec with ShouldMatchers with LanguageOps {
 
   "A basic OptiGraph test should" should "rewire" in {
     val y = 1
@@ -150,6 +150,320 @@ class OptiGraphSpec extends FlatSpec with ShouldMatchers {
       } else {
         println("[OK] Repeated assignment did not affect value")
       }
+    }
+  }
+
+  "test_reduceable" should "compile" in {
+    val x: Any = optiGraphDebug {
+      val g = Graph()
+      val n1 = g.AddNode
+      val n2 = g.AddNode
+      val n3 = g.AddNode
+      val n4 = g.AddNode
+      g.Freeze
+
+      println("Test Reduction Assignments: SUM ")
+      val sum = Reduceable[Int](5)
+      for (n ← g.Nodes) {
+        sum += 1
+      }
+      if (sum.value != 9) {
+        println("[FAIL] Expected value = 9, Actual value = " + sum.value)
+      } else {
+        println("[OK] Sum is correct.")
+      }
+
+      //-------//
+
+      println("Test Reduction Assignments: PROD ")
+      val prod = Reduceable[Int](2)
+      for (n ← g.Nodes) {
+        prod *= 2
+      }
+      if (prod.value != 32) {
+        println("[FAIL] Expected value = 32, Actual value = " + prod.value)
+      } else {
+        println("[OK] Product is correct.")
+      }
+
+      //-------//
+
+      println("Test Reduction Assignments: ALL ")
+      val all = Reduceable[Boolean](true)
+      val all2 = Reduceable[Boolean](true)
+      for (n ← g.Nodes) {
+        all &&= false
+        all2 &&= true
+      }
+      if (all.value != false) {
+        println("[FAIL] Expected value = false, Actual value = " + all.value)
+      } else if (all2.value != true) {
+        println("[FAIL] Expected value = true, Actual value = " + all2.value)
+      } else {
+        println("[OK] ALL is correct.")
+      }
+
+      //-------//
+
+      println("Test Reduction Assignments: ANY ")
+      val any = Reduceable[Boolean](false)
+      val any2 = Reduceable[Boolean](true)
+      for (n ← g.Nodes) {
+        any ||= true
+        any2 ||= false
+      }
+      if (any.value != true) {
+        println("[FAIL] Expected value = true, Actual value = " + any.value)
+      } else if (any2.value != true) {
+        println("[FAIL] Expected value = true, Actual value = " + any2.value)
+      } else {
+        println("[OK] ANY is correct.")
+      }
+
+      //-------//
+
+      println("Test Reduction Assignments: COUNT ")
+      val count = Reduceable[Int](1)
+      val count2 = Reduceable[Int](0)
+      for (n ← g.Nodes) {
+        count ++= true
+        count2 ++= false
+      }
+      if (count.value != 5) {
+        println("[FAIL] Expected value = 4, Actual value = " + count.value)
+      } else if (count2.value != 0) {
+        println("[FAIL] Expected value = 0, Actual value = " + count2.value)
+      } else {
+        println("[OK] COUNT is correct.")
+      }
+
+      println("Test Reduction Assignments: MAX ")
+      val max = Reduceable[Int](MIN_INT)
+
+      //-------//
+      //WARNING
+      //TODO we need way to name implicit objects
+      //maybe we can generate name and then make aliases
+      //for generated name
+      //HERE REWIRING OF OBJECTS FAILS:
+      //==> math.this.Ordering.Int
+      //<== Int
+
+      //      for (n <- g.Nodes) {
+      //        max >= n.Id
+      //      }
+      //      if (max.value != 3) {
+      //        println("[FAIL] Expected value = 3, Actual value = " + max.value)
+      //      } else {
+      //        println("[OK] MAX is correct.")
+      //      }
+      //
+      //      //-------//
+      //
+      //      println("Test Reduction Assignments: MIN ")
+      //      val min = Reduceable[Int](MAX_INT)
+      //      for (n <- g.Nodes) {
+      //        min <= 1
+      //      }
+      //      if (min.value != 1) {
+      //        println("[FAIL] Expected value = 1, Actual value = " + min.value)
+      //      } else {
+      //        println("[OK] MIN is correct.")
+      //      }
+
+      //-------//
+      //END OF WARNING
+
+      println("Test Reduceable Basic Ops")
+      val red = Reduceable[Double](1.0)
+      if (red.value != 1.0) {
+        println("[FAIL] Expected value = 1.0, Actual value = " + red.value)
+      } else {
+        println("[OK] Got correct current value.")
+      }
+      red.setValue(2.0)
+      if (red.value != 2.0) {
+        println("[FAIL] Expected value = 2.0, Actual value = " + red.value)
+      } else {
+        println("[OK] Value was set correctly.")
+      }
+    }
+  }
+
+  "test_reductions" should "compile" in {
+    val x: Any = optiGraphDebug {
+      val g = Graph()
+      val n1 = g.AddNode
+      val n2 = g.AddNode
+      val n3 = g.AddNode
+      val n4 = g.AddNode
+      g.Freeze
+      val np1 = NodeProperty[Int](g, 1)
+      val np2 = NodeProperty[Boolean](g, true)
+      val ns = NodeSet()
+
+      // check empty/non-empty collections, with/without filters
+
+      println("Test Reduction Expressions: SUM")
+      //TODO - problem with classOf[...] - can't rewire type parameter
+      //TODO - problem with holes, $x - parameter is not found
+      //        val r1 = Sum(g.Nodes){np1(_)}
+      //                    val r2 = Sum(g.Nodes, (n: Rep[Node]) => (n.Id == 1)){np1(_)}
+      //            val r3 = Sum(ns.Items){np1(_)}
+      //
+      //      if(r1 != 4) {
+      //        println("[FAIL] Expected value = 4, Actual value = " + r1)
+      //      } else {
+      //        println("[OK] Sum is correct.")
+      //      }
+      //      if(r2 != 1) {
+      //        println("[FAIL] Expected value = 1, Actual value = " + r2)
+      //      } else {
+      //        println("[OK] Sum is correct.")
+      //      }
+      //      if(r3 != 0) {
+      //        println("[FAIL] Expected value = 0, Actual value = " + r3)
+      //      } else {
+      //        println("[OK] Sum is correct.")
+      //      }
+      //
+      //      //-------//
+      //
+      //      println("Test Reduction Expressions: PRODUCT")
+      //      r1 = Product(g.Nodes){np1(_)}
+      //      r2 = Product(g.Nodes, (n: Rep[Node]) => (n.Id == 1)){ n => unit(5)}
+      //      r3 = Product(ns.Items){np1(_)}
+      //
+      //      if(r1 != 1) {
+      //        println("[FAIL] Expected value = 1, Actual value = " + r1)
+      //      } else {
+      //        println("[OK] Product is correct.")
+      //      }
+      //      if(r2 != 5) {
+      //        println("[FAIL] Expected value = 5, Actual value = " + r2)
+      //      } else {
+      //        println("[OK] Product is correct.")
+      //      }
+      //      if(r3 != 0) {
+      //        println("[FAIL] Expected value = 0, Actual value = " + r3)
+      //      } else {
+      //        println("[OK] Product is correct.")
+      //      }
+      //
+      //      //-------//
+      //
+      //      println("Test Reduction Expressions: COUNT")
+      //      r1 = Count(g.Nodes){(n: Rep[Node]) => (n.Id != 1)}
+      //      r2 = Count(g.Nodes) {(n: Rep[Node]) => (n.Id == 1)}
+      //      r3 = Count(ns.Items){(n: Rep[Node]) => (n.Id == 1)}
+      //
+      //      if(r1 != 3) {
+      //        println("[FAIL] Expected value = 3, Actual value = " + r1)
+      //      } else {
+      //        println("[OK] Count is correct.")
+      //      }
+      //      if(r2 != 1) {
+      //        println("[FAIL] Expected value = 1, Actual value = " + r2)
+      //      } else {
+      //        println("[OK] Count is correct.")
+      //      }
+      //      if(r3 != 0) {
+      //        println("[FAIL] Expected value = 0, Actual value = " + r3)
+      //      } else {
+      //        println("[OK] Count is correct.")
+      //      }
+      //
+      //      //-------//
+      //
+      //      println("Test Reduction Expressions: MIN")
+      //      r1 = Min(g.Nodes){(n: Rep[Node]) => n.Id}
+      //      r2 = Min(g.Nodes, (n: Rep[Node]) => (n.Id == 1)) {(n: Rep[Node]) => n.Id}
+      //      r3 = Min(ns.Items){np1(_)}
+      //
+      //      if(r1 != 0) {
+      //        println("[FAIL] Expected value = 0, Actual value = " + r1)
+      //      } else {
+      //        println("[OK] Min is correct.")
+      //      }
+      //      if(r2 != 1) {
+      //        println("[FAIL] Expected value = 1, Actual value = " + r2)
+      //      } else {
+      //        println("[OK] Min is correct.")
+      //      }
+      //      if(r3 != MAX_INT) {
+      //        println("[FAIL] Expected value = MAX_INT, Actual value = " + r3)
+      //      } else {
+      //        println("[OK] Min is correct.")
+      //      }
+      //
+      //      //-------//
+      //
+      //      println("Test Reduction Expressions: MAX")
+      //      r1 = Max(g.Nodes){(n: Rep[Node]) => n.Id}
+      //      r2 = Max(g.Nodes, (n: Rep[Node]) => (n.Id == 1)) {(n: Rep[Node]) => n.Id}
+      //      r3 = Max(ns.Items){np1(_)}
+      //
+      //      if(r1 != 3) {
+      //        println("[FAIL] Expected value = 3, Actual value = " + r1)
+      //      } else {
+      //        println("[OK] Max is correct.")
+      //      }
+      //      if(r2 != 1) {
+      //        println("[FAIL] Expected value = 1, Actual value = " + r2)
+      //      } else {
+      //        println("[OK] Max is correct.")
+      //      }
+      //      if(r3 != MIN_INT) {
+      //        println("[FAIL] Expected value = MIN_INT, Actual value = " + r3)
+      //      } else {
+      //        println("[OK] Max is correct.")
+      //      }
+      //
+      //      //-------//
+      //
+      //      println("Test Reduction Expressions: ALL")
+      //      val r1b = All(g.Nodes){(n: Rep[Node]) => (n.Id < 5)}
+      //      val r2b = All(g.Nodes, (n: Rep[Node]) => (n.Id == 1)) {(n: Rep[Node]) => (n.Id == 2)}
+      //      val r3b = All(ns.Items){(n: Rep[Node]) => (n.Id < 5)}
+      //
+      //      if(r1b != true) {
+      //        println("[FAIL] Expected value = true, Actual value = " + r1b)
+      //      } else {
+      //        println("[OK] All is correct.")
+      //      }
+      //      if(r2b != false) {
+      //        println("[FAIL] Expected value = false, Actual value = " + r2b)
+      //      } else {
+      //        println("[OK] All is correct.")
+      //      }
+      //      if(r3b != true) {
+      //        println("[FAIL] Expected value = true, Actual value = " + r3b)
+      //      } else {
+      //        println("[OK] All is correct.")
+      //      }
+      //
+      //      //-------//
+      //
+      //      println("Test Reduction Expressions: ANY")
+      //      r1b = Any(g.Nodes){(n: Rep[Node]) => (n.Id > 2)}
+      //      r2b = Any(g.Nodes, (n: Rep[Node]) => (n.Id == 1)) {(n: Rep[Node]) => (n.Id == 2)}
+      //      r3b = Any(ns.Items){(n: Rep[Node]) => (n.Id < 5)}
+      //
+      //      if(r1b != true) {
+      //        println("[FAIL] Expected value = true, Actual value = " + r1b)
+      //      } else {
+      //        println("[OK] Any is correct.")
+      //      }
+      //      if(r2b != false) {
+      //        println("[FAIL] Expected value = false, Actual value = " + r2b)
+      //      } else {
+      //        println("[OK] Any is correct.")
+      //      }
+      //      if(r3b != false) {
+      //        println("[FAIL] Expected value = false, Actual value = " + r3b)
+      //      } else {
+      //        println("[OK] Any is correct.")
+      //      }
     }
   }
 

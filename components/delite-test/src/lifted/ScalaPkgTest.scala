@@ -125,6 +125,7 @@ trait OptiGraph extends OptiGraphApplicationRunner with LMSYinYang with Interpre
 
   type Int = scala.Int
   type Double = scala.Double
+  type Boolean = scala.Boolean
   type Unit = scala.Unit
   type Nothing = scala.Nothing
   type Any = scala.Any
@@ -133,7 +134,17 @@ trait OptiGraph extends OptiGraphApplicationRunner with LMSYinYang with Interpre
   type Edge = ppl.dsl.optigraph.Edge
   type GSet[T] = ppl.dsl.optigraph.GSet[T]
   type Deferrable[T] = ppl.dsl.optigraph.Deferrable[T]
-  type ManifestFactory = scala.reflect.ManifestFactory.type
-  //  type shallow.optiml.Graph = this.Graph
+  type Reduceable[T] = ppl.dsl.optigraph.Reduceable[T]
+  type NodeProperty[T] = ppl.dsl.optigraph.NodeProperty[T]
+
+  //  implicit object LanguageObj {
+  //    def MIN_INT = 128
+  //  }
+
+  //implicit object IntIsIntegral extends Numeric.IntIsIntegral with Ordering.IntOrdering
+
+  implicit val ManifestFactory = scala.reflect.ManifestFactory
+  implicit val IntIsIntegral = scala.math.Numeric.IntIsIntegral
+
 }
 

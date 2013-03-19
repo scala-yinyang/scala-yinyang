@@ -322,8 +322,9 @@ final class MPDETransformer[C <: Context, T](
         if (toMark contains id)
           Apply(
             TypeApply(Select(This(newTypeName(className)), newTermName(holeMethod)), List(TypeTree(), TypeTree())),
-            //            List(Apply(TypeApply(Select(Select(This(newTypeName("scala")), newTermName("Predef")), newTermName("manifest")), List(TypeTree(i.tpe))), List()),
-            List(Apply(TypeApply(Ident(newTermName("manifest")), List(TypeTree(i.tpe))), List()),
+            //List(Apply(TypeApply(Select(Select(This(newTypeName("scala")), newTermName("Predef")), newTermName("manifest")), List(TypeTree(i.tpe))), List()),
+            //changed because we need to rewire type parameters
+            List(Apply(TypeApply(Ident(newTermName("manifest")), List(constructPolyTree(i.tpe))), List()),
               Literal(Constant(id))))
         else
           super.transform(tree)
@@ -395,24 +396,40 @@ final class MPDETransformer[C <: Context, T](
             constructNotLiftedTree(typTree.tpe)
           }
 
-        // re-wire objects
+        //TODO
+        //in classOf[...] as type parameter we have Literal(Constant(...)) I can pass only type, but I can't rewire type based on type
+        //I can find such Literals but I can't rewire them
+        //        case l @ Literal(Constant(u)) if u.isInstanceOf[Type] ⇒
+        //          constructPolyTree(u.asInstanceOf[Type])
+        //          Literal(Constant(constructPolyTree(u.asInstanceOf[Type]).tpe))
+
         case s @ Select(Select(inn, t: TermName), name) if s.symbol.isMethod && t.toString == "package" /* ugh, no TermName extractor */ ⇒
+          log("s @ Select(Select(inn, t: TermName), name) if s.symbol.isMethod && t.toString == 'package'")
           Ident(name)
 
         case s @ Select(Select(inn, t: TermName), name) if s.symbol.isMethod && t.toString == "this" /* ugh, no TermName extractor */ ⇒
+          log("s @ Select(Select(inn, t: TermName), name) if s.symbol.isMethod && t.toString == 'this'")
           Ident(name)
 
         case s @ Select(inn, name) if s.symbol.isMethod ⇒
+          log("s @ Select(inn, name) if s.symbol.isMethod ⇒ ")
           Select(transform(inn), name)
 
         // replaces objects with their cake counterparts
         case s @ Select(inn, name) ⇒ // TODO this needs to be narrowed down if s.symbol.isModule =>
+          log("s @ Select(inn, name) ⇒")
           Ident(name)
 
+        //Added to rewire inherited methods to this class
+        case th @ This(_) ⇒
+          This(newTypeName(className))
+
         case TypeApply(mth, targs) ⇒ // TODO this needs to be changed for LMS to include a type transformer
-          if (rep)
-            TypeApply(transform(mth), targs)
-          else {
+          if (rep) {
+            //Added because we need to rewire type parameters in TypeApply
+            val liftedTargs = targs map { x: Tree ⇒ constructPolyTree(x.tpe) }
+            TypeApply(transform(mth), liftedTargs)
+          } else {
             val liftedTargs = targs map (transform(_))
             TypeApply(transform(mth), liftedTargs)
           }

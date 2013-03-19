@@ -46,3 +46,33 @@ class Node {
   /** Returns the id of the node (unique per graph) */
   def Id: Int = ???
 }
+
+/** NodeProperty constructors */
+object NodeProperty {
+  /** Create a new node property (each node's value is set to default of the type) */
+  def apply[A](g: Graph): NodeProperty[A] = ???
+  /** Create a new node property (each node's value is set to init) */
+  def apply[A](g: Graph, init: A): NodeProperty[A] = ???
+}
+/** Alias for NodeProperty */
+object NP {
+  def apply[A](g: Graph) = NodeProperty.apply(g)
+  def apply[A](g: Graph, init: A) = NodeProperty.apply(g, init)
+}
+
+/** Operations on NodeProperties */
+class NodeProperty[A](np: NodeProperty[A]) {
+  /** Return the property value of node n */
+  def apply(n: Node): A = ???
+  /** Update the property value of node n to x */
+  def update(n: Node, x: A): Unit = ???
+  /** Set the value of all the nodes to x (parallel operation) */
+  def setAll(x: A): Unit = ???
+  /** Defer assigning value x to node n (any other previously deferred value will be overwritten) */
+  def <=(n: Node, x: A): Unit = ???
+  /** Assign the value deferred for node n (the latest deferred value) */
+  def assign(n: Node): Unit = ???
+  /** Assign the values deferred for all the nodes (parallel operation) */
+  def assignAll(): Unit = ???
+}
+

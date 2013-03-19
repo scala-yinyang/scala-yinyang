@@ -13,13 +13,6 @@ package shallow.optiml
 /* Properties (for immutable graphs only) */
 
 /**
- * Used to associate data with the nodes in the graph
- * Note: properties can be associated only with immutable graph instances
- */
-trait NodeProperty[T] {
-  type NP[T] = NodeProperty[T]
-}
-/**
  * An EdgeProperty object is used to associate data with graph edges
  * Note: properties can be associated only with immutable graph instances
  */
@@ -30,6 +23,11 @@ trait EdgeProperty[T] {
 /* Collection types */
 
 /** Unordered collection of unique elements */
+
+object NodeSet {
+  def apply(): GSet[Node] = ???
+}
+
 trait GSet[A] {
   type NodeSet = GSet[Node]
   type NS = GSet[Node]
@@ -78,7 +76,9 @@ class GIterable[T](var data: Array[T], offset: Int, size: Int) {
   def apply(i: Int): T = ???
   def length: Int = size //data.length
   def toList: List[T] = ???
-  def toSet: GSet[T] = ???
+
+  /** Returns the elements as a set */
+  def toSet(): GSet[T] = ???
 
   def unsafeSetData(xs: Array[T], len: Int): Unit = ???
 
@@ -86,10 +86,63 @@ class GIterable[T](var data: Array[T], offset: Int, size: Int) {
   def dcSize: Int = ???
   def dcApply(i: Int): T = ???
   def dcUpdate(i: Int, n: T): Unit = ???
+
+  /** Parallel iteration */
+  def foreach(block: T ⇒ Unit): Unit = ???
+  /** Sequential iteration */
+  def forseq(block: T ⇒ Unit): Unit = ???
+  def forseq(filter: T ⇒ Boolean, block: T ⇒ Unit): Unit = ???
+  /** Returns a filtered GIterable collection of elements */
+  def filter(pred: T ⇒ Boolean): GIterable[T] = ???
+  /** Reductions */
+  def sum[A: Manifest: Numeric](block: T ⇒ A): A = ???
+  def sum[A: Manifest: Numeric](filter: T ⇒ Boolean, block: T ⇒ A): A = ???
+  def product[A: Manifest: Numeric](block: T ⇒ A): A = ???
+  def product[A: Manifest: Numeric](filter: T ⇒ Boolean, block: T ⇒ A): A = ???
+  def max[A: Manifest: Ordering](block: T ⇒ A): A = ???
+  def max[A: Manifest: Ordering](filter: T ⇒ Boolean, block: T ⇒ A): A = ???
+  def min[A: Manifest: Ordering](block: T ⇒ A): A = ???
+  def min[A: Manifest: Ordering](filter: T ⇒ Boolean, block: T ⇒ A): A = ???
+  // counts the number of elements for which the predicate holds
+  def count(pred: T ⇒ Boolean): Int = ???
+  // boolean AND
+  def all(block: T ⇒ Boolean): Boolean = ???
+  def all(filter: T ⇒ Boolean, block: T ⇒ Boolean): Boolean = ???
+  // boolean OR
+  def any(block: T ⇒ Boolean): Boolean = ???
+  def any(filter: T ⇒ Boolean, block: T ⇒ Boolean): Boolean = ???
+
 }
 
-/** Can be used in reduction assignments (in a parallel context) */
-trait Reduceable[T]
+object Reduceable {
+  /** Creates a new Reduceable with initial value init */
+  def apply[T](init: T): Reduceable[T] = ???
+}
+
+///** Can be used in reduction assignments (in a parallel context) */
+trait Reduceable[T] {
+
+  /** Returns the current value of r*/
+  def value: T = ???
+  /** Sets the current value of r to v */
+  def setValue(v: T): Unit = ???
+
+  /** Reduction assignments */
+  // sum
+  def +=(v: T)(implicit a: Numeric[T]): Unit = ???
+  // product
+  def *=(v: T)(implicit a: Numeric[T]): Unit = ???
+  // min
+  def <=(v: T)(implicit a: Ordering[T]): Unit = ???
+  // max
+  def >=(v: T)(implicit a: Ordering[T]): Unit = ???
+  // count (TODO: how to constrain method to work on Reduceable[Int] only?)
+  def ++=(v: Boolean): Unit = ???
+  // all (boolean AND)
+  def &&=(v: Boolean): Unit = ???
+  // any (boolean OR)
+  def ||=(v: Boolean): Unit = ???
+}
 
 /** Deferrable constructor */
 object Deferrable {
@@ -99,7 +152,7 @@ object Deferrable {
   //def apply[T: Manifest](init: T): Deferrable[T] = ???
   //original method
   //does we need manifest here only because T is type parameter of Rep
-  //def apply[T:Manifest](init:Rep[T]) = def_new(init)
+  //def apply[T:Manifest](init:T]) = def_new(init)
 }
 
 /** Operations on Deferrables */
