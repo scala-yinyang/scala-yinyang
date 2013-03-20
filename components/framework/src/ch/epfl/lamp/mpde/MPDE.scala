@@ -197,11 +197,16 @@ final class MPDETransformer[C <: Context, T](
   private final class LocalDefCollector extends Traverser {
 
     private[this] val definedValues, definedMethods = ListBuffer[Symbol]()
-
     override def traverse(tree: Tree) = tree match {
-      case vd: ValDef ⇒ definedValues += vd.symbol
-      case dd: DefDef ⇒ definedMethods += dd.symbol
-      case _          ⇒ super.traverse(tree)
+      case vd @ ValDef(mods, name, tpt, rhs) ⇒
+        definedValues += vd.symbol
+        traverse(rhs)
+      case dd @ DefDef(mods, name, tparams, vparamss, tpt, rhs) ⇒
+        definedMethods += dd.symbol
+        vparamss.flatten.foreach(x ⇒ traverse(x))
+        traverse(rhs)
+      case _ ⇒
+        super.traverse(tree)
     }
 
     def definedSymbols(tree: Tree): List[Symbol] = {
@@ -343,8 +348,6 @@ final class MPDETransformer[C <: Context, T](
 
   private final class ScopeInjectionTransformer extends Transformer {
 
-    private val definedValues, definedMethods = collection.mutable.HashSet[Symbol]()
-
     val notLiftedTypes: Set[Type] = Set(
       c.universe.typeOf[scala.math.Numeric.IntIsIntegral.type],
       c.universe.typeOf[scala.math.Numeric.DoubleIsFractional.type],
@@ -352,17 +355,6 @@ final class MPDETransformer[C <: Context, T](
 
     def isLifted(tp: Type): Boolean =
       !(notLiftedTypes exists (_ =:= tp.erasure))
-
-    /**
-     * Current solution for finding outer scope idents.
-     */
-    def markDSLDefinition(tree: Tree) = tree match {
-      case _: ValDef ⇒ definedValues += tree.symbol
-      case _: DefDef ⇒ definedMethods += tree.symbol
-      case _         ⇒
-    }
-
-    private[this] final def isFree(s: Symbol) = !(definedValues.contains(s) || definedMethods.contains(s))
 
     private[this] final def isHole(tree: Tree): Boolean =
       tree match {
@@ -375,8 +367,6 @@ final class MPDETransformer[C <: Context, T](
     var ident = 0
 
     override def transform(tree: Tree): Tree = {
-      markDSLDefinition(tree)
-
       log(" " * ident + " ==> " + tree)
       ident += 1
 
