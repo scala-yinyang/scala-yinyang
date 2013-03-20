@@ -305,9 +305,7 @@ class OptiGraphSpec extends FlatSpec with ShouldMatchers with LanguageOps {
       // check empty/non-empty collections, with/without filters
 
       println("Test Reduction Expressions: SUM")
-      //TODO - problem with classOf[...] - can't rewire type parameter
-      //TODO - problem with holes, $x - parameter is not found
-      //        val r1 = Sum(g.Nodes){np1(_)}
+      val r1 = Sum(g.Nodes) { np1(_) }
       //                    val r2 = Sum(g.Nodes, (n: Rep[Node]) => (n.Id == 1)){np1(_)}
       //            val r3 = Sum(ns.Items){np1(_)}
       //
