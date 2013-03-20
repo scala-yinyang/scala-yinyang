@@ -1,5 +1,5 @@
-package ch.epfl.lamp.mpde.api
-
+package ch.epfl.lamp.yinyang
+package api
 import scala.reflect.macros.Context
 
 trait StaticallyChecked {

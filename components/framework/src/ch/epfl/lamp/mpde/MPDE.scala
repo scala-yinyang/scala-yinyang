@@ -1,5 +1,5 @@
 package ch.epfl.lamp
-package mpde
+package yinyang
 
 import scala.collection.mutable.ListBuffer
 import scala.collection.mutable.HashMap
@@ -8,16 +8,20 @@ import scala.reflect.macros.Context
 import scala.collection.mutable
 import language.experimental.macros
 
-import mpde.api._
+import yinyang.api._
 
 import java.util.concurrent.atomic.AtomicLong
 
-object MPDETransformer {
-  val uID = new AtomicLong(0)
+object YYTransformer {
+
+  def apply[C <: Context, T](c: C, dslName: String, debug: Boolean = false, rep: Boolean = false) =
+    new YYTransformer(c, dslName, debug, rep)
+
+  protected[yinyang] val uID = new AtomicLong(0)
 }
 
 // for now configuration goes as a named parameter list
-final class MPDETransformer[C <: Context, T](
+final class YYTransformer[C <: Context, T](
   val c: C,
   dslName: String,
   val debug: Boolean = false,
@@ -452,7 +456,7 @@ final class MPDETransformer[C <: Context, T](
   def interpretMethod = "interpret"
   val dslMethod: String = "main"
   val holeMethod = "hole"
-  val className = "generated$" + dslName.filter(_ != '.') + MPDETransformer.uID.incrementAndGet
+  val className = "generated$" + dslName.filter(_ != '.') + YYTransformer.uID.incrementAndGet
   def constructTypeTree(inType: Type) = if (rep)
     constructRepTree(inType)
   else

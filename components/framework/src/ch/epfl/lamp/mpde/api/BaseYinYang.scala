@@ -1,4 +1,4 @@
-package ch.epfl.lamp.mpde.api
+package ch.epfl.lamp.yinyang.api
 
 trait BaseYinYang {
 

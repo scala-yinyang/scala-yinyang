@@ -1,4 +1,5 @@
-package ch.epfl.lamp.mpde.api
+package ch.epfl.lamp.yinyang
+package api
 
 import scala.collection.mutable.WeakHashMap
 
