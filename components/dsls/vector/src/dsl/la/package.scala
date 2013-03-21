@@ -16,11 +16,11 @@ package object la {
 
   object implementations {
     def lift[T](c: Context)(block: c.Expr[T]): c.Expr[T] = new YYTransformer[c.type, T](c, "dsl.la.norep.VectorDSL")(block)
-    def liftDebug[T](c: Context)(block: c.Expr[T]): c.Expr[T] = new YYTransformer[c.type, T](c, "dsl.la.norep.VectorDSL", debug = true)(block)
+    def liftDebug[T](c: Context)(block: c.Expr[T]): c.Expr[T] = new YYTransformer[c.type, T](c, "dsl.la.norep.VectorDSL", shallow = true, debug = true)(block)
 
-    def liftRep[T](c: Context)(block: c.Expr[T]): c.Expr[T] = new YYTransformer[c.type, T](c, "dsl.la.rep.VectorDSL", debug = false, rep = true)(block)
-    def liftDebugRep[T](c: Context)(block: c.Expr[T]): c.Expr[T] = new YYTransformer[c.type, T](c, "dsl.la.rep.VectorDSL", debug = true, rep = true)(block)
-    def liftNoRep[T](c: Context)(block: c.Expr[T]): c.Expr[T] = new YYTransformer[c.type, T](c, "dsl.la.norep.VectorDSL", debug = false, rep = false)(block)
-    def liftDebugNoRep[T](c: Context)(block: c.Expr[T]): c.Expr[T] = new YYTransformer[c.type, T](c, "dsl.la.norep.VectorDSL", debug = true, rep = false)(block)
+    def liftRep[T](c: Context)(block: c.Expr[T]): c.Expr[T] = new YYTransformer[c.type, T](c, "dsl.la.rep.VectorDSL", shallow = true, debug = false, rep = true)(block)
+    def liftDebugRep[T](c: Context)(block: c.Expr[T]): c.Expr[T] = new YYTransformer[c.type, T](c, "dsl.la.rep.VectorDSL", shallow = true, debug = true, rep = true)(block)
+    def liftNoRep[T](c: Context)(block: c.Expr[T]): c.Expr[T] = new YYTransformer[c.type, T](c, "dsl.la.norep.VectorDSL", shallow = true, debug = false, rep = false)(block)
+    def liftDebugNoRep[T](c: Context)(block: c.Expr[T]): c.Expr[T] = new YYTransformer[c.type, T](c, "dsl.la.norep.VectorDSL", shallow = true, debug = true, rep = false)(block)
   }
 }

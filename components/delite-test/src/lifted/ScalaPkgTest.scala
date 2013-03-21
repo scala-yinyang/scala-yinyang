@@ -3,7 +3,7 @@ package lifted
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.ScalaCompile
 import scala.virtualization.lms.util.OverloadHack
-import ch.epfl.lamp.mpde.api._
+import ch.epfl.lamp.yinyang.api._
 import scala.tools.nsc._
 import scala.tools.nsc.util._
 import scala.tools.nsc.reporters._
