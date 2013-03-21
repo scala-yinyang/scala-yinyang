@@ -133,9 +133,13 @@ trait OptiGraph extends OptiGraphApplicationRunner with LMSYinYang with Interpre
   type Node = ppl.dsl.optigraph.Node
   type Edge = ppl.dsl.optigraph.Edge
   type GSet[T] = ppl.dsl.optigraph.GSet[T]
+  type GSeq[T] = ppl.dsl.optigraph.GSeq[T]
+  type GIterable[T] = ppl.dsl.optigraph.GIterable[T]
   type Deferrable[T] = ppl.dsl.optigraph.Deferrable[T]
   type Reduceable[T] = ppl.dsl.optigraph.Reduceable[T]
   type NodeProperty[T] = ppl.dsl.optigraph.NodeProperty[T]
+
+  override implicit def repNodeToNodeOps(n: Rep[Node]) = new NodeOpsCls(n)
 
   //  implicit object LanguageObj {
   //    def MIN_INT = 128
@@ -145,6 +149,8 @@ trait OptiGraph extends OptiGraphApplicationRunner with LMSYinYang with Interpre
 
   implicit val ManifestFactory = scala.reflect.ManifestFactory
   implicit val IntIsIntegral = scala.math.Numeric.IntIsIntegral
+
+  //  def ====(ths: Rep[Any], t: Rep[Any]): Rep[Boolean] = ths == t
 
 }
 

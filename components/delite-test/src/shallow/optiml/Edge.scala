@@ -2,9 +2,9 @@ package shallow.optiml
 
 class Edge {
   /** Source node */
-  def From = ???
+  def From: Node = ???
   /** Destination node */
-  def To = ???
+  def To: Node = ???
   /** Edge id (unique per graph) */
-  def Id = ???
+  def Id: Int = ???
 }

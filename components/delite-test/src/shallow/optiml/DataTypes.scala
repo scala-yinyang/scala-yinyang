@@ -60,12 +60,56 @@ trait GOrder[T] {
   type EdgeOrder = GOrder[Edge]
   type EO = GOrder[Edge]
 }
+
+object NodeSeq {
+  def apply(): GSeq[Node] = ???
+}
+object NQ {
+  def apply(): GSeq[Node] = ???
+}
+
+/** EdgeSeq constructors */
+object EdgeSeq {
+  def apply(): GSeq[Edge] = ???
+}
+object EQ {
+  def apply(): GSeq[Edge] = ???
+}
+
 /** Ordered collection of elements (with duplicates possible) */
 trait GSeq[T] {
   type NodeSeq = GSeq[Node]
   type NS = GSeq[Node]
   type EdgeSeq = GSeq[Edge]
   type ES = GSeq[Edge]
+
+  /** Returns all the items in the collection */
+  def Items: GIterable[T] = ???
+  /** Returns true if the collection contains the element */
+  def Has(e: T): Boolean = ???
+  /** Returns the size of the collection */
+  def Size: Int = ???
+  /** Returns the first element in the sequence */
+  def Front: T = ???
+  /** Returns the last element in the sequence */
+  def Back: T = ???
+  /** Adds a new element to the front of the sequence */
+  def PushFront(e: T): Unit = ???
+  /** Adds a new element to the back of the sequence */
+  def PushBack(e: T): Unit = ???
+  /** Prepends all the elements of s2 (in order) to the sequence */
+  def PushFrontSeq(s2: GSeq[T]): Unit = ???
+  /** Appends all the elements of s2 (in order) to the sequence */
+  def PushBackSeq(s2: GSeq[T]): Unit = ???
+  /** Removes and returns the first element in the sequence */
+  def PopFront(): T = ???
+  /** Removes and returns the last element in the sequence */
+  def PopBack(): T = ???
+  /**
+   * Lookup the element at position idx in the sequence
+   *  RuntimeException if idx is out of bounds
+   */
+  def apply(idx: Int): T = ???
 }
 
 /* Other */
