@@ -10,16 +10,6 @@ package shallow.optiml
 //  trait Node
 //  trait Edge
 
-/* Properties (for immutable graphs only) */
-
-/**
- * An EdgeProperty object is used to associate data with graph edges
- * Note: properties can be associated only with immutable graph instances
- */
-trait EdgeProperty[T] {
-  type EP[T] = EdgeProperty[T]
-}
-
 /* Collection types */
 
 /** Unordered collection of unique elements */
@@ -53,12 +43,58 @@ trait GSet[A] {
   def cloneL(): GSet[A] = ???
 
 }
+
+/** NodeOrder constructors */
+object NodeOrder {
+  def apply(): GOrder[Node] = ???
+}
+object NO {
+  def apply(): GOrder[Node] = ???
+}
+
+/** EdgeOrder constructors */
+object EdgeOrder {
+  def apply(): GOrder[Edge] = ???
+}
+object EO {
+  def apply(): GOrder[Edge] = ???
+}
+
 /** Ordered collection of unique elements */
 trait GOrder[T] {
   type NodeOrder = GOrder[Node]
   type NO = GOrder[Node]
   type EdgeOrder = GOrder[Edge]
   type EO = GOrder[Edge]
+
+  /** Returns all the items in the collection */
+  def Items: GIterable[T] = ???
+  /** Returns true if the collection contains the element */
+  def Has(e: T): Boolean = ???
+  /** Returns the size of the collection */
+  def Size: Int = ???
+  /** Returns the first element in the order */
+  def Front: T = ???
+  /** Returns the last element in the order */
+  def Back: T = ???
+  /** Adds a new element to the front of the order */
+  def PushFront(e: T): Unit = ???
+  /** Adds a new element to the back of the order */
+  def PushBack(e: T): Unit = ???
+  /** Prepends all the elements of o2 (in order) to the order */
+  def PushFrontOrder(o2: GOrder[T]): Unit = ???
+  /** Appends all the elements of o2 (in order) to the order */
+  def PushBackOrder(o2: GOrder[T]): Unit = ???
+  /** Removes and returns the first element in the order */
+  def PopFront(): T = ???
+  /** Removes and returns the last element in the order */
+  def PopBack(): T = ???
+  /**
+   * Lookup the element at position idx in the order
+   *  RuntimeException if idx is out of bounds
+   */
+  def apply(idx: Int): T = ???
+
 }
 
 object NodeSeq {
@@ -113,6 +149,13 @@ trait GSeq[T] {
 }
 
 /* Other */
+
+object NewArray extends scala.AnyRef {
+  def apply[T](n: Int): scala.Array[T] = ???
+}
+//object Array extends scala.AnyRef {
+//  def apply[T](xs : T*)(implicit evidence$5 : scala.Predef.Manifest[T]) : ArrayOps.super[Base/*scala.virtualization.lms.common.Base*/].Rep[scala.Array[T]] = ???
+//}
 
 /** Iterable/reduceable collection of graph items (nodes or edges) */
 class GIterable[T](var data: Array[T], offset: Int, size: Int) {
@@ -192,11 +235,7 @@ trait Reduceable[T] {
 object Deferrable {
   /** Creates a new Deferrable with initial value init */
   def apply[T](init: T): Deferrable[T] = ???
-  //TODO TOASK (with Manifest doesn't work)
   //def apply[T: Manifest](init: T): Deferrable[T] = ???
-  //original method
-  //does we need manifest here only because T is type parameter of Rep
-  //def apply[T:Manifest](init:T]) = def_new(init)
 }
 
 /** Operations on Deferrables */

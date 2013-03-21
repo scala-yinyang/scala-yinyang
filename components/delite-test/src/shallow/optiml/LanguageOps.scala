@@ -95,4 +95,32 @@ trait LanguageOps extends OverloadHack {
   def MIN_DOUBLE = scala.Double.MinValue
 
   /*def INF*/
+
+  //Generic values
+  def graph_load(fileName: String): Graph = ???
+
+  //Types
+  type Array[T] = scala.Array[T]
+
+  object Math extends scala.AnyRef {
+    //    def ceil(x : Double)(implicit pos : scala.reflect.SourceContext) : Double = ???
+    //    def floor(x : Double)(implicit pos : scala.reflect.SourceContext) : Double = ???
+    //    def exp(x : Double)(implicit pos : scala.reflect.SourceContext) : Double = ???
+    //    def log(x : Double)(implicit pos : scala.reflect.SourceContext) : Double = ???
+    //    def sqrt(x : Double)(implicit pos : scala.reflect.SourceContext) : Double = ???
+    //    def sin(x : Double)(implicit pos : scala.reflect.SourceContext) : Double = ???
+    //    def cos(x : Double)(implicit pos : scala.reflect.SourceContext) : Double = ???
+    //    def acos(x : Double)(implicit pos : scala.reflect.SourceContext) : Double = ???
+    //    def atan(x : Double)(implicit pos : scala.reflect.SourceContext) : Double = ???
+    //    def atan2(x : Double, y : Double)(implicit pos : scala.reflect.SourceContext) : Double = ???
+    //    def pow(x : Double, y : Double)(implicit pos : scala.reflect.SourceContext) : Double = ???
+
+    //    def abs[A](x : A)(implicit evidence$1 : scala.Predef.Manifest[A], evidence$2 : scala.Numeric[A], pos : scala.reflect.SourceContext) : A = ???
+    def abs[A](x: A): A = ???
+
+    //    def max[A](x : A, y : A)(implicit evidence$3 : scala.Predef.Manifest[A], evidence$4 : scala.Numeric[A], pos : scala.reflect.SourceContext) : A = ???
+    //    def min[A](x : A, y : A)(implicit evidence$5 : scala.Predef.Manifest[A], evidence$6 : scala.Numeric[A], pos : scala.reflect.SourceContext) : A = ???
+    //    def Pi(implicit pos : scala.reflect.SourceContext) : Double = ???
+    //    def E(implicit pos : scala.reflect.SourceContext) : Double = ???
+  }
 }
