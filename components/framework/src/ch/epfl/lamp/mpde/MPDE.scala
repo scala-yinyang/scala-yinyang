@@ -433,9 +433,41 @@ final class YYTransformer[C <: Context, T](
           Function(functionParams, transform(body))
         // re-wire language feature `if` to the method __ifThenElse
         case t @ If(cond, then, elze) ⇒
-          Apply(Select(This(newTypeName(className)), newTermName("__ifThenElse")), List(transform(cond), transform(then), transform(elze)))
+          if (!featureExists("__ifThenElse", List(cond.tpe, then.tpe, elze.tpe))) {
+            c.error(tree.pos, "The DSL doesn't support the conditionnal branches!")
+          }
+          method("__ifThenElse", List(transform(cond), transform(then), transform(elze)))
 
-        // TODO partial functions, try catch, pattern matching
+        // Variable definition, assignment and return : VariableEmbeddingDSL
+        case ValDef(mods, sym, tpt, rhs) ⇒ // TODO This does var and val definition lifting. Is that OK ?
+          if (!featureExists("__newVar", List(rhs.tpe))) {
+            c.error(tree.pos, "The DSL doesn't support the creation of variables!")
+          }
+          ValDef(mods, sym, transform(tpt), method("__newVar", List(transform(rhs)))) // If there is a type transformer, it would be good to transform also the type tree
+
+        case Return(e) ⇒
+          if (!featureExists("__return", List(e.tpe))) {
+            c.error(tree.pos, "The DSL doesn't support the return of values!")
+          }
+          method("__return", List(transform(e)))
+
+        case Assign(lhs, rhs) ⇒
+          if (!featureExists("__assign", List(lhs.tpe, rhs.tpe))) {
+            c.error(tree.pos, "The DSL doesn't support the assignment!")
+          }
+          method("__assign", List(transform(lhs), transform(rhs)))
+
+        // While and DoWhile: ImperativeDSL
+        case LabelDef(sym, List(), If(cond, Block(body :: Nil, Apply(Ident(label), List())), Literal(Constant()))) if label == sym ⇒ // While
+          if (!featureExists("__whileDo", List(cond.tpe, body.tpe))) {
+            c.error(tree.pos, "The DSL doesn't support the while loops!")
+          }
+          method("__whileDo", List(transform(cond), transform(body)))
+        case LabelDef(sym, List(), Block(body :: Nil, If(cond, Apply(Ident(label), List()), Literal(Constant())))) if label == sym ⇒ // DoWhile
+          if (!featureExists("__doWhile", List(body.tpe, cond.tpe))) {
+            c.error(tree.pos, "The DSL doesn't support the do-while loops!")
+          }
+          method("__doWhile", List(transform(body), transform(cond)))
 
         // ignore the hole
         case _ if isHole(tree) ⇒ tree
@@ -544,6 +576,9 @@ final class YYTransformer[C <: Context, T](
   private def symbolId(tree: Tree): Int =
     symbolId(tree.symbol)
 
+  def method(methName: String, args: List[Tree]) =
+    Apply(Select(This(newTypeName(className)), newTermName(methName)), args)
+
   def makeConstructor(classname: String, arguments: List[Tree]): Tree =
     invoke(newClass(classname), nme.CONSTRUCTOR, arguments)
 
@@ -593,18 +628,36 @@ final class YYTransformer[C <: Context, T](
   //     }
   // }
 
-  def methodExists(obj: Type, methodName: String, args: List[Type]): Boolean = {
+  def featureExists(feature: String, args: List[Type]): Boolean = featuresExist(Set((None, feature, Nil, args)))
 
-    def dummyTree(tpe: Type) = TypeApply(Select(Literal(Constant(())), newTermName("asInstanceOf")), List(constructTypeTree(tpe)))
-    def application(method: String) = Apply(Select(dummyTree(obj), newTermName(methodName)), args.map(dummyTree))
+  def featuresExist(feature: Set[(Option[Type], String, List[Tree], List[Type])]): Boolean = {
 
-    try { // this might be a performance problem later. For now it will do the work.
-      c.typeCheck(Block(composeDSL(application(methodName)), Literal(Constant(()))))
+    def application(tpe: Option[Type], method: String, typeArgs: List[Tree], args: List[Type]): Tree = {
+      def dummyTree(tpe: Type) =
+        TypeApply(Select(Literal(Constant(())), newTermName("asInstanceOf")), List(constructTypeTree(tpe)))
+
+      def app = tpe match {
+        case Some(tpe) ⇒ Apply(Select(dummyTree(tpe), newTermName(method)), args.map(dummyTree))
+        case None      ⇒ Apply(Select(This(className), newTermName(method)), args.map(dummyTree))
+      }
+
+      typeArgs match {
+        case Nil                 ⇒ app
+        // TODO here we need type remapping
+        case tparams: List[Tree] ⇒ TypeApply(app, tparams)
+      }
+    }
+    val st = System.currentTimeMillis()
+    val res = try {
+      // block containing only dummy methods that were applied. 
+      c.typeCheck(Block(composeDSL(Block(feature.map(x ⇒ application(x._1, x._2, x._3, x._4)).toSeq: _*)), Literal(Constant(()))))
       true
     } catch {
       case e: Throwable ⇒
         false
     }
+    println(s"Feature checking time: ${(System.currentTimeMillis() - st)}")
+    res
   }
 
   def log(s: String) = if (debug) println(s)
