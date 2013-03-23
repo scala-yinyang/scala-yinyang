@@ -177,6 +177,7 @@ final class YYTransformer[C <: Context, T](
     def analyze(tree: Tree): Boolean = {
       traverse(tree)
 
+      //Finds the first element of the sequence satisfying a predicate, if any.
       (methods ++ lifted).toSeq.find(!methodsExist(_)) match {
         case Some(methodError) if lifted.contains(methodError) ⇒
           // report a language error
@@ -222,9 +223,19 @@ final class YYTransformer[C <: Context, T](
     private[this] val definedValues, definedMethods = ListBuffer[Symbol]()
 
     override def traverse(tree: Tree) = tree match {
-      case vd: ValDef ⇒ definedValues += vd.symbol
-      case dd: DefDef ⇒ definedMethods += dd.symbol
-      case _          ⇒ super.traverse(tree)
+      case vd @ ValDef(mods, name, tpt, rhs) ⇒
+        definedValues += vd.symbol
+        traverse(rhs)
+      case dd @ DefDef(mods, name, tparams, vparamss, tpt, rhs) ⇒
+        definedMethods += dd.symbol
+        vparamss.flatten.foreach(x ⇒ traverse(x))
+        traverse(rhs)
+      case _ ⇒
+        super.traverse(tree)
+      //TODO: remove if works correctly
+      //      case vd: ValDef ⇒ definedValues += vd.symbol
+      //      case dd: DefDef ⇒ definedMethods += dd.symbol
+      //      case _          ⇒ super.traverse(tree)
     }
 
     def definedSymbols(tree: Tree): List[Symbol] = {
@@ -405,9 +416,12 @@ final class YYTransformer[C <: Context, T](
         if (toMark contains id)
           Apply(
             TypeApply(Select(This(newTypeName(className)), newTermName(holeMethod)), List(TypeTree(), TypeTree())),
-            //            List(Apply(TypeApply(Select(Select(This(newTypeName("scala")), newTermName("Predef")), newTermName("manifest")), List(TypeTree(i.tpe))), List()),
-            List(Apply(TypeApply(Ident(newTermName("manifest")), List(TypeTree(i.tpe))), List()),
+            //List(Apply(TypeApply(Select(Select(This(newTypeName("scala")), newTermName("Predef")), newTermName("manifest")), List(TypeTree(i.tpe))), List()),
+            List(Apply(TypeApply(Ident(newTermName("manifest")), List(constructPolyTree(i.tpe))), List()),
               Literal(Constant(id))))
+        //TODO: remove if it works
+        //List(Apply(TypeApply(Ident(newTermName("manifest")), List(TypeTree(i.tpe))), List()),
+        //changed because we need to rewire type parameters
         else
           super.transform(tree)
       //case s @ Select(id: Ident, _) if toMark contains id.symbol ⇒
@@ -428,8 +442,8 @@ final class YYTransformer[C <: Context, T](
   }
 
   private final class ScopeInjectionTransformer extends Transformer {
-
-    private val definedValues, definedMethods = collection.mutable.HashSet[Symbol]()
+    //TODO: remove if works correctly
+    //    private val definedValues, definedMethods = collection.mutable.HashSet[Symbol]()
 
     val notLiftedTypes: Set[Type] = Set(
       c.universe.typeOf[scala.math.Numeric.IntIsIntegral.type],
@@ -439,16 +453,17 @@ final class YYTransformer[C <: Context, T](
     def isLifted(tp: Type): Boolean =
       !(notLiftedTypes exists (_ =:= tp.erasure))
 
-    /**
-     * Current solution for finding outer scope idents.
-     */
-    def markDSLDefinition(tree: Tree) = tree match {
-      case _: ValDef ⇒ definedValues += tree.symbol
-      case _: DefDef ⇒ definedMethods += tree.symbol
-      case _         ⇒
-    }
-
-    private[this] final def isFree(s: Symbol) = !(definedValues.contains(s) || definedMethods.contains(s))
+    //TODO: remove if works correctly
+    //    /**
+    //     * Current solution for finding outer scope idents.
+    //     */
+    //    def markDSLDefinition(tree: Tree) = tree match {
+    //      case _: ValDef ⇒ definedValues += tree.symbol
+    //      case _: DefDef ⇒ definedMethods += tree.symbol
+    //      case _         ⇒
+    //    }
+    //
+    //    private[this] final def isFree(s: Symbol) = !(definedValues.contains(s) || definedMethods.contains(s))
 
     private[this] final def isHole(tree: Tree): Boolean =
       tree match {
@@ -461,7 +476,8 @@ final class YYTransformer[C <: Context, T](
     var ident = 0
 
     override def transform(tree: Tree): Tree = {
-      markDSLDefinition(tree)
+      //TODO: remove if works correctly
+      //markDSLDefinition(tree)
 
       log(" " * ident + " ==> " + tree)
       ident += 1
@@ -496,10 +512,20 @@ final class YYTransformer[C <: Context, T](
         case s @ Select(inn, name) ⇒ // TODO this needs to be narrowed down if s.symbol.isModule =>
           Ident(name)
 
+        //Added to rewire inherited methods to this class
+        case th @ This(_) ⇒
+          This(newTypeName(className))
+
         case TypeApply(mth, targs) ⇒ // TODO this needs to be changed for LMS to include a type transformer
-          if (rep)
-            TypeApply(transform(mth), targs)
-          else {
+          //TODO: remove if it works
+          //if (rep)
+          //TypeApply(transform(mth), targs)
+          //else {
+          if (rep) {
+            //Added because we need to rewire type parameters in TypeApply
+            val liftedTargs = targs map { x: Tree ⇒ constructPolyTree(x.tpe) }
+            TypeApply(transform(mth), liftedTargs)
+          } else {
             val liftedTargs = targs map (transform(_))
             TypeApply(transform(mth), liftedTargs)
           }
@@ -594,13 +620,19 @@ final class YYTransformer[C <: Context, T](
         AppliedTypeTree(baseTree, retTyperees)
       }
 
+    case t @ SingleType(pre, sym) ⇒
+      val result = Select(This(newTypeName(className)), newTypeName(inType.typeSymbol.name.toString + ".type"))
+      result
+
     case another @ _ ⇒
       TypeTree(another)
   }
 
   def constructRepTree(inType: Type): Tree = { //transform Type1[Type2[...]] => Rep[Type1[Type2[...]]] for non-function types
     def wrapInRep(inType: Type): Tree =
-      AppliedTypeTree(Select(This(newTypeName(className)), newTypeName("Rep")), List(TypeTree(inType)))
+      AppliedTypeTree(Select(This(newTypeName(className)), newTypeName("Rep")), List(constructPolyTree(inType)))
+    //TODO: remove if it works
+    //AppliedTypeTree(Select(This(newTypeName(className)), newTypeName("Rep")), List(TypeTree(inType)))
 
     if (isFunctionType(inType)) {
       val TypeRef(pre, sym, args) = inType
@@ -698,7 +730,8 @@ final class YYTransformer[C <: Context, T](
     // TODO (VJ) install a cache
     val res = try {
       // block containing only dummy methods that were applied. 
-      val block = Block(composeDSL(Block(methodSet.map(application).toSeq: _*)), Literal(Constant(())))
+      val block = Block(composeDSL(Block(methodSet.map(x ⇒ application(x)).toSeq: _*)), Literal(Constant(())))
+      log("Block before typecheck: " + show(block))
       c.typeCheck(block)
       true
     } catch {

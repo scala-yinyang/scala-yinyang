@@ -107,6 +107,12 @@ trait OptiML extends OptiMLApplicationRunner with LMSYinYang with Interpreted {
   override def main(): Unit = ???
 
   def interpret[T: Manifest](params: Any*) = 0.asInstanceOf[T]
+
+  type Boolean = scala.Boolean
+  type Int = scala.Int
+  type Unit = scala.Unit
+  type Nothing = scala.Nothing
+  type Any = scala.Any
 }
 
 import ppl.dsl.optigraph._
@@ -117,4 +123,41 @@ trait OptiGraph extends OptiGraphApplicationRunner with LMSYinYang with Interpre
   override def main(): Unit = ???
 
   def interpret[T: Manifest](params: Any*) = 0.asInstanceOf[T]
+
+  type Int = scala.Int
+  type Float = scala.Float
+  type Double = scala.Double
+  type Boolean = scala.Boolean
+  type String = Predef.String
+  type Unit = scala.Unit
+  type Nothing = scala.Nothing
+  type Any = scala.Any
+  type Array[T] = scala.Array[T]
+
+  type Graph = ppl.dsl.optigraph.Graph
+  type Node = ppl.dsl.optigraph.Node
+  type Edge = ppl.dsl.optigraph.Edge
+  type GSet[T] = ppl.dsl.optigraph.GSet[T]
+  type GSeq[T] = ppl.dsl.optigraph.GSeq[T]
+  type GOrder[T] = ppl.dsl.optigraph.GOrder[T]
+  type GIterable[T] = ppl.dsl.optigraph.GIterable[T]
+  type Deferrable[T] = ppl.dsl.optigraph.Deferrable[T]
+  type Reduceable[T] = ppl.dsl.optigraph.Reduceable[T]
+  type NodeProperty[T] = ppl.dsl.optigraph.NodeProperty[T]
+  type EdgeProperty[T] = ppl.dsl.optigraph.EdgeProperty[T]
+
+  override implicit def repNodeToNodeOps(n: Rep[Node]) = new NodeOpsCls(n)
+
+  //  implicit object LanguageObj {
+  //    def MIN_INT = 128
+  //  }
+
+  //implicit object IntIsIntegral extends Numeric.IntIsIntegral with Ordering.IntOrdering
+
+  implicit val ManifestFactory = scala.reflect.ManifestFactory
+  implicit val IntIsIntegral = scala.math.Numeric.IntIsIntegral
+  val DoubleIsFractional = scala.math.Numeric.DoubleIsFractional
+
+  //  def ====(ths: Rep[Any], t: Rep[Any]): Rep[Boolean] = ths == t
+
 }
