@@ -24,7 +24,7 @@ object YinYangBuild extends Build {
     // scala version + resolver
     scalaHome := Some(file(Path.userHome + "/work/devl/scalac/myscala/build/pack")),
     scalaOrganization := scalaOrg,
-    scalaVersion := "2.10.1-SNAPSHOT",
+    scalaVersion := "2.10.1-RC3",
     resolvers in ThisBuild += ScalaToolsSnapshots,
     resolvers +=  "OSSH" at "https://oss.sonatype.org/content/groups/public",
     resolvers += Resolver.sonatypeRepo("snapshots"),

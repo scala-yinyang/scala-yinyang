@@ -1,38 +1,65 @@
-package ch.epfl.lamp.yinyang
-package api
+package ch.epfl.lamp.yinyang.runtime
 
-import scala.collection.mutable.WeakHashMap
+import java.util.concurrent.ConcurrentHashMap
+import scala.ref.WeakReference
 
-object CompiledStorage {
+final class GuardState(val values: Seq[Any], val refs: Seq[WeakReference[AnyRef]], var function: Any)
 
-  private val map = WeakHashMap[Int, (List[Any], Any)]()
+object YYStorage {
 
-  private def apply(id: Int): (List[Any], Any) =
-    map(id)
+  // DSL instances
+  final private val programs = new ConcurrentHashMap[Long, Any]
 
-  private def initialized(id: Int): Boolean =
-    !map.get(id).isEmpty
+  // @inline
+  final def lookup[Ret](id: Long, dsl: ⇒ Ret): Ret = {
+    var program: Any = programs.get(id)
+    if (program == null) {
+      program = dsl
+      programs.put(id, program)
+    }
 
-  private def init(id: Int, current: List[Any], program: Any): Unit =
-    map.update(id, (current, program))
+    program.asInstanceOf[Ret]
+  }
 
-  def checkAndUpdate[Ret](id: Int, current: List[Any], recompile: () ⇒ Any): Ret =
-    if (!initialized(id)) {
-      println("init")
-      val program = recompile()
-      init(id, current, program)
-      program.asInstanceOf[Ret]
-    } else {
-      val (previous, compiled) = apply(id)
-      if (previous.length != current.length || (previous zip current exists { case (old, now) ⇒ old != now })) {
-        println("recompile")
-        val recompiled = recompile()
-        map.update(id, (current, recompiled))
-        recompiled
-      } else {
-        println("retrieve")
-        compiled
-      }
-    }.asInstanceOf[Ret]
+  // Guards
+  final private val guards = new ConcurrentHashMap[Long, GuardState]()
+
+  // @inline 
+  private final def fetchGuard(id: Long, values: Seq[Any], refs: Seq[Any], recompile: () ⇒ Any): GuardState = {
+    val anyRefs = refs.asInstanceOf[Seq[AnyRef]]
+    var guard = guards.get(id)
+    if (guard == null) {
+      guard = createGuard(values, anyRefs, recompile)
+      guards.put(id, guard)
+    }
+    guard
+  }
+
+  // avoids instantiation of the arguments    
+  // @inline
+  final private def createGuard(values: Seq[Any], refs: Seq[AnyRef], recompile: () ⇒ Any) =
+    new GuardState(values, refs.map(x ⇒ new WeakReference(x)), recompile())
+
+  // @inline
+  final def checkRef[Ret](id: Long, values: Seq[Any], refs: Seq[Any], recompile: () ⇒ Any): Ret = {
+    val guard = fetchGuard(id, values, refs, recompile)
+
+    if (guard.values != values && guard.refs.map(_.apply()) != refs)
+      guard.function = recompile()
+
+    guard.function.asInstanceOf[Ret]
+  }
+
+  // @inline
+  final def checkEq[Ret](id: Long, values: Seq[Any], refs: Seq[Any], recompile: () ⇒ Any): Ret = {
+    val anyRefs = refs.asInstanceOf[Seq[AnyRef]]
+    val guard = fetchGuard(id, values, refs, recompile)
+
+    // TODO optimize
+    if (guard.values != values && (guard.refs.map(_.apply()).zip(anyRefs).exists { x ⇒ !(x._1 eq x._2) }))
+      guard.function = recompile()
+
+    guard.function.asInstanceOf[Ret]
+  }
 
 }

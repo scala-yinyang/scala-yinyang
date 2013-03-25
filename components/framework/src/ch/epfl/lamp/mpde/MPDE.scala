@@ -14,7 +14,7 @@ import java.util.concurrent.atomic.AtomicLong
 
 object YYTransformer {
 
-  def apply[C <: Context, T](c: C, dslName: String, debug: Boolean = false, rep: Boolean = false) =
+  def apply[C <: Context, T](c: C, dslName: String, debug: Boolean = false, rep: Boolean = false, refCheck: Boolean = false) =
     new YYTransformer(c, dslName, debug, rep)
 
   protected[yinyang] val uID = new AtomicLong(0)
@@ -78,7 +78,6 @@ final class YYTransformer[C <: Context, T](
     val toTransform =
       if (canCompile) transfBody
       else {
-        // TODO Duy this is not clean. Maybe we could make a new transformer to just flip the hole into lift.
         val lifted = LiftLiteralTransformer(ascribed, idents = requiredVariables, free = allCaptured)
         val injected = new ScopeInjectionTransformer().transform(lifted)
         val transfBody = new HoleMarkerTransformer(holes map symbolId).mark(injected)
@@ -103,67 +102,38 @@ final class YYTransformer[C <: Context, T](
           new $className().apply(${args(allCaptured)})
         """
         log(s"generated: ${code}")
-        val parsed = c parse (code)
+        c parse (code)
 
-        parsed
-      case dsl: CodeGenerator ⇒
+      case dsl ⇒
         /*
        * If DSL need runtime info send it to run-time and install a guard for re-compilation based on required symbols. 
        */
-        val nameCurrent = "current"
-        val nameClassName = "className"
-        val nameDSLInstance = "dslInstance"
-        val nameDSLProgram = "dslProgram"
-        val nameCompileStorage = "__compiledStorage"
-        val nameRecompile = "recompile"
+        val programId = new scala.util.Random().nextLong
+        val retType: String = block.tree.tpe.toString
+        val functionType = s"""${(0 until args(holes).length).map(y ⇒ "scala.Any").mkString("(", ", ", ")")} => ${retType}"""
+        val refs = requiredVariables filterNot (isPrimitive)
+        val dslInit = s"""
+          val dslInstance = ch.epfl.lamp.yinyang.runtime.YYStorage.lookup(${programId}L, new $className())
+          val values: Seq[Any] = Seq(${(requiredVariables diff refs) map (_.name.decoded) mkString ", "})
+          val refs: Seq[Any] = Seq(${refs map (_.name.decoded) mkString ", "})          
+        """
 
-        val typeT = TypeTree(block.tree.tpe)
+        val guardedExecute = c parse dslInit + (dsl match {
+          case _: CodeGenerator ⇒ s"""
+            def recompile(): () => Any = dslInstance.compile[$retType, $functionType]
+            val program = ch.epfl.lamp.yinyang.runtime.YYStorage.$guardType[$functionType](${programId}L, values, refs, recompile)            
+            program.apply(${args(holes)})
+            """
+          case _: Interpreted ⇒ s"""
+            def invalidate(): () => Any = dslInstance.reset
+            ch.epfl.lamp.yinyang.runtime.YYStorage.$guardType[Any](${programId}L, values, refs, invalidate)
+            dslInstance.interpret[${retType}](${args(holes)})
+            """
+        })
 
-        val valCurrent =
-          c parse s"val $nameCurrent: List[Any] = List(${requiredVariables map (_.name.decoded) mkString ", "})"
-
-        val valDslInstance = c parse s"val $nameDSLInstance = new $className()"
-
-        val retTypeTree: Tree = TypeTree(block.tree.tpe)
-
-        val argsCnt = args(holes).length
-        val functionTypeTree =
-          AppliedTypeTree(Select(Select(Ident("_root_"), "scala"), newTypeName("Function" + argsCnt)),
-            (0 until argsCnt).map(y ⇒ Ident(newTermName("scala.Any"))).toList ::: List(retTypeTree))
-
-        val recompileF = c parse s"def $nameRecompile(): () => Any = $nameDSLInstance.compile[Int]" match {
-          case DefDef(mods, name, tparams, vparamss, AppliedTypeTree(function0, _), TypeApply(compile, _)) ⇒
-            DefDef(mods, name, tparams, vparamss, AppliedTypeTree(function0, List(typeT)), TypeApply(compile, List(typeT, functionTypeTree)))
-        }
-
-        val guard = c parse s"""val $nameDSLProgram = 
-        $nameCompileStorage.checkAndUpdate[Int](${new scala.util.Random().nextInt}, $nameCurrent, $nameRecompile)""" match {
-          case ValDef(modes, name, tp, Apply(TypeApply(check, _), args)) ⇒
-            ValDef(modes, name, tp, Apply(TypeApply(check, List(functionTypeTree)), args))
-        }
-
-        val DSL = c parse s"$nameDSLProgram.apply(${args(holes)})"
-        val finalBlock = Block(
-          dslClass,
-          valCurrent,
-          valDslInstance,
-          recompileF,
-          guard,
-          DSL)
-
-        log("Guarded block:" + show(finalBlock))
+        val finalBlock = Block(dslClass, guardedExecute)
+        println("Guarded block:" + show(finalBlock))
         finalBlock
-      case dsl: Interpreted ⇒
-        // in this case we just call the interpret method
-        val retTypeTree: Tree = TypeTree(block.tree.tpe)
-        val argsCnt = args(holes).length
-
-        Block(dslClass,
-          Apply(
-            TypeApply(
-              Select(constructor, newTermName(interpretMethod)),
-              List(retTypeTree)),
-            holes.map(Ident(_))))
     }
 
     log("Final tree: " + show(c.typeCheck(c.resetAllAttrs(dslTree))))
@@ -493,6 +463,8 @@ final class YYTransformer[C <: Context, T](
     constructRepTree(inType)
   else
     constructPolyTree(inType)
+  def isPrimitive(s: Symbol): Boolean = false
+  val guardType = "checkRef"
 
   //TODO (TOASK) - do we need tp.normalize here?
   private def isFunctionType(tp: Type): Boolean = tp.normalize match {
@@ -522,8 +494,8 @@ final class YYTransformer[C <: Context, T](
           if (!isFunctionType(inType))
             Select(This(newTypeName(className)), sym.name)
           else Select(Ident(newTermName("scala")), sym.name)
-        val typeTrees = args map { x ⇒ TypeTree(x) }
-        AppliedTypeTree(baseTree, typeTrees)
+        val retTyperees = args map { x ⇒ TypeTree(x) }
+        AppliedTypeTree(baseTree, retTyperees)
       }
 
     case q @ SingleType(pre, sym) ⇒
@@ -542,8 +514,8 @@ final class YYTransformer[C <: Context, T](
           if (!isFunctionType(inType))
             Select(This(newTypeName(className)), sym.name)
           else Select(Ident(newTermName("scala")), sym.name)
-        val typeTrees = args map { x ⇒ constructPolyTree(x) }
-        AppliedTypeTree(baseTree, typeTrees)
+        val retTyperees = args map { x ⇒ constructPolyTree(x) }
+        AppliedTypeTree(baseTree, retTyperees)
       }
 
     case another @ _ ⇒
@@ -556,12 +528,12 @@ final class YYTransformer[C <: Context, T](
 
     if (isFunctionType(inType)) {
       val TypeRef(pre, sym, args) = inType
-      val typeTrees = args map { x ⇒ wrapInRep(x) }
+      val retTyperees = args map { x ⇒ wrapInRep(x) }
       //we can't construnct baseTree using TypeTree(pre) - pre is only scala.type not FunctionN
       //val baseTree = TypeTree(pre) //pre = scala.type
       //using such baseTree we get val a: scala.type[generated$dsllarepVectorDSL13.this.Rep[Int], generated$dsllarepVectorDSL13.this.Rep[Int]] = ...
       val baseTree = Select(Ident(newTermName("scala")), sym.name)
-      AppliedTypeTree(baseTree, typeTrees)
+      AppliedTypeTree(baseTree, retTyperees)
     } else {
       wrapInRep(inType)
     }

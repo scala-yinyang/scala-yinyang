@@ -24,7 +24,7 @@ trait PrintDSL
     }
   }
 
-  def reset() = {
+  override def reset(): Unit = {
     sb = new StringBuffer()
     recompileHoles.clear
     holes.clear
