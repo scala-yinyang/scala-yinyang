@@ -14,6 +14,15 @@ case class Date(year: Int, month: Int, day: Int) {
     Date(date.get(Calendar.YEAR), date.get(Calendar.MONTH) + 1, date.get(Calendar.DAY_OF_MONTH))
   }
 
+  def -(years: Int, months: Int, days: Int) = {
+    import java.util.Calendar
+    val date = new java.util.GregorianCalendar(year, month - 1, day)
+    date.add(Calendar.YEAR, -years)
+    date.add(Calendar.MONTH, -months)
+    date.add(Calendar.DAY_OF_MONTH, -days)
+    Date(date.get(Calendar.YEAR), date.get(Calendar.MONTH) + 1, date.get(Calendar.DAY_OF_MONTH))
+  }
+
   // Comparisons
   def <=(that: Date) = {
     if (year != that.year)

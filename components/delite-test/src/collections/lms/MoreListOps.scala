@@ -32,6 +32,7 @@ trait MoreListOps extends ListOps {
     def groupBy[B: Manifest](f: Rep[A] ⇒ Rep[B]): Rep[HashMap[B, List[A]]] =
       list_groupBy(f)(xs)
     def take(n: Rep[Int]): Rep[List[A]] = list_take(n)(xs)
+    def length: Rep[Int] = list_length(xs)
   }
 
   def list_drop[A: Manifest](n: Rep[Int])(xs: Rep[List[A]]): Rep[List[A]]
@@ -40,6 +41,7 @@ trait MoreListOps extends ListOps {
   def list_foldLeft[A: Manifest, B: Manifest](
     z: Rep[B], op: (Rep[B], Rep[A]) ⇒ Rep[B])(xs: Rep[List[A]]): Rep[B]
   def list_take[A: Manifest](n: Rep[Int])(xs: Rep[List[A]]): Rep[List[A]]
+  def list_length[A: Manifest](xs: Rep[List[A]]): Rep[Int]
 }
 
 trait MoreListOpsExp extends MoreListOps with ListOpsExp {
@@ -56,6 +58,8 @@ trait MoreListOpsExp extends MoreListOps with ListOpsExp {
     extends Def[B]
   case class ListTake[A: Manifest](
     xs: Rep[List[A]], n: Rep[Int]) extends Def[List[A]]
+  case class ListLength[A: Manifest](
+    xs: Rep[List[A]]) extends Def[Int]
 
   def list_drop[A: Manifest](n: Rep[Int])(xs: Rep[List[A]]): Rep[List[A]] =
     ListDrop(xs, n)
@@ -74,12 +78,15 @@ trait MoreListOpsExp extends MoreListOps with ListOpsExp {
   }
   def list_take[A: Manifest](n: Rep[Int])(xs: Rep[List[A]]): Rep[List[A]] =
     ListTake(xs, n)
+  def list_length[A: Manifest](xs: Rep[List[A]]): Rep[Int] =
+    ListLength(xs)
 
   override def syms(e: Any): List[Sym[Any]] = e match {
     case ListDrop(xs, n)                 ⇒ syms(xs) ::: syms(n)
     case ListGroupBy(xs, _, body)        ⇒ syms(xs) ::: syms(body)
     case ListFoldLeft(xs, z, _, _, body) ⇒ syms(xs) ::: syms(z) ::: syms(body)
     case ListTake(xs, n)                 ⇒ syms(xs) ::: syms(n)
+    case ListLength(xs)                  ⇒ syms(xs)
     case _                               ⇒ super.syms(e)
   }
 
@@ -88,6 +95,7 @@ trait MoreListOpsExp extends MoreListOps with ListOpsExp {
     case ListGroupBy(_, x, body)          ⇒ x :: effectSyms(body)
     case ListFoldLeft(_, _, x1, x2, body) ⇒ x1 :: x2 :: effectSyms(body)
     case ListTake(_, _)                   ⇒ Nil
+    case ListLength(xs)                   ⇒ Nil
     case _                                ⇒ super.boundSyms(e)
   }
 
@@ -97,6 +105,7 @@ trait MoreListOpsExp extends MoreListOps with ListOpsExp {
     case ListFoldLeft(xs, z, _, _, body) ⇒
       freqNormal(xs) ::: freqNormal(z) ::: freqHot(body)
     case ListTake(xs, n) ⇒ freqNormal(xs) ::: freqNormal(n)
+    case ListLength(xs)  ⇒ freqNormal(xs)
     case _               ⇒ super.symsFreq(e)
   }
 }
@@ -133,6 +142,8 @@ trait ScalaGenMoreListOps extends ScalaGenListOps {
     }
     case ListTake(xs, n) ⇒
       emitValDef(sym, quote(xs) + ".take(" + quote(n) + ")")
+    case ListLength(xs) ⇒
+      emitValDef(sym, quote(xs) + ".length")
     case _ ⇒ super.emitNode(sym, rhs)
   }
 }
