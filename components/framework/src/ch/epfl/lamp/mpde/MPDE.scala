@@ -95,13 +95,13 @@ final class YYTransformer[C <: Context, T](
       val dslTree = dslInstance(dslClassPre) match {
         case dsl: CodeGenerator if canCompile ⇒
           /*
-       * If DSL does not require run-time data it can be completely
-       * generated at compile time and wired for execution. 
-       */
+           * If DSL does not require run-time data it can be completely
+           * generated at compile time and wired for execution.
+           */
           val codeGenerator = dslInstance(dslClass).asInstanceOf[CodeGenerator]
 
           val code = s"""
-          ${codeGenerator generateCode className}          
+          ${codeGenerator generateCode className}
           new $className().apply(${args(allCaptured)})
         """
         log(s"generated: ${code}")
@@ -166,12 +166,25 @@ final class YYTransformer[C <: Context, T](
       if (!lifted.exists(x ⇒ x.name == m.name))
         methods += m
 
-    override def traverse(tree: Tree) = tree match {
-      case Apply(Select(obj, name), args) ⇒
-        addIfNotLifted(MethodInv(Some(obj.tpe), name.toString, Nil, args.map(_.tpe)))
-      case Apply(TypeApply(Select(obj, name), targs), args) ⇒
-        addIfNotLifted(MethodInv(Some(obj.tpe), name.toString, targs, args.map(_.tpe)))
-      case _ ⇒ super.traverse(tree)
+    override def traverse(tree: Tree) = {
+      //to skip object's method invocation
+      def isNotChecked(tree: Tree): Boolean = {
+        if (tree.symbol != null) tree.symbol.isModule else false
+      }
+
+      def getObjType(obj: Tree): Type = {
+        if (obj.symbol != null && obj.symbol.isTerm) obj.symbol.asTerm.typeSignature else obj.tpe
+      }
+
+      tree match {
+        case Apply(Select(obj, name), args) if !isNotChecked(obj) ⇒
+          addIfNotLifted(MethodInv(Some(getObjType(obj)), name.toString, Nil, args.map(_.tpe)))
+        case Apply(TypeApply(Select(obj, name), targs), args) if !isNotChecked(obj) ⇒
+          addIfNotLifted(MethodInv(Some(getObjType(obj)), name.toString, targs, args.map(_.tpe)))
+        case tr @ Select(obj, name) if !isNotChecked(obj) && tr.symbol.isMethod ⇒
+          addIfNotLifted(MethodInv(Some(getObjType(obj)), name.toString, Nil, Nil))
+        case _ ⇒ super.traverse(tree)
+      }
     }
 
     def analyze(tree: Tree): Boolean = {
@@ -710,6 +723,7 @@ final class YYTransformer[C <: Context, T](
 
   case class MethodInv(tpe: Option[Type], name: String, targs: List[Tree], args: List[Type])
   def methodsExist(methods: MethodInv*): Boolean = {
+    log("checking for existence...")
     val methodSet = methods.toSet
     def application(method: MethodInv): Tree = {
 
@@ -722,8 +736,13 @@ final class YYTransformer[C <: Context, T](
       }
 
       method.tpe match {
-        case Some(tpe) ⇒ Apply(app(Select(dummyTree(tpe), newTermName(method.name))), method.args.map(dummyTree))
-        case None      ⇒ Apply(app(Select(This(className), newTermName(method.name))), method.args.map(dummyTree))
+        case Some(tpe) ⇒
+          val newInvoc = app(Select(dummyTree(tpe), newTermName(method.name)));
+          //this checking we need for methods without parameters
+          if (method.args != Nil) Apply(newInvoc, method.args.map(dummyTree)) else newInvoc
+        case None ⇒
+          val newInvoc = app(Select(This(className), newTermName(method.name)))
+          if (method.args != Nil) Apply(newInvoc, method.args.map(dummyTree)) else newInvoc
       }
     }
 
