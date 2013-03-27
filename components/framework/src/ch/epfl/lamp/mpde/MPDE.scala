@@ -162,6 +162,9 @@ final class YYTransformer[C <: Context, T](
 
     var methods = mutable.Set[MethodInv]()
 
+    //TODO: refactor it in functional way
+    var parameterLists: List[List[Type]] = Nil
+
     def addIfNotLifted(m: MethodInv) =
       if (!lifted.exists(x ⇒ x.name == m.name))
         methods += m
@@ -172,15 +175,35 @@ final class YYTransformer[C <: Context, T](
         if (tree.symbol != null) tree.symbol.isModule else false
       }
 
+      //TODO: refactor it
       def getObjType(obj: Tree): Type = {
-        if (obj.symbol != null && obj.symbol.isTerm) obj.symbol.asTerm.typeSignature else obj.tpe
+        val universe = c.universe.asInstanceOf[scala.reflect.internal.Types]
+        val tp: Type =
+          if (obj.symbol != null && obj.symbol.isTerm && universe.isSingleType(obj.tpe.asInstanceOf[universe.Type]))
+            obj.symbol.asTerm.typeSignature
+          else obj.tpe
+
+        tp
       }
 
+      //TODO: change it in functional style
       tree match {
+        case Apply(ap @ Apply(_, _), args) ⇒
+          val argTypes = args.map(_.tpe)
+          parameterLists = argTypes :: parameterLists
+          traverse(ap)
+          parameterLists = Nil
+          args foreach { x ⇒ traverse(x) }
         case Apply(Select(obj, name), args) if !isNotChecked(obj) ⇒
-          addIfNotLifted(MethodInv(Some(getObjType(obj)), name.toString, Nil, args.map(_.tpe)))
+          parameterLists = args.map(_.tpe) :: parameterLists
+          addIfNotLifted(MethodInv(Some(getObjType(obj)), name.toString, Nil, parameterLists))
+          parameterLists = Nil
+          args foreach { x ⇒ traverse(x) }
         case Apply(TypeApply(Select(obj, name), targs), args) if !isNotChecked(obj) ⇒
-          addIfNotLifted(MethodInv(Some(getObjType(obj)), name.toString, targs, args.map(_.tpe)))
+          parameterLists = args.map(_.tpe) :: parameterLists
+          addIfNotLifted(MethodInv(Some(getObjType(obj)), name.toString, targs, parameterLists))
+          parameterLists = Nil
+          args foreach { x ⇒ traverse(x) }
         case tr @ Select(obj, name) if !isNotChecked(obj) && tr.symbol.isMethod ⇒
           addIfNotLifted(MethodInv(Some(getObjType(obj)), name.toString, Nil, Nil))
         case _ ⇒ super.traverse(tree)
@@ -371,28 +394,28 @@ final class YYTransformer[C <: Context, T](
           // if (!featureExists("__ifThenElse", List(cond.tpe, then.tpe, elze.tpe))) {
           // c.error(tree.pos, "The DSL doesn't support the conditionnal branches!")
           // }
-          lifted += MethodInv(None, "__ifThenElse", Nil, List(cond.tpe, then.tpe, elze.tpe))
+          lifted += MethodInv(None, "__ifThenElse", Nil, List(List(cond.tpe, then.tpe, elze.tpe)))
           method("__ifThenElse", List(transform(cond), transform(then), transform(elze)))
         // Variable definition, assignment and return : VariableEmbeddingDSL
         case ValDef(mods, sym, tpt, rhs) if mods.hasFlag(Flag.MUTABLE) ⇒
           // if (!featureExists("__newVar", List(rhs.tpe))) {
           // c.error(tree.pos, "The DSL doesn't support the creation of variables!")
           // }
-          lifted += MethodInv(None, "__newVar", Nil, List(rhs.tpe))
+          lifted += MethodInv(None, "__newVar", Nil, List(List(rhs.tpe)))
           ValDef(mods, sym, transform(tpt), method("__newVar", List(transform(rhs)))) // If there is a type transformer, it would be good to transform also the type tree
 
         case Return(e) ⇒
           // if (!featureExists("__return", List(e.tpe))) {
           // c.error(tree.pos, "The DSL doesn't support the return of values!")
           // }
-          lifted += MethodInv(None, "__return", Nil, List(e.tpe))
+          lifted += MethodInv(None, "__return", Nil, List(List(e.tpe)))
           method("__return", List(transform(e)))
 
         case Assign(lhs, rhs) ⇒
           // if (!featureExists("__assign", List(lhs.tpe, rhs.tpe))) {
           // c.error(tree.pos, "The DSL doesn't support the assignment!")
           // }
-          lifted += MethodInv(None, "__assign", Nil, List(lhs.tpe, rhs.tpe))
+          lifted += MethodInv(None, "__assign", Nil, List(List(lhs.tpe, rhs.tpe)))
           method("__assign", List(transform(lhs), transform(rhs)))
 
         // While and DoWhile: ImperativeDSL
@@ -400,7 +423,7 @@ final class YYTransformer[C <: Context, T](
           // if (!featureExists("__whileDo", List(cond.tpe, body.tpe))) {
           // c.error(tree.pos, "The DSL doesn't support the while loops!")
           // }
-          lifted += MethodInv(None, "__whileDo", Nil, List(cond.tpe, body.tpe))
+          lifted += MethodInv(None, "__whileDo", Nil, List(List(cond.tpe, body.tpe)))
           method("__whileDo", List(transform(cond), transform(body)))
 
         case LabelDef(sym, List(), Block(body :: Nil, If(cond, Apply(Ident(label), List()), Literal(Constant())))) if label == sym ⇒ // DoWhile
@@ -642,6 +665,9 @@ final class YYTransformer[C <: Context, T](
   }
 
   def constructRepTree(inType: Type): Tree = { //transform Type1[Type2[...]] => Rep[Type1[Type2[...]]] for non-function types
+    //TODO move it and make available to other methods
+    val universe = c.universe.asInstanceOf[scala.reflect.internal.Types]
+
     def wrapInRep(inType: Type): Tree =
       AppliedTypeTree(Select(This(newTypeName(className)), newTypeName("Rep")), List(constructPolyTree(inType)))
     //TODO: remove if it works
@@ -654,7 +680,13 @@ final class YYTransformer[C <: Context, T](
       //val baseTree = TypeTree(pre) //pre = scala.type
       //using such baseTree we get val a: scala.type[generated$dsllarepVectorDSL13.this.Rep[Int], generated$dsllarepVectorDSL13.this.Rep[Int]] = ...
       val baseTree = Select(Ident(newTermName("scala")), sym.name)
+<<<<<<< HEAD
       AppliedTypeTree(baseTree, retTyperees)
+=======
+      AppliedTypeTree(baseTree, typeTrees)
+    } else if (universe.isSingleType(inType.asInstanceOf[universe.Type])) {
+      constructPolyTree(inType)
+>>>>>>> Feature Analyzer fixes.
     } else {
       wrapInRep(inType)
     }
@@ -721,29 +753,46 @@ final class YYTransformer[C <: Context, T](
   //     }
   // }
 
-  case class MethodInv(tpe: Option[Type], name: String, targs: List[Tree], args: List[Type])
+  case class MethodInv(tpe: Option[Type], name: String, targs: List[Tree], args: List[List[Type]])
   def methodsExist(methods: MethodInv*): Boolean = {
     log("checking for existence...")
     val methodSet = methods.toSet
     def application(method: MethodInv): Tree = {
 
-      def dummyTree(tpe: Type) =
-        TypeApply(Select(Literal(Constant(())), newTermName("asInstanceOf")), List(constructTypeTree(tpe)))
-
-      def app(tree: Tree) = method.targs match {
-        case Nil                 ⇒ tree
-        case tparams: List[Tree] ⇒ TypeApply(tree, method.targs)
+      def dummyTree(tpe: Type) = tpe match {
+        //TODO - TOASK
+        case typeTag @ ThisType(_) ⇒ This(newTypeName(className))
+        case _ ⇒
+          TypeApply(Select(Literal(Constant(())), newTermName("asInstanceOf")), List(constructTypeTree(tpe)))
       }
 
-      method.tpe match {
+      def app(tree: Tree) = method.targs match {
+        case Nil ⇒ tree
+        case tparams: List[Tree] ⇒
+          val modTargs = method.targs map { x ⇒ constructPolyTree(x.tpe) }
+          TypeApply(tree, modTargs)
+      }
+
+      val firstTree = method.tpe match {
         case Some(tpe) ⇒
           val newInvoc = app(Select(dummyTree(tpe), newTermName(method.name)));
           //this checking we need for methods without parameters
-          if (method.args != Nil) Apply(newInvoc, method.args.map(dummyTree)) else newInvoc
+          if (!method.args.isEmpty) Apply(newInvoc, method.args(0).map(dummyTree)) else newInvoc
         case None ⇒
           val newInvoc = app(Select(This(className), newTermName(method.name)))
-          if (method.args != Nil) Apply(newInvoc, method.args.map(dummyTree)) else newInvoc
+          if (!method.args.isEmpty) Apply(newInvoc, method.args(0).map(dummyTree)) else newInvoc
       }
+
+      //TODO: rewrite this code in functional style
+      //code for multiparam transformation
+      var multiparamTree = firstTree
+      if (method.args.size > 1) {
+
+        for (i ← 1 until method.args.size)
+          multiparamTree = Apply(multiparamTree, method.args(i).map(dummyTree))
+
+        multiparamTree
+      } else firstTree
     }
 
     // TODO (VJ) install a cache
@@ -751,7 +800,7 @@ final class YYTransformer[C <: Context, T](
       // block containing only dummy methods that were applied. 
       val block = Block(composeDSL(Block(methodSet.map(x ⇒ application(x)).toSeq: _*)), Literal(Constant(())))
       log("Block before typecheck: " + show(block))
-      c.typeCheck(block)
+      c.typeCheck(c.resetAllAttrs(block))
       true
     } catch {
       case e: Throwable ⇒

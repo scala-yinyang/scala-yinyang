@@ -1193,174 +1193,176 @@ class OptiGraphSpec extends FlatSpec with ShouldMatchers with LanguageOps {
   //        g.Snapshot
   //      }
   //    }
-  //
-  //    "page_rank" should "compile" in {
-  //      val x: Any = optiGraphDebug {
-  //
-  //        //val G = RandUniformGraph(5,5,1997L)
-  //        //TODO graph_load shouldn't be the method of shallow
-  //        //it's one of conversion method
-  //        //should it be in shallow DSL?
-  //        val G = graph_load("/home/viq/delite/Delite/test.bin")
-  //
-  //        val e = 0.001
-  //        val d = 0.85
-  //        val max_iter = 6
-  //        val PR = NodeProperty[Double](G)
-  //
-  //        val diff = Reduceable[Double](0.0)
-  //        var cnt = 0
-  //        val N = G.NumNodes.asInstanceOf[Double]
-  //        PR.setAll(1.0 / N)
-  //
-  //        println("G.N " + N)
-  //
-  //        // move to ds
-  //        val deg = NewArray[Int](G.NumNodes)
-  //        for (t ← G.Nodes) {
-  //          deg(t.Id) = t.OutDegree
-  //        }
-  //
-  //        tic(G, PR, deg)
-  //        //var num_abs = 0
-  //        //var v = 0.0
-  //        var cond = true
-  //        //val n = G.Node(0)
-  //
-  //        //TODO: problem with while(cond)
-  //        //Predef.__whileDo(cond, {...})
-  //        //we need to reconstruct while
-  //        //[error]  found   : generated$liftedOptiGraph3.this.Rep[generated$liftedOptiGraph3.this.Boolean]
-  //        //[error]     (which expands to)  generated$liftedOptiGraph3.this.Exp[Boolean]
-  //        //[error]  required: Boolean
-  //
-  //        //          while(cond) {
-  //        diff.setValue(0.0)
-  //        for (t ← G.Nodes) {
-  //          //TODO: question about unit: in (1.0 - d) there is no unit but after + unit(d) :
-  //          //val Val: Double = ((1.0 - d) / N) + unit(d) * Sum(t.InNbrs){
-  //          //how do I should transform this line
-  //          val Val: Double = ((1.0 - d) / N) + d * Sum(t.InNbrs) {
-  //            w ⇒ PR(w) / deg(w.Id) //w.OutDegree
-  //          }
-  //          //val Val = v
-  //          PR <= (t, Val)
-  //
-  //          //TODO: Question for Math.abs definition (see in LanguageOps for shallow - is it correct)
-  //          diff += Math.abs(Val - PR(t))
-  //          //num_abs += 1
-  //          //v += 1.0
-  //        }
-  //        PR.assignAll()
-  //        cnt += 1
-  //        cond = (diff.value > e) && (cnt < max_iter)
-  //        //          }
-  //
-  //        println("count = " + cnt)
-  //        //println("abs times = " + num_abs)
-  //        toc()
-  //
-  //        //    for(t <- G.Nodes) {
-  //        //      println(" PR " + t.Id + " " + PR(t))
-  //        //    }
-  //      }
-  //    }
-  //
-  //    "conductance" should "compile" in {
-  //      val x: Any = optiGraphDebug {
-  //        //val G = rand_graph()
-  //        val G = RandUniformGraph(100000, 800000, 1997L)
-  //
-  //        val member = NodeProperty[Int](G)
-  //        var i = 0
-  //        for (n ← G.Nodes) {
-  //          member(n) = i % 4
-  //          //println("Node id = " + n.Id + " member = " + i + " degree = " + n.Degree)
-  //          i += 1
-  //        }
-  //
-  //        val start_time = wall_time()
-  //        var C = 0.0
-  //        var num = 0
-  //
-  //        //TODO: problem with while:
-  //        //    type mismatch;
-  //        //      [error]  found   : generated$liftedOptiGraph3.this.Rep[Boolean]
-  //        //      [error]     (which expands to)  generated$liftedOptiGraph3.this.Exp[Boolean]
-  //        //        [error]  required: Boolean
-  //        //    while (num < 4) {
-  //
-  //        //TODO: change member(u) > num to member(u) == num
-  //        val Din = Sum(G.Nodes, (u: Node) ⇒ member(u) > num) { _.Degree }
-  //        val Dout = Sum(G.Nodes, (u: Node) ⇒ member(u) != num) { _.Degree }
-  //        //TODO: change member(u) > num to member(u) == num
-  //        val Cross = Sum(G.Nodes, (u: Node) ⇒ member(u) > num) { u ⇒
-  //          Count(u.Nbrs) { j ⇒ member(j) != num }
-  //        }
-  //        val m = if (Din < Dout) Din else Dout
-  //        val retVal = if (m == 0) {
-  //          if (Cross == 0) 0.0 else MAX_DOUBLE
-  //        } else {
-  //          Cross.asInstanceOf[Double] / m.asInstanceOf[Double]
-  //        }
-  //        C += retVal
-  //        num += 1
-  //        //    }
-  //        println("TIME_LOOP: " + (wall_time() - start_time))
-  //
-  //        //println("Din = " + Din)
-  //        //println("Dout = " + Dout)
-  //        //println("Retval = " + retVal)
-  //      }
-  //    }
-  //
-  //    "SSC" should "compile" in {
-  //
-  //      val x: Any = optiGraphDebug {
-  //
-  //        def rand_graph(): Graph = {
-  //          val g = Graph()
-  //          val n1 = g.AddNode
-  //          val n2 = g.AddNode
-  //          val n3 = g.AddNode
-  //          val n4 = g.AddNode
-  //          val n5 = g.AddNode
-  //
-  //          g.AddEdge(n1, n2)
-  //          g.AddEdge(n1, n3)
-  //          g.AddEdge(n2, n4)
-  //          g.AddEdge(n3, n5)
-  //          g.Snapshot
-  //        }
-  //
-  //        val G = rand_graph()
-  //        val CompID = NodeProperty[Int](G)
-  //
-  //        val start_time = wall_time()
-  //        var numC = 0
-  //        val P = NodeOrder()
-  //        CompID.setAll(-1)
-  //
-  //        For /*[Node, GIterable[Node]]*/ (G.Nodes, (t: Node) ⇒ !(P.Has(t))) { t ⇒
-  //          //TODO: how do we should change unit in def InDFS:
-  //          //InDFS(G, t, (s: Node) => !P.Has(s), { t => unit()},
-  //          //simply to () ?
-  //          InDFS(G, t, (s: Node) ⇒ !P.Has(s), { t ⇒ () },
-  //            { InPost(s ⇒ P.PushFront(s)) })
-  //        }
-  //
-  //        //TODO: change CompID(s) > -1 to CompID(s) == -1
-  //        For(P.Items, (s: Node) ⇒ CompID(s) > -1) { s ⇒
-  //          InBFS(G^, s, /*(t:Rep[Node]) => CompID(s) == -1,*/ { t ⇒
-  //            if (CompID(s) == -1) CompID(t) = numC
-  //          })
-  //          numC += 1;
-  //        }
-  //        println("TIME_LOOP: " + (wall_time() - start_time))
-  //        println("NumC = " + numC)
-  //      }
-  //    }
-  //
+
+  "page_rank" should "compile" in {
+    val x: Any = optiGraphDebug {
+
+      //val G = RandUniformGraph(5,5,1997L)
+      //TODO graph_load shouldn't be the method of shallow
+      //it's one of conversion method
+      //should it be in shallow DSL?
+      val G = graph_load("/home/viq/delite/Delite/test.bin")
+
+      val e = 0.001
+      val d = 0.85
+      val max_iter = 6
+      val PR = NodeProperty[Double](G)
+
+      val diff = Reduceable[Double](0.0)
+      var cnt = 0
+      val N = G.NumNodes.asInstanceOf[Double]
+      PR.setAll(1.0 / N)
+
+      println("G.N " + N)
+
+      // move to ds
+      val deg = NewArray[Int](G.NumNodes)
+      for (t ← G.Nodes) {
+        deg(t.Id) = t.OutDegree
+      }
+
+      tic(G, PR, deg)
+      //var num_abs = 0
+      //var v = 0.0
+      var cond = true
+      //val n = G.Node(0)
+
+      //TODO: problem with while(cond)
+      //Predef.__whileDo(cond, {...})
+      //we need to reconstruct while
+      //[error]  found   : generated$liftedOptiGraph3.this.Rep[generated$liftedOptiGraph3.this.Boolean]
+      //[error]     (which expands to)  generated$liftedOptiGraph3.this.Exp[Boolean]
+      //[error]  required: Boolean
+
+      //          while(cond) {
+      diff.setValue(0.0)
+      for (t ← G.Nodes) {
+        //TODO: question about unit: in (1.0 - d) there is no unit but after + unit(d) :
+        //val Val: Double = ((1.0 - d) / N) + unit(d) * Sum(t.InNbrs){
+        //how do I should transform this line
+        val Val: Double = ((1.0 - d) / N) + d * Sum(t.InNbrs) {
+          w ⇒ PR(w) / deg(w.Id) //w.OutDegree
+        }
+        //val Val = v
+        PR <= (t, Val)
+
+        //TODO: Question for Math.abs definition (see in LanguageOps for shallow - is it correct)
+        diff += Math.abs(Val - PR(t))
+        //num_abs += 1
+        //v += 1.0
+      }
+      PR.assignAll()
+      cnt += 1
+      cond = (diff.value > e) && (cnt < max_iter)
+      //          }
+
+      println("count = " + cnt)
+      //println("abs times = " + num_abs)
+
+      //TODO (FEATURE ANALYZER) problem with deps: Any* parameter and empty parameter list
+      toc(())
+
+      //    for(t <- G.Nodes) {
+      //      println(" PR " + t.Id + " " + PR(t))
+      //    }
+    }
+  }
+
+  "conductance" should "compile" in {
+    val x: Any = optiGraphDebug {
+      //val G = rand_graph()
+      val G = RandUniformGraph(100000, 800000, 1997L)
+
+      val member = NodeProperty[Int](G)
+      var i = 0
+      for (n ← G.Nodes) {
+        member(n) = i % 4
+        //println("Node id = " + n.Id + " member = " + i + " degree = " + n.Degree)
+        i += 1
+      }
+
+      val start_time = wall_time()
+      var C = 0.0
+      var num = 0
+
+      //TODO: problem with while:
+      //    type mismatch;
+      //      [error]  found   : generated$liftedOptiGraph3.this.Rep[Boolean]
+      //      [error]     (which expands to)  generated$liftedOptiGraph3.this.Exp[Boolean]
+      //        [error]  required: Boolean
+      //    while (num < 4) {
+
+      //TODO: change member(u) > num to member(u) == num
+      val Din = Sum(G.Nodes, (u: Node) ⇒ member(u) > num) { _.Degree }
+      val Dout = Sum(G.Nodes, (u: Node) ⇒ member(u) != num) { _.Degree }
+      //TODO: change member(u) > num to member(u) == num
+      val Cross = Sum(G.Nodes, (u: Node) ⇒ member(u) > num) { u ⇒
+        Count(u.Nbrs) { j ⇒ member(j) != num }
+      }
+      val m = if (Din < Dout) Din else Dout
+      val retVal = if (m == 0) {
+        if (Cross == 0) 0.0 else MAX_DOUBLE
+      } else {
+        Cross.asInstanceOf[Double] / m.asInstanceOf[Double]
+      }
+      C += retVal
+      num += 1
+      //    }
+      println("TIME_LOOP: " + (wall_time() - start_time))
+
+      //println("Din = " + Din)
+      //println("Dout = " + Dout)
+      //println("Retval = " + retVal)
+    }
+  }
+
+  "SSC" should "compile" in {
+
+    val x: Any = optiGraphDebug {
+
+      def rand_graph(): Graph = {
+        val g = Graph()
+        val n1 = g.AddNode
+        val n2 = g.AddNode
+        val n3 = g.AddNode
+        val n4 = g.AddNode
+        val n5 = g.AddNode
+
+        g.AddEdge(n1, n2)
+        g.AddEdge(n1, n3)
+        g.AddEdge(n2, n4)
+        g.AddEdge(n3, n5)
+        g.Snapshot
+      }
+
+      val G = rand_graph()
+      val CompID = NodeProperty[Int](G)
+
+      val start_time = wall_time()
+      var numC = 0
+      val P = NodeOrder()
+      CompID.setAll(-1)
+
+      For /*[Node, GIterable[Node]]*/ (G.Nodes, (t: Node) ⇒ !(P.Has(t))) { t ⇒
+        //TODO: how do we should change unit in def InDFS:
+        //InDFS(G, t, (s: Node) => !P.Has(s), { t => unit()},
+        //simply to () ?
+        InDFS(G, t, (s: Node) ⇒ !P.Has(s), { t ⇒ () },
+          { InPost(s ⇒ P.PushFront(s)) })
+      }
+
+      //TODO: change CompID(s) > -1 to CompID(s) == -1
+      For(P.Items, (s: Node) ⇒ CompID(s) > -1) { s ⇒
+        InBFS(G^, s, /*(t:Rep[Node]) => CompID(s) == -1,*/ { t ⇒
+          if (CompID(s) == -1) CompID(t) = numC
+        })
+        numC += 1;
+      }
+      println("TIME_LOOP: " + (wall_time() - start_time))
+      println("NumC = " + numC)
+    }
+  }
+
   //    "BC" should "compile" in {
   //      val x: Any = optiGraphDebug {
   //        def rand_graph(): Graph = {
