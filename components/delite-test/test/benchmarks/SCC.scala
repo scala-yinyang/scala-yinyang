@@ -1,25 +1,6 @@
-import shallow.optigraph._
-import lifted._
-
-/* For not found.
-object SCC {
+import shallow.optigraph._; import lifted._; object SCC extends LanguageOps {
   optiGraphAnalysis {
-    def rand_graph(): Graph = {
-      val g = Graph()
-      val n1 = g.AddNode
-      val n2 = g.AddNode
-      val n3 = g.AddNode
-      val n4 = g.AddNode
-      val n5 = g.AddNode
-
-      g.AddEdge(n1, n2)
-      g.AddEdge(n1, n3)
-      g.AddEdge(n2, n4)
-      g.AddEdge(n3, n5)
-      g.Snapshot
-    }
-
-    val G = rand_graph()
+    val G = RandUniformGraph(100000, 800000, 1997L)
     val CompID = NodeProperty[Int](G)
 
     val start_time = wall_time()
@@ -45,4 +26,4 @@ object SCC {
     println("TIME_LOOP: " + (wall_time() - start_time))
     println("NumC = " + numC)
   }
-}*/
+}

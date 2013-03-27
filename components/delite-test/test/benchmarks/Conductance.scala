@@ -1,9 +1,6 @@
-import shallow.optigraph._
-import lifted._
-
-object Test1 {
+import shallow.optigraph._; import lifted._; object Test1 extends LanguageOps {
   optiGraphAnalysis {
-    /* TODO SUM not found
+    //val G = rand_graph()
     val G = RandUniformGraph(100000, 800000, 1997L)
 
     val member = NodeProperty[Int](G)
@@ -42,6 +39,9 @@ object Test1 {
     num += 1
     //    }
     println("TIME_LOOP: " + (wall_time() - start_time))
-   */
+
+    //println("Din = " + Din)
+    //println("Dout = " + Dout)
+    //println("Retval = " + retVal)
   }
 }

@@ -55,7 +55,6 @@ object TypeCheckingBenchmark {
   }
 
   def resetCompiler(): Unit = {
-    // TODO ask eugene
     reporter.reset
     timingWriter.reset()
     lastErrorTime = 0L
@@ -134,6 +133,7 @@ object TypeCheckingBenchmark {
       lastError = timingWriter.outputStream.toString
       resetCompiler()
     }
+    fw.write(lastError)
     println(s"Type error:${lastError}")
     fw.close()
   }
