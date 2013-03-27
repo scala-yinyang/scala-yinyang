@@ -11,17 +11,17 @@ import scala.tools.nsc.interpreter.AbstractFileClassLoader
 
 class TimingWriter(val outputStream: ByteArrayOutputStream, val onFirstPrint: () ⇒ Unit) extends PrintWriter(outputStream) {
 
-  var first = false
+  var first = true
   override def print(s: String) = {
     super.print(s)
-    if (!first && s.contains("error:")) {
-      first = true
+    if (first && s.contains("error:")) {
+      first = false
       onFirstPrint()
     }
   }
 
   def reset() = {
-    first = false
+    first = true
     outputStream.reset
   }
 }
@@ -29,10 +29,10 @@ class TimingWriter(val outputStream: ByteArrayOutputStream, val onFirstPrint: ()
 object TypeCheckingBenchmark {
   var compiler: Global = _
   var reporter: ConsoleReporter = _
-  var lastError = 0L
-  var timingWriter = new TimingWriter(new ByteArrayOutputStream(), () ⇒ { lastError = System.currentTimeMillis(); () })
+  var lastErrorTime = 0L
+  var timingWriter = new TimingWriter(new ByteArrayOutputStream(), () ⇒ { lastErrorTime = System.currentTimeMillis(); () })
 
-  def setupCompiler() = {
+  def settings() = {
     val settings = new Settings()
 
     settings.classpath.value = this.getClass.getClassLoader match {
@@ -46,8 +46,11 @@ object TypeCheckingBenchmark {
     settings.encoding.value = "UTF-8"
     settings.outdir.value = "."
     settings.extdirs.value = ""
+    settings
+  }
 
-    reporter = new ConsoleReporter(settings, null, timingWriter) //new PrintWriter(System.out)) //writer
+  def setupCompiler() = {
+    reporter = new ConsoleReporter(settings(), null, timingWriter) //new PrintWriter(System.out)) //writer
     compiler = new Global(settings, reporter)
   }
 
@@ -55,7 +58,10 @@ object TypeCheckingBenchmark {
     // TODO ask eugene
     reporter.reset
     timingWriter.reset()
-    lastError = 0L
+    lastErrorTime = 0L
+
+    reporter = new ConsoleReporter(settings(), null, timingWriter) //new PrintWriter(System.out)) //writer
+    compiler = new Global(settings, reporter)
   }
 
   var compileCount: Int = 0
@@ -65,7 +71,7 @@ object TypeCheckingBenchmark {
   }
 
   def main(args: Array[String]) = {
-    if (args.length != 6) throw new Exception("Read the source luc!! Wrong number of arguments!")
+    if (args.length != 6) throw new Exception(s"Read the source luc!! Wrong number of arguments ${args.length}!")
     val fileName = args(0)
     val startLine = args(1).toInt
     val endLine = args(2).toInt
@@ -83,10 +89,10 @@ object TypeCheckingBenchmark {
     val comp = compiler
     val fileSystem = new VirtualDirectory("<vfs>", None)
     compiler.settings.outputDirs.setSingleOutput(fileSystem)
-
+    var normalRun = 1L
     val lines = Source.fromFile(fileName).getLines().toSeq
     if (warm) {
-      for (i ← 0 until 100) {
+      for (i ← 0 until 10) {
         val run = new comp.Run
         val source = prependPackage(lines)
         val st = System.currentTimeMillis()
@@ -94,12 +100,16 @@ object TypeCheckingBenchmark {
         run.compileSources(scala.List(new util.BatchSourceFile("<stdin>", source)))
         reporter.printSummary()
         // end of benchmark
-        println(s"Warmup round $i: ${System.currentTimeMillis() - st}")
-
+        normalRun = System.currentTimeMillis() - st
+        println(s"Warmup round $i: ${normalRun}")
+        if (timingWriter.first == false) {
+          throw new Exception("The original should typecheck.")
+        }
         resetCompiler()
       }
+      report(normalRun)
     }
-
+    var lastError = ""
     for (i ← startLine until endLine) {
 
       val (before, after) = lines.splitAt(i)
@@ -116,12 +126,15 @@ object TypeCheckingBenchmark {
       reporter.printSummary()
       // end of benchmark
       val et = System.currentTimeMillis()
+      println(s"Time to of compilation: ${(et - st)}")
+      println(s"Time to error perceived: ${(et - lastErrorTime)}")
       report((et - st))
-      report((et - lastError))
+      report((et - lastErrorTime))
       fw.write("\n")
+      lastError = timingWriter.outputStream.toString
       resetCompiler()
-
     }
+    println(s"Type error:${lastError}")
     fw.close()
   }
 

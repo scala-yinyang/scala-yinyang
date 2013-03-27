@@ -160,7 +160,7 @@ final class YYTransformer[C <: Context, T](
 
   private final class FeatureAnalyzer(val lifted: Seq[MethodInv]) extends Traverser {
 
-    var methods = mutable.Set[MethodInv]()
+    var methods = mutable.LinkedHashSet[MethodInv]()
 
     //TODO: refactor it in functional way
     var parameterLists: List[List[Type]] = Nil
@@ -220,7 +220,7 @@ final class YYTransformer[C <: Context, T](
           false
         case Some(methodError) ⇒
           // missing method
-          c.error(tree.pos, s"Method $methodError not found.")
+          c.error(tree.pos, s"error: Method $methodError not found.")
           false
         case None ⇒
           true
@@ -755,6 +755,7 @@ final class YYTransformer[C <: Context, T](
 
   case class MethodInv(tpe: Option[Type], name: String, targs: List[Tree], args: List[List[Type]])
   def methodsExist(methods: MethodInv*): Boolean = {
+    System.out.println("Checking: " + methods(0))
     log("checking for existence...")
     val methodSet = methods.toSet
     def application(method: MethodInv): Tree = {

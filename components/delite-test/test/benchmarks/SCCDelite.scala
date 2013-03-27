@@ -21,6 +21,7 @@ trait SCCDelite extends lifted.OptiGraph {
         Count(u.Nbrs) { j ⇒ member(j) != num }
       }
       val m = if (Din < Dout) Din else Dout
+
       val retVal = if (m == 0) {
         if (Cross == 0) 0.0 else MAX_DOUBLE
       } else {

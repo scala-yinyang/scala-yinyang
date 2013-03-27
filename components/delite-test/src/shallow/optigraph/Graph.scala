@@ -53,4 +53,6 @@ class Graph(g: Graph) {
   def Freeze: Unit = ???
   /** Returns an immutable snapshot of the graph */
   def Snapshot: Graph = ???
+
+  def notExisting(i: Int) = ???
 }
