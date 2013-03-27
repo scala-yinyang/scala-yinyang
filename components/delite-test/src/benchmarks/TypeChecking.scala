@@ -9,15 +9,30 @@ import scala.tools.nsc.io._
 import scala.io._
 import scala.tools.nsc.interpreter.AbstractFileClassLoader
 
+class TimingWriter(val outputStream: ByteArrayOutputStream, val onFirstPrint: () ⇒ Unit) extends PrintWriter(outputStream) {
+
+  var first = false
+  override def print(s: String) = {
+    super.print(s)
+    if (!first && s.contains("error:")) {
+      first = true
+      onFirstPrint()
+    }
+  }
+
+  def reset() = {
+    first = false
+    outputStream.reset
+  }
+}
+
 object TypeCheckingBenchmark {
   var compiler: Global = _
   var reporter: ConsoleReporter = _
+  var lastError = 0L
+  var timingWriter = new TimingWriter(new ByteArrayOutputStream(), () ⇒ { lastError = System.currentTimeMillis(); () })
 
   def setupCompiler() = {
-    /*
-      output = new ByteArrayOutputStream()
-      val writer = new PrintWriter(new OutputStreamWriter(output))
-    */
     val settings = new Settings()
 
     settings.classpath.value = this.getClass.getClassLoader match {
@@ -32,13 +47,15 @@ object TypeCheckingBenchmark {
     settings.outdir.value = "."
     settings.extdirs.value = ""
 
-    reporter = new ConsoleReporter(settings, null, new PrintWriter(System.out)) //writer
+    reporter = new ConsoleReporter(settings, null, timingWriter) //new PrintWriter(System.out)) //writer
     compiler = new Global(settings, reporter)
   }
 
   def resetCompiler(): Unit = {
     // TODO ask eugene
     reporter.reset
+    timingWriter.reset()
+    lastError = 0L
   }
 
   var compileCount: Int = 0
@@ -59,7 +76,7 @@ object TypeCheckingBenchmark {
     // initialize the scala compiler
     setupCompiler()
 
-    val fw = new FileWriter(out, true)
+    val fw = new FileWriter(out)
     def report(time: Long): Unit =
       fw.write(time + " ")
 
@@ -69,7 +86,7 @@ object TypeCheckingBenchmark {
 
     val lines = Source.fromFile(fileName).getLines().toSeq
     if (warm) {
-      for (i ← 0 until 10) {
+      for (i ← 0 until 100) {
         val run = new comp.Run
         val source = prependPackage(lines)
         val st = System.currentTimeMillis()
@@ -98,8 +115,10 @@ object TypeCheckingBenchmark {
       run.compileSources(scala.List(new util.BatchSourceFile("<stdin>", source.toString)))
       reporter.printSummary()
       // end of benchmark
-      report((System.currentTimeMillis() - st))
-
+      val et = System.currentTimeMillis()
+      report((et - st))
+      report((et - lastError))
+      fw.write("\n")
       resetCompiler()
 
     }

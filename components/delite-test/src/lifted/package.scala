@@ -9,6 +9,7 @@ package object lifted {
   def optiMLDebug[T](block: ⇒ T): T = macro implementations.optiMLDebug[T]
   def optiGraph[T](block: ⇒ T): T = macro implementations.optiGraph[T]
   def optiGraphDebug[T](block: ⇒ T): T = macro implementations.optiGraphDebug[T]
+  def optiGraphAnalysis[T](block: ⇒ T): T = macro implementations.optiGraphAnalysis[T]
 
   object implementations {
     def lift[T](c: Context)(block: c.Expr[T]): c.Expr[T] = new YYTransformer[c.type, T](c, "lifted.ScalaDSL", shallow = false, debug = false, rep = true)(block)
@@ -18,6 +19,7 @@ package object lifted {
 
     def optiGraph[T](c: Context)(block: c.Expr[T]): c.Expr[T] = new YYTransformer[c.type, T](c, "lifted.OptiGraph", shallow = false, debug = false, rep = true, mainMethod = "mainDelite")(block)
     def optiGraphDebug[T](c: Context)(block: c.Expr[T]): c.Expr[T] = new YYTransformer[c.type, T](c, "lifted.OptiGraph", shallow = false, debug = true, rep = true, mainMethod = "mainDelite")(block)
+    def optiGraphAnalysis[T](c: Context)(block: c.Expr[T]): c.Expr[T] = new YYTransformer[c.type, T](c, "lifted.OptiGraph", shallow = true, debug = false, rep = true, mainMethod = "mainDelite")(block)
   }
 
 }
