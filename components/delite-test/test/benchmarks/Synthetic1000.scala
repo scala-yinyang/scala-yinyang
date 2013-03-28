@@ -1,8 +1,6 @@
-import shallow.optigraph._
-import lifted._
-object S1000 {
+import shallow.optigraph._; import lifted._; import fv._;
+object S1000 extends LanguageOps {
   optiGraphAnalysis {
-
     println(FreeValueContainer.s1 + FreeValueContainer.s2)
     val g0 = Graph()
     val n1 = g0.AddNode

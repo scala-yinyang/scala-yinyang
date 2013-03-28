@@ -1,5 +1,4 @@
-import shallow.optigraph._
-import lifted._
+import shallow.optigraph._; import lifted._;import fv._;
 object S500 {
   optiGraphAnalysis {
     println(FreeValueContainer.s1 + FreeValueContainer.s2)

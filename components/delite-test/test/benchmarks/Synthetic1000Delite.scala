@@ -1,5 +1,4 @@
-trait S1000D extends lifted.OptiGraph {
-  def mainDelite(): Any = ()
+import fv._;trait S1000D extends lifted.OptiGraph {  def mainDelite(): Any = ()
   override def main(): Unit = {
 
     println(FreeValueContainer.s1 + FreeValueContainer.s2)

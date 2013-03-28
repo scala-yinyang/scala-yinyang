@@ -1,4 +1,4 @@
-
+package fv
 object FreeValueContainer {
 
   val x1 = 1

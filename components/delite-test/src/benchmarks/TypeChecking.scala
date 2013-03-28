@@ -52,6 +52,8 @@ object TypeCheckingBenchmark {
   def setupCompiler() = {
     reporter = new ConsoleReporter(settings(), null, timingWriter) //new PrintWriter(System.out)) //writer
     compiler = new Global(settings, reporter)
+    val fileSystem = new VirtualDirectory("<vfs>", None)
+    compiler.settings.outputDirs.setSingleOutput(fileSystem)
   }
 
   def resetCompiler(): Unit = {
@@ -85,30 +87,42 @@ object TypeCheckingBenchmark {
     def report(time: Long): Unit =
       fw.write(time + " ")
 
-    val comp = compiler
-    val fileSystem = new VirtualDirectory("<vfs>", None)
-    compiler.settings.outputDirs.setSingleOutput(fileSystem)
+    var lastError = ""
     var normalRun = 1L
     val lines = Source.fromFile(fileName).getLines().toSeq
+
+    // add the stupid dependency
+    def init() = {
+      setupCompiler()
+      val comp = compiler
+      val run = new comp.Run
+      val freeValues = Source.fromFile("/home/vjovanov/work/research/code/virt/mpde/components/delite-test/test/benchmarks/FreeValueContainer.scala").getLines().toSeq.mkString("\n")
+      run.compileSources(scala.List(new util.BatchSourceFile("<stdin>", freeValues)))
+      reporter.printSummary()
+      reporter.reset()
+      new comp.Run
+    }
+
     if (warm) {
-      for (i ← 0 until 10) {
-        val run = new comp.Run
+      for (i ← 0 until 50) {
         val source = prependPackage(lines)
+        val run = init()
         val st = System.currentTimeMillis()
         // time this with scala test and without
         run.compileSources(scala.List(new util.BatchSourceFile("<stdin>", source)))
         reporter.printSummary()
         // end of benchmark
         normalRun = System.currentTimeMillis() - st
+        lastError = timingWriter.outputStream.toString
         println(s"Warmup round $i: ${normalRun}")
         if (timingWriter.first == false) {
-          throw new Exception("The original should typecheck.")
+          throw new Exception("The original should typecheck." + lastError)
         }
         resetCompiler()
       }
       report(normalRun)
     }
-    var lastError = ""
+
     for (i ← startLine until endLine) {
 
       val (before, after) = lines.splitAt(i)
@@ -118,7 +132,7 @@ object TypeCheckingBenchmark {
         setupCompiler()
       }
       Runtime.getRuntime().gc()
-      val run = new comp.Run
+      val run = init()
       val st = System.currentTimeMillis()
       // time this with scala test and without
       run.compileSources(scala.List(new util.BatchSourceFile("<stdin>", source.toString)))
