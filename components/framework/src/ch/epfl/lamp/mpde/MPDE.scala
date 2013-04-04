@@ -104,40 +104,40 @@ final class YYTransformer[C <: Context, T](
           ${codeGenerator generateCode className}
           new $className().apply(${args(allCaptured)})
         """
-        log(s"generated: ${code}")
-        c parse (code)
+          log(s"generated: ${code}")
+          c parse (code)
 
-      case dsl ⇒
-        /*
+        case dsl ⇒
+          /*
        * If DSL need runtime info send it to run-time and install a guard for re-compilation based on required symbols. 
        */
-        val programId = new scala.util.Random().nextLong
-        val retType: String = block.tree.tpe.toString
-        val functionType = s"""${(0 until args(holes).length).map(y ⇒ "scala.Any").mkString("(", ", ", ")")} => ${retType}"""
-        val refs = requiredVariables filterNot (isPrimitive)
-        val dslInit = s"""
+          val programId = new scala.util.Random().nextLong
+          val retType: String = block.tree.tpe.toString
+          val functionType = s"""${(0 until args(holes).length).map(y ⇒ "scala.Any").mkString("(", ", ", ")")} => ${retType}"""
+          val refs = requiredVariables filterNot (isPrimitive)
+          val dslInit = s"""
           val dslInstance = ch.epfl.lamp.yinyang.runtime.YYStorage.lookup(${programId}L, new $className())
           val values: Seq[Any] = Seq(${(requiredVariables diff refs) map (_.name.decoded) mkString ", "})
           val refs: Seq[Any] = Seq(${refs map (_.name.decoded) mkString ", "})          
         """
 
-        val guardedExecute = c parse dslInit + (dsl match {
-          case _: CodeGenerator ⇒ s"""
+          val guardedExecute = c parse dslInit + (dsl match {
+            case _: CodeGenerator ⇒ s"""
             def recompile(): () => Any = dslInstance.compile[$retType, $functionType]
             val program = ch.epfl.lamp.yinyang.runtime.YYStorage.$guardType[$functionType](${programId}L, values, refs, recompile)            
             program.apply(${args(holes)})
             """
-          case _: Interpreted ⇒ s"""
+            case _: Interpreted ⇒ s"""
             def invalidate(): () => Any = dslInstance.reset
             ch.epfl.lamp.yinyang.runtime.YYStorage.$guardType[Any](${programId}L, values, refs, invalidate)
             dslInstance.interpret[${retType}](${args(holes)})
             """
-        })
+          })
 
-        val finalBlock = Block(dslClass, guardedExecute)
-        println("Guarded block:" + show(finalBlock))
-        finalBlock
-    }
+          val finalBlock = Block(dslClass, guardedExecute)
+          log("Guarded block:" + show(finalBlock))
+          finalBlock
+      }
 
       log("Final tree untyped: " + show(c.resetAllAttrs(dslTree)))
       log("Final tree: " + show(c.typeCheck(c.resetAllAttrs(dslTree))))
@@ -430,7 +430,7 @@ final class YYTransformer[C <: Context, T](
           // if (!featureExists("__doWhile", List(body.tpe, cond.tpe))) {
           // c.error(tree.pos, "The DSL doesn't support the do-while loops!")
           // }
-          lifted += MethodInv(None, "__doWhile", Nil, List(cond.tpe, body.tpe))
+          lifted += MethodInv(None, "__doWhile", Nil, List(List(cond.tpe, body.tpe)))
           method("__doWhile", List(transform(body), transform(cond)))
         case _ ⇒
           super.transform(tree)
@@ -680,13 +680,9 @@ final class YYTransformer[C <: Context, T](
       //val baseTree = TypeTree(pre) //pre = scala.type
       //using such baseTree we get val a: scala.type[generated$dsllarepVectorDSL13.this.Rep[Int], generated$dsllarepVectorDSL13.this.Rep[Int]] = ...
       val baseTree = Select(Ident(newTermName("scala")), sym.name)
-<<<<<<< HEAD
       AppliedTypeTree(baseTree, retTyperees)
-=======
-      AppliedTypeTree(baseTree, typeTrees)
     } else if (universe.isSingleType(inType.asInstanceOf[universe.Type])) {
       constructPolyTree(inType)
->>>>>>> Feature Analyzer fixes.
     } else {
       wrapInRep(inType)
     }
@@ -755,7 +751,7 @@ final class YYTransformer[C <: Context, T](
 
   case class MethodInv(tpe: Option[Type], name: String, targs: List[Tree], args: List[List[Type]])
   def methodsExist(methods: MethodInv*): Boolean = {
-    System.out.println("Checking: " + methods(0))
+    log("Checking: " + methods(0))
     log("checking for existence...")
     val methodSet = methods.toSet
     def application(method: MethodInv): Tree = {

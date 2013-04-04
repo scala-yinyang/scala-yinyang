@@ -45,7 +45,7 @@ class OptiGraphSpec extends FlatSpec with ShouldMatchers with LanguageOps {
   }
 
   "test_graphOps" should "compile" in {
-    val x: Any = optiGraphDebug {
+    val x: Any = optiGraph {
       val g: Graph = Graph()
       val n1: Node = ??? //g.AddNode
       val n2: Node = ??? //g.AddNode
@@ -134,7 +134,7 @@ class OptiGraphSpec extends FlatSpec with ShouldMatchers with LanguageOps {
   }
 
   "test_deferrable" should "compile" in {
-    val x: Any = optiGraphDebug {
+    val x: Any = optiGraph {
       println("Test Deferrable")
       val d = Deferrable[Double](1.0)
       if (d.value != 1.0) {
@@ -166,7 +166,7 @@ class OptiGraphSpec extends FlatSpec with ShouldMatchers with LanguageOps {
   }
 
   "test_reduceable" should "compile" in {
-    val x: Any = optiGraphDebug {
+    val x: Any = optiGraph {
       val g = Graph()
       val n1 = g.AddNode
       val n2 = g.AddNode
@@ -321,7 +321,7 @@ class OptiGraphSpec extends FlatSpec with ShouldMatchers with LanguageOps {
   }
 
   //    "test_reductions" should "compile" in {
-  //      val x: Any = optiGraphDebug {
+  //      val x: Any = optiGraph {
   //        val g = Graph()
   //        val n1 = g.AddNode
   //        val n2 = g.AddNode
@@ -530,7 +530,7 @@ class OptiGraphSpec extends FlatSpec with ShouldMatchers with LanguageOps {
   //    }
   //
   //    "test_traversals" should "compile" in {
-  //      val x: Any = optiGraphDebug {
+  //      val x: Any = optiGraph {
   //        val g = Graph()
   //        val n1 = g.AddNode
   //        val n2 = g.AddNode
@@ -612,7 +612,7 @@ class OptiGraphSpec extends FlatSpec with ShouldMatchers with LanguageOps {
   //    }
   //
   //    "test_nodeOpsEdgeOps" should "compile" in {
-  //      val x: Any = optiGraphDebug {
+  //      val x: Any = optiGraph {
   //        val g = Graph()
   //        val n1 = g.AddNode
   //        val n2 = g.AddNode
@@ -715,7 +715,7 @@ class OptiGraphSpec extends FlatSpec with ShouldMatchers with LanguageOps {
   //    }
   //
   //    "test_filters" should "compile" in {
-  //      val x: Any = optiGraphDebug {
+  //      val x: Any = optiGraph {
   //
   //        //TODO (is it correct?) -
   //        //to make test work I inserted test
@@ -827,7 +827,7 @@ class OptiGraphSpec extends FlatSpec with ShouldMatchers with LanguageOps {
   //    }
   //
   //    "test_iterations" should "compile" in {
-  //      val x: Any = optiGraphDebug {
+  //      val x: Any = optiGraph {
   //
   //        // empty / non-empty
   //
@@ -894,7 +894,7 @@ class OptiGraphSpec extends FlatSpec with ShouldMatchers with LanguageOps {
   //    }
   //
   //    "test_nodeEdgeProps" should "compile" in {
-  //      val x: Any = optiGraphDebug {
+  //      val x: Any = optiGraph {
   //        val g = Graph()
   //        val n1 = g.AddNode
   //        val n2 = g.AddNode
@@ -1052,7 +1052,7 @@ class OptiGraphSpec extends FlatSpec with ShouldMatchers with LanguageOps {
   //    }
   //
   //    "basic" should "compile" in {
-  //      val x: Any = optiGraphDebug {
+  //      val x: Any = optiGraph {
   //        val g: Graph = null
   //        val g_empty: Graph = null
   //        val n1: Node = null
@@ -1162,7 +1162,7 @@ class OptiGraphSpec extends FlatSpec with ShouldMatchers with LanguageOps {
   //    }
   //
   //    "rand_graph" should "compile" in {
-  //      val x: Any = optiGraphDebug {
+  //      val x: Any = optiGraph {
   //        //      def rand_graph(): Graph = {
   //        //        val g = Graph()
   //        //        val n1 = g.AddNode
@@ -1195,7 +1195,7 @@ class OptiGraphSpec extends FlatSpec with ShouldMatchers with LanguageOps {
   //    }
 
   "page_rank" should "compile" in {
-    val x: Any = optiGraphDebug {
+    val x: Any = optiGraph {
 
       //val G = RandUniformGraph(5,5,1997L)
       //TODO graph_load shouldn't be the method of shallow
@@ -1269,7 +1269,7 @@ class OptiGraphSpec extends FlatSpec with ShouldMatchers with LanguageOps {
   }
 
   "conductance" should "compile" in {
-    val x: Any = optiGraphDebug {
+    val x: Any = optiGraph {
       //val G = rand_graph()
       val G = RandUniformGraph(100000, 800000, 1997L)
 
@@ -1318,7 +1318,7 @@ class OptiGraphSpec extends FlatSpec with ShouldMatchers with LanguageOps {
 
   "SSC" should "compile" in {
 
-    val x: Any = optiGraphDebug {
+    val x: Any = optiGraph {
 
       def rand_graph(): Graph = {
         val g = Graph()
@@ -1364,7 +1364,7 @@ class OptiGraphSpec extends FlatSpec with ShouldMatchers with LanguageOps {
   }
 
   //    "BC" should "compile" in {
-  //      val x: Any = optiGraphDebug {
+  //      val x: Any = optiGraph {
   //        def rand_graph(): Graph = {
   //          val g = Graph()
   //          val n1 = g.AddNode
