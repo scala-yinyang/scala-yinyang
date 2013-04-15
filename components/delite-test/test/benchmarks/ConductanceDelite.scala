@@ -1,4 +1,4 @@
-trait ConductanceApp extends lifted.OptiGraph {
+/*trait ConductanceApp extends lifted.OptiGraph {
   def mainDelite(): Any = ()
   override def main(): Unit = {
     val G = RandUniformGraph(100000, 800000, 1997L)
@@ -23,4 +23,4 @@ trait ConductanceApp extends lifted.OptiGraph {
     println("TIME_LOOP: " + (wall_time() - start_time))
     println("NumC = " + numC)
   }
-}
+}*/

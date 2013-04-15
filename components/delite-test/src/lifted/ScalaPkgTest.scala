@@ -11,7 +11,7 @@ import scala.tools.nsc.io._
 import scala.tools.nsc.interpreter.AbstractFileClassLoader
 import java.io._
 
-trait LMSYinYang extends BaseYinYang with BaseExp { self ⇒
+trait LMSYinYang extends BaseYinYang with BaseExp { self =>
   case class Hole[+T: Manifest](symId: Long) extends Def[T]
 
   implicit def liftAny[T: Manifest]: LiftEvidence[T, Rep[T]] =
@@ -24,7 +24,7 @@ trait LMSYinYang extends BaseYinYang with BaseExp { self ⇒
 }
 
 trait ScalaDSL extends ScalaOpsPkg with ScalaOpsPkgExp with LMSYinYang with CodeGenerator
-  with ScalaCompile { self ⇒
+  with ScalaCompile { self =>
 
   def main(): Any
 
@@ -32,8 +32,8 @@ trait ScalaDSL extends ScalaOpsPkg with ScalaOpsPkgExp with LMSYinYang with Code
     val IR: self.type = self
 
     override def emitNode(sym: Sym[Any], rhs: Def[Any]): Unit = rhs match {
-      case Hole(x) ⇒
-      case _       ⇒ super.emitNode(sym, rhs)
+      case Hole(x) =>
+      case _       => super.emitNode(sym, rhs)
     }
 
     def emitSourceYinYang[T: Manifest](f: Exp[T], className: String, stream: PrintWriter): List[(Sym[Any], Any)] = {
@@ -41,12 +41,12 @@ trait ScalaDSL extends ScalaOpsPkg with ScalaOpsPkgExp with LMSYinYang with Code
 
       val syms: List[Sym[_]] = focusBlock(body) {
         innerScope flatMap {
-          case TP(sym, rhs) ⇒
+          case TP(sym, rhs) =>
             rhs match {
-              case Hole(x) ⇒ scala.List(sym)
-              case _       ⇒ Nil
+              case Hole(x) => scala.List(sym)
+              case _       => Nil
             }
-          case _ ⇒ Nil
+          case _ => Nil
         }
       }
       emitSource(syms, body, className, stream)
@@ -87,12 +87,12 @@ trait ScalaDSL extends ScalaOpsPkg with ScalaOpsPkgExp with LMSYinYang with Code
 
   def interpret[T: Manifest](params: Nothing*): T = {
     params.length match {
-      case 0 ⇒
-        compile[T, () ⇒ T].apply
-      case 1 ⇒
-        compile[T, Any ⇒ T].apply(params(0))
-      case 2 ⇒
-        compile[T, (Any, Any) ⇒ T].apply(params(0), params(1))
+      case 0 =>
+        compile[T, () => T].apply
+      case 1 =>
+        compile[T, Any => T].apply(params(0))
+      case 2 =>
+        compile[T, (Any, Any) => T].apply(params(0), params(1))
     }
 
   }
@@ -124,7 +124,7 @@ trait OptiGraph extends OptiGraphApplicationRunner with LMSYinYang with Interpre
 
   def interpret[T: Manifest](params: Any*) = 0.asInstanceOf[T]
 
-  type Int = scala.Int
+  /*type Int = scala.Int
   type Float = scala.Float
   type Double = scala.Double
   type Boolean = scala.Boolean
@@ -144,7 +144,7 @@ trait OptiGraph extends OptiGraphApplicationRunner with LMSYinYang with Interpre
   type Deferrable[T] = ppl.dsl.optigraph.Deferrable[T]
   type Reduceable[T] = ppl.dsl.optigraph.Reduceable[T]
   type NodeProperty[T] = ppl.dsl.optigraph.NodeProperty[T]
-  type EdgeProperty[T] = ppl.dsl.optigraph.EdgeProperty[T]
+  type EdgeProperty[T] = ppl.dsl.optigraph.EdgeProperty[T]*/
 
   override implicit def repNodeToNodeOps(n: Rep[Node]) = new NodeOpsCls(n)
 
@@ -156,6 +156,9 @@ trait OptiGraph extends OptiGraphApplicationRunner with LMSYinYang with Interpre
 
   implicit val ManifestFactory = scala.reflect.ManifestFactory
   implicit val IntIsIntegral = scala.math.Numeric.IntIsIntegral
+  object Numeric {
+    val IntIsIntegral = scala.math.Numeric.IntIsIntegral
+  }
   val DoubleIsFractional = scala.math.Numeric.DoubleIsFractional
 
   //  def ====(ths: Rep[Any], t: Rep[Any]): Rep[Boolean] = ths == t

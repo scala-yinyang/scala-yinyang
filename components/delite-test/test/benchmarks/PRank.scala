@@ -1,4 +1,4 @@
-import shallow.optigraph._; import lifted._;
+/*import shallow.optigraph._; import lifted._;
 object PR extends LanguageOps {
   optiGraphAnalysis {
     val G = graph_load("/home/viq/delite/Delite/test.bin")
@@ -52,3 +52,4 @@ object PR extends LanguageOps {
     toc(())
   }
 }
+*/

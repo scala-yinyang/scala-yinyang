@@ -1,4 +1,4 @@
-trait PRD extends lifted.OptiGraph {
+/*trait PRD extends lifted.OptiGraph {
   def mainDelite(): Any = ()
   override def main(): Unit = {
     val G = graph_load("/home/viq/delite/Delite/test.bin")
@@ -51,4 +51,4 @@ trait PRD extends lifted.OptiGraph {
     //      println(" PR " + t.Id + " " + PR(t))
     //    }
   }
-}
+}*/

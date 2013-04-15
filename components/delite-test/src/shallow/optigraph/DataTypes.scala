@@ -18,11 +18,11 @@ object NodeSet {
   def apply(): GSet[Node] = ???
 }
 
-trait GSet[A] {
-  type NodeSet = GSet[Node]
-  type NS = GSet[Node]
-  type EdgeSet = GSet[Edge]
-  type ES = GSet[Edge]
+trait GSet[A] extends ppl.dsl.optigraph.GSet[A] {
+  // type NodeSet = GSet[Node]
+  // type NS = GSet[Node]
+  // type EdgeSet = GSet[Edge]
+  // type ES = GSet[Edge]
 
   def Items: GIterable[A] = ???
   /** Returns true if the collection contains the element */
@@ -61,11 +61,11 @@ object EO {
 }
 
 /** Ordered collection of unique elements */
-trait GOrder[T] {
-  type NodeOrder = GOrder[Node]
-  type NO = GOrder[Node]
-  type EdgeOrder = GOrder[Edge]
-  type EO = GOrder[Edge]
+trait GOrder[T] extends ppl.dsl.optigraph.GOrder[T] {
+  // type NodeOrder = GOrder[Node]
+  // type NO = GOrder[Node]
+  // type EdgeOrder = GOrder[Edge]
+  // type EO = GOrder[Edge]
 
   /** Returns all the items in the collection */
   def Items: GIterable[T] = ???
@@ -113,11 +113,11 @@ object EQ {
 }
 
 /** Ordered collection of elements (with duplicates possible) */
-trait GSeq[T] {
-  type NodeSeq = GSeq[Node]
+trait GSeq[T] extends ppl.dsl.optigraph.GSeq[T] {
+  /*type NodeSeq = GSeq[Node]
   type NS = GSeq[Node]
   type EdgeSeq = GSeq[Edge]
-  type ES = GSeq[Edge]
+  type ES = GSeq[Edge]*/
 
   /** Returns all the items in the collection */
   def Items: GIterable[T] = ???
@@ -158,7 +158,7 @@ object NewArray extends scala.AnyRef {
 //}
 
 /** Iterable/reduceable collection of graph items (nodes or edges) */
-class GIterable[T](var data: Array[T], offset: Int, size: Int) {
+class GIterable[T](var data: Array[T], offset: Int, size: Int) extends ppl.dsl.optigraph.GIterable[T] {
 
   def apply(i: Int): T = ???
   def length: Int = size //data.length
@@ -207,7 +207,7 @@ object Reduceable {
 }
 
 ///** Can be used in reduction assignments (in a parallel context) */
-trait Reduceable[T] {
+trait Reduceable[T] extends ppl.dsl.optigraph.Reduceable[T] {
 
   /** Returns the current value of r*/
   def value: T = ???
@@ -240,7 +240,7 @@ object Deferrable {
 
 /** Operations on Deferrables */
 //class Deferrable[T: Manifest](d: Deferrable[T]) {
-trait Deferrable[T] {
+trait Deferrable[T] extends ppl.dsl.optigraph.Deferrable[T] {
   /**
    * Assign the latest deferred value
    *  No effect if no value was deferred since last assignment

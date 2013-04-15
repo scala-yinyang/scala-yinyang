@@ -1,4 +1,4 @@
-package fv
+/*package fv
 object FreeValueContainer {
 
   val x1 = 1
@@ -1502,3 +1502,4 @@ object FreeValueContainer {
   val s500 = "stupid string 500"
 
 }
+*/

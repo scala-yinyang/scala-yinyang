@@ -1,4 +1,4 @@
-trait SCCDelite extends lifted.OptiGraph {
+/*trait SCCDelite extends lifted.OptiGraph {
   def mainDelite(): Any = ()
   override def main(): Unit = {
     val G = RandUniformGraph(100000, 800000, 1997L)
@@ -33,4 +33,4 @@ trait SCCDelite extends lifted.OptiGraph {
     println("TIME_LOOP: " + (wall_time() - start_time))
   }
 
-}
+}*/

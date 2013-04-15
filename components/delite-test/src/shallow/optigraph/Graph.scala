@@ -2,14 +2,14 @@ package shallow.optigraph
 
 /** Directed graph constructors */
 object Graph {
-  def apply(): Graph = ??? //GraphOps.dgraph_new()
+  def apply(): Graph = ???
 }
 object DGraph {
-  def apply(): Graph = ??? //GraphOps.dgraph_new()
+  def apply(): Graph = ???
 }
 /** Undirected graph constructors */
 object UGraph {
-  def apply(): Graph = ??? //GraphOps.ugraph_new()
+  def apply(): Graph = ???
 }
 
 object RandUniformGraph {
@@ -19,7 +19,7 @@ object RandUniformGraph {
 //  implicit def repGraphToGraphOps(g: Graph) = new GraphOpsCls(g)
 
 /** Operations on Graphs */
-class Graph(g: Graph) {
+class Graph(g: Graph) extends ppl.dsl.optigraph.Graph {
   /** Returns all the nodes in the graph */
   def Nodes: GIterable[Node] = ???
   /** Returns all the edges in the graph */

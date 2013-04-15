@@ -1,6 +1,6 @@
 package shallow.optigraph
 
-class Edge {
+class Edge extends ppl.dsl.optigraph.Edge {
   /** Source node */
   def From: Node = ???
   /** Destination node */
@@ -22,7 +22,7 @@ object EP {
 }
 
 /** Operations on EdgeProperties */
-class EdgeProperty[A](ep: EdgeProperty[A]) {
+class EdgeProperty[A](ep: EdgeProperty[A]) extends ppl.dsl.optigraph.EdgeProperty[A] {
   /** Return the property value of edge e */
   def apply(e: Edge): A = ???
   /** Update the property value of edge e to x */
@@ -35,4 +35,8 @@ class EdgeProperty[A](ep: EdgeProperty[A]) {
   def assign(e: Edge): Unit = ???
   /** Assign the values deferred for all the edges (parallel operation) */
   def assignAll(): Unit = ???
+
+  def dcApply(idx: Int): A = ???
+  def dcSize: Int = ???
+  def dcUpdate(idx: Int, x: A): Unit = ???
 }

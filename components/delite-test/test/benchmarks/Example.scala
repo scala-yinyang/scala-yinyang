@@ -1,4 +1,4 @@
-import shallow.optigraph._
+/*import shallow.optigraph._
 import lifted._
 object Example {
   optiGraphAnalysis {
@@ -86,4 +86,4 @@ object Example {
       println("[OK] Undirected graph connectivity is correct")
     }
   }
-}
+}*/

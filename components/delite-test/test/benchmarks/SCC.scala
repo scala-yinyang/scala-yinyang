@@ -1,4 +1,4 @@
-import shallow.optigraph._; import lifted._; object SCC extends LanguageOps {
+/*import shallow.optigraph._; import lifted._; object SCC extends LanguageOps {
   optiGraphAnalysis {
     val G = RandUniformGraph(100000, 800000, 1997L)
     val CompID = NodeProperty[Int](G)
@@ -26,4 +26,4 @@ import shallow.optigraph._; import lifted._; object SCC extends LanguageOps {
     println("TIME_LOOP: " + (wall_time() - start_time))
     println("NumC = " + numC)
   }
-}
+}*/

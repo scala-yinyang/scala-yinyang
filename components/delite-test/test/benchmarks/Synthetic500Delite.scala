@@ -1,4 +1,4 @@
-import fv._; trait S500D extends lifted.OptiGraph {
+/*import fv._; trait S500D extends lifted.OptiGraph {
   def mainDelite(): Any = ()
   override def main(): Unit = {
     println(FreeValueContainer.s1 + FreeValueContainer.s2)
@@ -552,4 +552,4 @@ import fv._; trait S500D extends lifted.OptiGraph {
     g245.AddEdge(n247, n248)
   }
 
-}
+}*/

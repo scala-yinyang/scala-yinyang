@@ -4,7 +4,7 @@ package shallow.optigraph
 //  val bfsVisitedDynVar = new DynamicVariable[Array[Int]](null)
 
 /** Operations on Nodes */
-class Node {
+class Node extends ppl.dsl.optigraph.Node {
   /** Returns the nodes that node n has edges to */
   def Nbrs: GIterable[Node] = ???
   /** Returns the nodes that node n has edges to */

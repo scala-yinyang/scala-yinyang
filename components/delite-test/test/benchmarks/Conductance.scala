@@ -1,4 +1,4 @@
-import shallow.optigraph._; import lifted._; object Test1 extends LanguageOps {
+/*import shallow.optigraph._; import lifted._; object Test1 extends LanguageOps {
   optiGraphAnalysis {
     //val G = rand_graph()
     val G = RandUniformGraph(100000, 800000, 1997L)
@@ -44,4 +44,4 @@ import shallow.optigraph._; import lifted._; object Test1 extends LanguageOps {
     //println("Dout = " + Dout)
     //println("Retval = " + retVal)
   }
-}
+}*/

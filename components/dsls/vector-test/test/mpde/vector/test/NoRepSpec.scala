@@ -12,15 +12,15 @@ import org.scalatest.junit.JUnitRunner
 @RunWith(classOf[JUnitRunner])
 class NoRepSpec extends FlatSpec with ShouldMatchers {
 
-  def notImplemented[T](x: ⇒ T): Unit = {
+  def notImplemented[T](x: => T): Unit = {
     try x catch {
-      case e: NotImplementedError ⇒
+      case e: NotImplementedError =>
         println("Success")
         ()
     }
   }
 
-  it should "lift Vector to NoRep" in {
+  /*  it should "lift Vector to NoRep" in {
 
     val x = notImplemented {
       dsl.la.laLiftNoRep {
@@ -32,10 +32,10 @@ class NoRepSpec extends FlatSpec with ShouldMatchers {
         val a = DenseVector(1, 2)
         //val b = a
         //val c: Vector[Int] = DenseVector(1, 2, 3)
-        //a.map(x ⇒ x + 2)
+        //a.map(x => x + 2)
         //b.map(_ + 2)
 
-        a.reconstruct((x, y) ⇒ x + y)
+        a.reconstruct((x, y) => x + y)
         a.reconstruct(_ + _)
 
         //problem to transform
@@ -84,16 +84,16 @@ class NoRepSpec extends FlatSpec with ShouldMatchers {
 
     val x = notImplemented {
       dsl.la.laLiftNoRep {
-        /* 
-      val a = (x: Int) ⇒ x + 5
-      val b: Int ⇒ Int ⇒ Double = ???
-      val c: (Int, Int) ⇒ Double = ???
-      val d: Vector[Int] ⇒ Vector[Double] = ???
-      val e: Array[Int ⇒ Int] = ???
+        /*
+      val a = (x: Int) => x + 5
+      val b: Int => Int => Double = ???
+      val c: (Int, Int) => Double = ???
+      val d: Vector[Int] => Vector[Double] = ???
+      val e: Array[Int => Int] = ???
     */
       }
     }
 
     ()
-  }
+  }*/
 }
