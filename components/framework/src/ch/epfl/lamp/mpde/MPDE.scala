@@ -277,7 +277,7 @@ final class YYTransformer[C <: Context, T](
     val res = try {
       // block containing only dummy methods that were applied.
       val block = Block(composeDSL(Block(methodSet.map(x => application(x)).toSeq: _*)), Literal(Constant(())))
-      log("Block before typecheck: " + show(block, printTypes = true))
+      log("Block before typecheck: " + show(block))
       log("Block before typecheck: " + showRaw(block))
       c.typeCheck(c.resetAllAttrs(block))
       true

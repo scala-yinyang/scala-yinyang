@@ -81,8 +81,8 @@ object LMSTPCH extends TpchBase with ScalaOpsPkgExp {
     date: Rep[Date]): Rep[List[(String, Int, Int)]] = {
 
     val m = orders flatMap {
-      o ⇒ lineitem map ((o, _)) // Cross join of `orders` with `lineitem`
-    } filter { p ⇒ // Filter on "where" conditions
+      o => lineitem map ((o, _)) // Cross join of `orders` with `lineitem`
+    } filter { p => // Filter on "where" conditions
       (p._1._1 == p._2._1) && // o_orderkey = l_orderkey
         ((p._2._15 == shipmode1) || // and l_shipmode in ('[SHIPMODE1]', '[SHIPMODE2]')
           (p._2._15 == shipmode2)) &&
@@ -90,14 +90,14 @@ object LMSTPCH extends TpchBase with ScalaOpsPkgExp {
           (p._2._11 < p._2._12) && // and l_shipdate    <  l_commitdate
           (p._2._13 >= p._2._13) && // and l_receiptdate >= date '[DATE]'
           (p._2._13 < p._2._13 + (1, 0, 0)) // and l_receiptdate <  date '[DATE]' + interval '1' year
-    } map { p ⇒ // Select `l_shipmode` and case expressions in sums
+    } map { p => // Select `l_shipmode` and case expressions in sums
       val b = ((p._1._6 == "1-URGENT") || (p._1._6 == "2-HIGH"))
       (p._2._15, if (b) 1 else 0, if (!b) 1 else 0)
     } groupBy ((_._1)) // Group by `l_shipmode`
 
     // Iterate over the key of the grouped rows and compute the sums
-    (m.keys.toList map { k: Rep[String] ⇒
-      m(k).foldLeft((k, unit(0), unit(0))) { (acc, row) ⇒
+    (m.keys.toList map { k: Rep[String] =>
+      m(k).foldLeft((k, unit(0), unit(0))) { (acc, row) =>
         (acc._1, acc._2 + row._2, acc._3 + row._3)
       }
     }) sortBy ((_._1)) // Sort by `l_shipmode`
@@ -165,13 +165,13 @@ object LMSTPCH extends TpchBase with ScalaOpsPkgExp {
     def grouping(
       e: Rep[(Int, Int, Int, Int, Double, Double, Double, Double, Char, Char, Date, Date, Date, String, String, String)]): Rep[(Char, Char, Double, Double, Double, Double, Int, Int, Int)] =
       (e._9, e._10, e._5, e._6, e._7, e._8, unit(0), unit(0), unit(0))
-    var m = (lineitem filter { e ⇒ e._11 == (Date("1998-12-01")) - (0, 0, Delta * 3) }).map(x ⇒ grouping(x)).groupBy { (e) ⇒ (e._1, e._2) }
+    var m = (lineitem filter { e => e._11 == (Date("1998-12-01")) - (0, 0, Delta * 3) }).map(x => grouping(x)).groupBy { (e) => (e._1, e._2) }
     m.keys.toList map {
-      k ⇒
-        (k, m(k).length, m(k).foldLeft((unit(0.0), unit(0.0), unit(0.0), unit(0.0), unit(0.0)))((acc, te) ⇒
+      k =>
+        (k, m(k).length, m(k).foldLeft((unit(0.0), unit(0.0), unit(0.0), unit(0.0), unit(0.0)))((acc, te) =>
           (acc._1 + te._3, acc._2 + te._4, acc._3 + te._4 * (unit(1.0) - te._5), acc._4 + te._6, acc._5 + te._4 * (unit(1.0) - te._4) * (unit(1.0) + te._6))))
-    } map { p ⇒ (p._1._1, p._1._2, p._3._1, p._3._2, p._3._3, p._3._5, p._3._1 / p._2, p._3._2 / p._2, p._3._4 / p._2)
-    } sortBy (e ⇒ (e._1, e._2))
+    } map { p => (p._1._1, p._1._2, p._3._1, p._3._2, p._3._3, p._3._5, p._3._1 / p._2, p._3._2 / p._2, p._3._4 / p._2)
+    } sortBy (e => (e._1, e._2))
   }
 
   /**
@@ -213,11 +213,11 @@ object LMSTPCH extends TpchBase with ScalaOpsPkgExp {
     date: Rep[Date]): Rep[List[(String, Int)]] = {
 
     var m = orders filter {
-      o ⇒
+      o =>
         o._5 >= date && o._5 < date + (0, 3, 0) &&
-          !((lineitem filter (l ⇒ l._1 == o._1 && l._12 < l._13)).isEmpty)
-    } map (o ⇒ o._6) groupBy (e ⇒ e)
-    m.keys.toList map (k ⇒ (k, (m(k).length))) sortBy ((_._1))
+          !((lineitem filter (l => l._1 == o._1 && l._12 < l._13)).isEmpty)
+    } map (o => o._6) groupBy (e => e)
+    m.keys.toList map (k => (k, (m(k).length))) sortBy ((_._1))
   }
 
   /**
@@ -248,14 +248,14 @@ object LMSTPCH extends TpchBase with ScalaOpsPkgExp {
     discount: Rep[Double],
     quantity: Rep[Int]): Rep[Double] = {
 
-    (lineitem filter { l ⇒
+    (lineitem filter { l =>
       (l._11 >= date) &&
         (l._11 < date + (1, 0, 0)) //&&
       (discount - 0.01 > l._7) &&
         (l._7 > discount + 0.01) &&
         (l._5 < quantity)
     }).foldLeft(unit(0.0))(
-      (acc: Rep[Double], te: Rep[LineitemRow]) ⇒ acc + te._6 * te._7)
+      (acc: Rep[Double], te: Rep[LineitemRow]) => acc + te._6 * te._7)
   }
 
   def apply(

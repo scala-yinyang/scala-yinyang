@@ -9,7 +9,7 @@ trait Base extends BaseYinYang {
 }
 
 trait IntDSL extends Base {
-  self: DoubleDSL with BooleanDSL ⇒
+  self: DoubleDSL with BooleanDSL =>
 
   type Int = IntOps
 
@@ -50,7 +50,7 @@ trait IntDSL extends Base {
 }
 
 trait DoubleDSL extends Base {
-  selfType: IntDSL with BooleanDSL ⇒
+  selfType: IntDSL with BooleanDSL =>
 
   type Double = DoubleOps
 
@@ -168,12 +168,12 @@ trait ArrayDSL extends Base with IntDSL with DoubleDSL with BooleanDSL {
   trait ArrayOps[T] {
     def apply(i: Int): T
 
-    def aggregate[B](z: B)(seqop: (B, T) ⇒ B, combop: (B, B) ⇒ B): B
+    def aggregate[B](z: B)(seqop: (B, T) => B, combop: (B, B) => B): B
 
-    def fold[A1 >: T](z: A1)(op: (A1, A1) ⇒ A1): A1
+    def fold[A1 >: T](z: A1)(op: (A1, A1) => A1): A1
 
     //TODO implement Ordering
-    def sort[B](f: (T) ⇒ B)(implicit ord: Ordering[B]): Array[T]
+    def sort[B](f: (T) => B)(implicit ord: Ordering[B]): Array[T]
 
     def sort(implicit ord: Ordering[T]): Array[T]
   }
@@ -182,7 +182,7 @@ trait ArrayDSL extends Base with IntDSL with DoubleDSL with BooleanDSL {
     def apply[T](values: T*): Array[T] = ???
 
     //TODO (ASK) - what to do with by name parameters (=> T)
-    def fill[T: ClassTag](n: Int)(elem: ⇒ T): Array[T] = ???
+    def fill[T: ClassTag](n: Int)(elem: => T): Array[T] = ???
   }
 
 }
@@ -197,7 +197,7 @@ trait BooleanDSL extends Base {
 
 trait IfThenElseDSL extends BooleanDSL with Base {
 
-  def __ifThenElse[T](c: ⇒ Boolean, t: T, e: T) = ???
+  def __ifThenElse[T](c: => Boolean, t: T, e: T) = ???
 }
 
 //TODO try to remove it and test without TupleDSL
@@ -234,12 +234,12 @@ trait VectorDSL
 
     def *(v: Vector[T]): Vector[T]
     def +(v: Vector[T]): Vector[T]
-    def map[U: Numeric: ClassTag](v: T ⇒ U): Vector[U]
-    def reconstruct[U: Numeric: ClassTag](v: (T, T) ⇒ U): Vector[U]
+    def map[U: Numeric: ClassTag](v: T => U): Vector[U]
+    def reconstruct[U: Numeric: ClassTag](v: (T, T) => U): Vector[U]
 
     def baseVectors: Array[Vector[T]] //find base vectors
 
-    def partition(fun: T ⇒ Boolean): Tuple2[Vector[T], Vector[T]]
+    def partition(fun: T => Boolean): Tuple2[Vector[T], Vector[T]]
 
     def dotProduct(v: Vector[T]): T
 
@@ -247,19 +247,19 @@ trait VectorDSL
 
     def spliceT(v: Tuple2[Vector[T], Vector[T]]): Vector[T]
 
-    def transform[U: Numeric: ClassTag](fn: Vector[T] ⇒ Vector[U]): Vector[U]
+    def transform[U: Numeric: ClassTag](fn: Vector[T] => Vector[U]): Vector[U]
 
     //TODO check new methods
     //TODO implement Ordering
     def apply(i: Int): T
 
-    def sort[B](f: (T) ⇒ B)(implicit ord: Ordering[B]): Vector[T]
+    def sort[B](f: (T) => B)(implicit ord: Ordering[B]): Vector[T]
 
     def sort(implicit ord: Ordering[T]): Vector[T]
 
-    def corresponds[B](that: Vector[B])(p: (T, B) ⇒ Boolean): Boolean
+    def corresponds[B](that: Vector[B])(p: (T, B) => Boolean): Boolean
 
-    def fold[A1 >: T](z: A1)(op: (A1, A1) ⇒ A1): A1
+    def fold[A1 >: T](z: A1)(op: (A1, A1) => A1): A1
   }
 
   object DenseVector {

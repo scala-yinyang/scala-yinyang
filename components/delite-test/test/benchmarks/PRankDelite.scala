@@ -30,7 +30,7 @@
       diff.setValue(0.0)
       for (t ← G.Nodes) {
         val Val: Rep[Double] = ((1.0 - d) / N) + unit(d) * Sum(t.InNbrs) {
-          w ⇒ PR(w) / deg(w.Id) //w.OutDegree
+          w => PR(w) / deg(w.Id) //w.OutDegree
         }
         //val Val = v
         PR <= (t, Val)
@@ -51,4 +51,4 @@
     //      println(" PR " + t.Id + " " + PR(t))
     //    }
   }
-}*/
+}*/ 

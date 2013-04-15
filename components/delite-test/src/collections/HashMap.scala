@@ -27,13 +27,13 @@ class HashMap[K, V](hm: mutable.Map[K, V]) extends Iterable[(K, V)] {
 
   def keys: Iterable[K] = Iterable(inner.keys)
 
-  def getOrElse(key: K, default: ⇒ V): V = inner.getOrElse(key, default)
+  def getOrElse(key: K, default: => V): V = inner.getOrElse(key, default)
 
-  def filter(f: (Tuple2[K, V] ⇒ Boolean)): HashMap[K, V] = HashMap(inner.filter(f))
+  def filter(f: (Tuple2[K, V] => Boolean)): HashMap[K, V] = HashMap(inner.filter(f))
 
-  def flatMap[K2, V2](f: ((K, V)) ⇒ List[(K2, V2)]): HashMap[K2, V2] = HashMap(inner.flatMap { x ⇒ f(x).inner })
+  def flatMap[K2, V2](f: ((K, V)) => List[(K2, V2)]): HashMap[K2, V2] = HashMap(inner.flatMap { x => f(x).inner })
 
-  def map[K2, V2](f: ((K, V)) ⇒ (K2, V2)): HashMap[K2, V2] = HashMap((inner.map(x ⇒ f(x))))
+  def map[K2, V2](f: ((K, V)) => (K2, V2)): HashMap[K2, V2] = HashMap((inner.map(x => f(x))))
 
   override def toList: List[(K, V)] = List(inner.toSeq: _*)
 

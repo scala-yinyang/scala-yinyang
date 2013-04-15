@@ -175,29 +175,29 @@ class GIterable[T](var data: Array[T], offset: Int, size: Int) extends ppl.dsl.o
   def dcUpdate(i: Int, n: T): Unit = ???
 
   /** Parallel iteration */
-  def foreach(block: T ⇒ Unit): Unit = ???
+  def foreach(block: T => Unit): Unit = ???
   /** Sequential iteration */
-  def forseq(block: T ⇒ Unit): Unit = ???
-  def forseq(filter: T ⇒ Boolean, block: T ⇒ Unit): Unit = ???
+  def forseq(block: T => Unit): Unit = ???
+  def forseq(filter: T => Boolean, block: T => Unit): Unit = ???
   /** Returns a filtered GIterable collection of elements */
-  def filter(pred: T ⇒ Boolean): GIterable[T] = ???
+  def filter(pred: T => Boolean): GIterable[T] = ???
   /** Reductions */
-  def sum[A: Manifest: Numeric](block: T ⇒ A): A = ???
-  def sum[A: Manifest: Numeric](filter: T ⇒ Boolean, block: T ⇒ A): A = ???
-  def product[A: Manifest: Numeric](block: T ⇒ A): A = ???
-  def product[A: Manifest: Numeric](filter: T ⇒ Boolean, block: T ⇒ A): A = ???
-  def max[A: Manifest: Ordering](block: T ⇒ A): A = ???
-  def max[A: Manifest: Ordering](filter: T ⇒ Boolean, block: T ⇒ A): A = ???
-  def min[A: Manifest: Ordering](block: T ⇒ A): A = ???
-  def min[A: Manifest: Ordering](filter: T ⇒ Boolean, block: T ⇒ A): A = ???
+  def sum[A: Manifest: Numeric](block: T => A): A = ???
+  def sum[A: Manifest: Numeric](filter: T => Boolean, block: T => A): A = ???
+  def product[A: Manifest: Numeric](block: T => A): A = ???
+  def product[A: Manifest: Numeric](filter: T => Boolean, block: T => A): A = ???
+  def max[A: Manifest: Ordering](block: T => A): A = ???
+  def max[A: Manifest: Ordering](filter: T => Boolean, block: T => A): A = ???
+  def min[A: Manifest: Ordering](block: T => A): A = ???
+  def min[A: Manifest: Ordering](filter: T => Boolean, block: T => A): A = ???
   // counts the number of elements for which the predicate holds
-  def count(pred: T ⇒ Boolean): Int = ???
+  def count(pred: T => Boolean): Int = ???
   // boolean AND
-  def all(block: T ⇒ Boolean): Boolean = ???
-  def all(filter: T ⇒ Boolean, block: T ⇒ Boolean): Boolean = ???
+  def all(block: T => Boolean): Boolean = ???
+  def all(filter: T => Boolean, block: T => Boolean): Boolean = ???
   // boolean OR
-  def any(block: T ⇒ Boolean): Boolean = ???
-  def any(filter: T ⇒ Boolean, block: T ⇒ Boolean): Boolean = ???
+  def any(block: T => Boolean): Boolean = ???
+  def any(filter: T => Boolean, block: T => Boolean): Boolean = ???
 
 }
 

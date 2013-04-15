@@ -19,12 +19,12 @@ trait ScalaCompile extends CodeGenerator {
     val settings = new Settings()
 
     settings.classpath.value = this.getClass.getClassLoader match {
-      case ctx: java.net.URLClassLoader ⇒ ctx.getURLs.map(_.getPath).mkString(COLON)
-      case _                            ⇒ System.getProperty("java.class.path")
+      case ctx: java.net.URLClassLoader => ctx.getURLs.map(_.getPath).mkString(COLON)
+      case _                            => System.getProperty("java.class.path")
     }
     settings.bootclasspath.value = Predef.getClass.getClassLoader match {
-      case ctx: java.net.URLClassLoader ⇒ ctx.getURLs.map(_.getPath).mkString(COLON)
-      case _                            ⇒ System.getProperty("sun.boot.class.path")
+      case ctx: java.net.URLClassLoader => ctx.getURLs.map(_.getPath).mkString(COLON)
+      case _                            => System.getProperty("sun.boot.class.path")
     }
 
     settings.encoding.value = "UTF-8"

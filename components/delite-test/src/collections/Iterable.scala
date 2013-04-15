@@ -8,7 +8,7 @@ object Iterable {
 trait Iterable[T] {
   private[collections] def inner: scala.collection.Iterable[T]
 
-  def foreach(block: T ⇒ Unit): Unit = inner.foreach(block)
+  def foreach(block: T => Unit): Unit = inner.foreach(block)
 
   def toList: List[T] = List(inner.toSeq: _*)
 }

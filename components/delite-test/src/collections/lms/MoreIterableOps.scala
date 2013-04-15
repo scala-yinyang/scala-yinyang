@@ -46,10 +46,10 @@ trait MoreIterableOpsExp extends MoreIterableOps with IterableOpsExp {
   override def mirror[A: Manifest](e: Def[A], f: Transformer)(
     implicit pos: SourceContext): Exp[A] = {
     (e match {
-      case ita @ IterableToList(xs) ⇒ iterable_toList(f(xs))(ita.m, pos)
-      case Reflect(ita @ IterableToList(xs), u, es) ⇒
+      case ita @ IterableToList(xs) => iterable_toList(f(xs))(ita.m, pos)
+      case Reflect(ita @ IterableToList(xs), u, es) =>
         reflectMirrored(Reflect(IterableToList(f(xs))(ita.m), mapOver(f, u), f(es)))(mtype(manifest[A]))
-      case _ ⇒ super.mirror(e, f)
+      case _ => super.mirror(e, f)
     }).asInstanceOf[Exp[A]] // why??
   }
 }
@@ -65,7 +65,7 @@ trait ScalaGenMoreIterableOps extends BaseGenMoreIterableOps with ScalaGenIterab
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    case IterableToList(xs) ⇒ emitValDef(sym, quote(xs) + ".toList")
-    case _                  ⇒ super.emitNode(sym, rhs)
+    case IterableToList(xs) => emitValDef(sym, quote(xs) + ".toList")
+    case _                  => super.emitNode(sym, rhs)
   }
 }

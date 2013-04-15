@@ -5,42 +5,30 @@ import org.scalatest.junit.JUnitRunner
 import lifted._
 import shallow.optigraph._
 
-
 @RunWith(classOf[JUnitRunner])
 class OptiMLSpec extends FlatSpec with ShouldMatchers {
 
-ch.epfl.lamp.yinyang.Debug.show {
-}
+  ch.epfl.lamp.yinyang.Debug.show {
+  }
 
+  "A basic OptiML test should" should "rewire" in {
+    val y = 1
+    val x: Int = optiML {
+      val x = y
+      val b = true
+      val c = b && true
 
+      if (b) x + y + x + y + x else x + y + x + y + x
 
-
-
-  // "A basic OptiML test should work without YinYang" should "rewire" in {
-  //   new OptiML {
-  //     def mainDelite(): Any = {
-  //     }
-  //   }
-  // }
-
-"A basic OptiML test should" should "rewire" in {
-     val y = 1
-     val x: Int = optiML {
-       val x = y
-       val b = true
-       val c = b && true
-
-          if (b) x + y + x + y + x else x + y + x + y + x
-
-          val z = 1 + x
-          val k = z + 1
-       k
-     }
+      val z = 1 + x
+      val k = z + 1
+      k
+    }
   }
 
 }
 
-class OptiGraphSpec extends FlatSpec with ShouldMatchers with LanguageOps {
+class OptiGraphSpec extends FlatSpec with ShouldMatchers {
 
   "A basic OptiGraph test should" should "rewire" in {
     val y = 1
@@ -52,8 +40,7 @@ class OptiGraphSpec extends FlatSpec with ShouldMatchers with LanguageOps {
     }
   }
 
-
- "test_graphOps" should "compile" in {
+  "test_graphOps" should "compile" in {
     val x: Any = optiGraph {
       val g: Graph = Graph()
       val n1: Node = g.AddNode
@@ -94,15 +81,14 @@ class OptiGraphSpec extends FlatSpec with ShouldMatchers with LanguageOps {
       if (nodes.Size != 2 || edges.Size != 4) {
         println("[FAIL] Wrong nodes/edges collection size")
       } else {
-       println("[OK] Correct nodes/edges collection size")
-             }
-             if ((!nodes.Has(n1)) || (!nodes.Has(n2)) || (!edges.Has(e1)) || (!edges.Has(e2))
-               || (!edges.Has(e3)) || (!edges.Has(e4))) {
-               println("[FAIL] Wrong nodes/edges collection contents")
-             } else {
-               println("[OK] Correct nodes/edges collection contents")
-             }
-
+        println("[OK] Correct nodes/edges collection size")
+      }
+      if ((!nodes.Has(n1)) || (!nodes.Has(n2)) || (!edges.Has(e1)) || (!edges.Has(e2))
+        || (!edges.Has(e3)) || (!edges.Has(e4))) {
+        println("[FAIL] Wrong nodes/edges collection contents")
+      } else {
+        println("[OK] Correct nodes/edges collection contents")
+      }
 
       val g2 = DGraph()
       val n3 = g2.AddNode
@@ -173,7 +159,7 @@ class OptiGraphSpec extends FlatSpec with ShouldMatchers with LanguageOps {
   }
 
   "test_reduceable" should "compile" in {
-    val x: Any = optiGraphDebug {
+    val x: Any = optiGraph {
       val g = Graph()
       val n1 = g.AddNode
       val n2 = g.AddNode
@@ -194,15 +180,12 @@ class OptiGraphSpec extends FlatSpec with ShouldMatchers with LanguageOps {
         println("[OK] Sum is correct.")
       }
 
-
-
       println("Test Reduction Assignments: PROD ")
       val prod = Reduceable[Int](2)
 
-
-               for (n ← g.Nodes) {
-                 prod *= 2
-               }
+      for (n ← g.Nodes) {
+        prod *= 2
+      }
 
       if (prod.value != 32) {
         println("[FAIL] Expected value = 32, Actual value = " + prod.value)
@@ -216,11 +199,10 @@ class OptiGraphSpec extends FlatSpec with ShouldMatchers with LanguageOps {
       val all = Reduceable[Boolean](true)
       val all2 = Reduceable[Boolean](true)
 
-
-               for (n ← g.Nodes) {
-                 all &&= false
-                 all2 &&= true
-               }
+      for (n ← g.Nodes) {
+        all &&= false
+        all2 &&= true
+      }
 
       if (all.value != false) {
         println("[FAIL] Expected value = false, Actual value = " + all.value)
@@ -236,12 +218,10 @@ class OptiGraphSpec extends FlatSpec with ShouldMatchers with LanguageOps {
       val any = Reduceable[Boolean](false)
       val any2 = Reduceable[Boolean](true)
 
-
-
       for (n ← g.Nodes) {
-                 any ||= true
-                 any2 ||= false
-               }
+        any ||= true
+        any2 ||= false
+      }
 
       if (any.value != true) {
         println("[FAIL] Expected value = true, Actual value = " + any.value)
@@ -257,11 +237,10 @@ class OptiGraphSpec extends FlatSpec with ShouldMatchers with LanguageOps {
       val count = Reduceable[Int](1)
       val count2 = Reduceable[Int](0)
 
-
-               for (n ← g.Nodes) {
-                 count ++= true
-                 count2 ++= false
-               }
+      for (n ← g.Nodes) {
+        count ++= true
+        count2 ++= false
+      }
 
       if (count.value != 5) {
         println("[FAIL] Expected value = 4, Actual value = " + count.value)
@@ -325,881 +304,869 @@ class OptiGraphSpec extends FlatSpec with ShouldMatchers with LanguageOps {
     }
   }
 
-     "test_reductions" should "compile" in {
-       val x: Any = optiGraph {
-         val g = Graph()
-         val n1 = g.AddNode
-         val n2 = g.AddNode
-         val n3 = g.AddNode
-         val n4 = g.AddNode
-         g.Freeze
-         val np1 = NodeProperty[Int](g, 1)
-         val np2 = NodeProperty[Boolean](g, true)
-         val ns = NodeSet()
-
-         // check empty/non-empty collections, with/without filters
-
-         println("Test Reduction Expressions: SUM")
-         //TODO original def:
-         //def Sum[T: Manifest, A: Manifest: Numeric](items: GIterable[T])(block: T ⇒ A): A = ???
-         //we can't remove Manifest and leave Numeric (which we need)
-         //def Sum[T: Manifest, A: Manifest: Numeric](items: GIterable[T])(block: T ⇒ A): A = ???
-         //if we try
-         //def Sum[T, A: Numeric](items: GIterable[T])(block: T ⇒ A): A = ???
-         //we'll have an error: not enough arguments for method Sum
-         val r1 = Sum(g.Nodes) {
-           np1(_)
-         }
-         //TODO: change > to == in (n.Id > 1)
-         val r2 = Sum(g.Nodes, (n: Node) ⇒ (n.Id > 1)) {
-           np1(_)
-         }
-         val r3 = Sum(ns.Items) {
-           np1(_)
-         }
-
-         if (r1 != 4) {
-           println("[FAIL] Expected value = 4, Actual value = " + r1)
-         } else {
-           println("[OK] Sum is correct.")
-         }
-         if (r2 != 1) {
-           println("[FAIL] Expected value = 1, Actual value = " + r2)
-         } else {
-           println("[OK] Sum is correct.")
-         }
-         if (r3 != 0) {
-           println("[FAIL] Expected value = 0, Actual value = " + r3)
-         } else {
-           println("[OK] Sum is correct.")
-         }
-
-         //-------//
-
-         println("Test Reduction Expressions: PRODUCT")
-         //TODO: change > to = in r1 > ...
-         r1 > Product(g.Nodes) {
-           np1(_)
-         }
-         //TODO: change > to = in r2 > ...
-         //TODO: change > to == in (n.id > 1)
-         r2 > Product(g.Nodes, (n: Node) ⇒ (n.Id > 1)) {
-           n ⇒ 5
-         }
-         //TODO: change > to = in r3 > ...
-         r3 > Product(ns.Items) {
-           np1(_)
-         }
-
-         if (r1 != 1) {
-           println("[FAIL] Expected value = 1, Actual value = " + r1)
-         } else {
-           println("[OK] Product is correct.")
-         }
-         if (r2 != 5) {
-           println("[FAIL] Expected value = 5, Actual value = " + r2)
-         } else {
-           println("[OK] Product is correct.")
-         }
-         if (r3 != 0) {
-           println("[FAIL] Expected value = 0, Actual value = " + r3)
-         } else {
-           println("[OK] Product is correct.")
-         }
-
-         //-------//
-
-         println("Test Reduction Expressions: COUNT")
-         //TODO: here and below to the end of the test change all r1 > ..., r2 > ..., r3 > ..., to r1 = ..., r2 = ..., r3 = ...
-         r1 > Count(g.Nodes) { (n: Node) ⇒ (n.Id != 1) }
-         //TODO: change > to == in (n.id > 1)
-         r2 > Count(g.Nodes) { (n: Node) ⇒ (n.Id > 1) }
-         //TODO: change > to == in (n.id > 1)
-         r3 > Count(ns.Items) { (n: Node) ⇒ (n.Id > 1) }
-
-         if (r1 != 3) {
-           println("[FAIL] Expected value = 3, Actual value = " + r1)
-         } else {
-           println("[OK] Count is correct.")
-         }
-         if (r2 != 1) {
-           println("[FAIL] Expected value = 1, Actual value = " + r2)
-         } else {
-           println("[OK] Count is correct.")
-         }
-         if (r3 != 0) {
-           println("[FAIL] Expected value = 0, Actual value = " + r3)
-         } else {
-           println("[OK] Count is correct.")
-         }
-
-         //-------//
-
-         println("Test Reduction Expressions: MIN")
-         r1 > Min(g.Nodes) { (n: Node) ⇒ n.Id }
-         //TODO: change > to == in (n.id > 1)
-         r2 > Min(g.Nodes, (n: Node) ⇒ (n.Id > 1)) { (n: Node) ⇒ n.Id }
-         r3 > Min(ns.Items) { np1(_) }
-
-         if (r1 != 0) {
-           println("[FAIL] Expected value = 0, Actual value = " + r1)
-         } else {
-           println("[OK] Min is correct.")
-         }
-         if (r2 != 1) {
-           println("[FAIL] Expected value = 1, Actual value = " + r2)
-         } else {
-           println("[OK] Min is correct.")
-         }
-         if (r3 != MAX_INT) {
-           println("[FAIL] Expected value = MAX_INT, Actual value = " + r3)
-         } else {
-           println("[OK] Min is correct.")
-         }
-
-         //-------//
-
-         println("Test Reduction Expressions: MAX")
-         r1 > Max(g.Nodes) { (n: Node) ⇒ n.Id }
-         //TODO: change > to == in (n.id > 1)
-         r2 > Max(g.Nodes, (n: Node) ⇒ (n.Id > 1)) { (n: Node) ⇒ n.Id }
-         r3 > Max(ns.Items) { np1(_) }
-
-         if (r1 != 3) {
-           println("[FAIL] Expected value = 3, Actual value = " + r1)
-         } else {
-           println("[OK] Max is correct.")
-         }
-         if (r2 != 1) {
-           println("[FAIL] Expected value = 1, Actual value = " + r2)
-         } else {
-           println("[OK] Max is correct.")
-         }
-         if (r3 != MIN_INT) {
-           println("[FAIL] Expected value = MIN_INT, Actual value = " + r3)
-         } else {
-           println("[OK] Max is correct.")
-         }
-
-         //-------//
-
-         println("Test Reduction Expressions: ALL")
-         val r1b = All(g.Nodes) { (n: Node) ⇒ (n.Id < 5) }
-         //TODO: change > to == in (n.id > 1)
-         //TODO: change > to == in (n.id > 2)
-         val r2b = All(g.Nodes, (n: Node) ⇒ (n.Id > 1)) { (n: Node) ⇒ (n.Id > 2) }
-         val r3b = All(ns.Items) { (n: Node) ⇒ (n.Id < 5) }
-
-         if (r1b != true) {
-           println("[FAIL] Expected value = true, Actual value = " + r1b)
-         } else {
-           println("[OK] All is correct.")
-         }
-         if (r2b != false) {
-           println("[FAIL] Expected value = false, Actual value = " + r2b)
-         } else {
-           println("[OK] All is correct.")
-         }
-         if (r3b != true) {
-           println("[FAIL] Expected value = true, Actual value = " + r3b)
-         } else {
-           println("[OK] All is correct.")
-         }
-
-         //-------//
-
-         println("Test Reduction Expressions: ANY")
-         //TODO: change all r1b == ..., r2b == ..., r3b == ..., to r1b = ..., r2b = ..., r3b = ...
-         r1b == Any(g.Nodes) { (n: Node) ⇒ (n.Id > 2) }
-         //TODO: change > to == in (n.id > 1)
-         //TODO: change > to == in (n.id > 2)
-         r2b == Any(g.Nodes, (n: Node) ⇒ (n.Id > 1)) { (n: Node) ⇒ (n.Id > 2) }
-         r3b == Any(ns.Items) { (n: Node) ⇒ (n.Id < 5) }
-
-         if (r1b != true) {
-           println("[FAIL] Expected value = true, Actual value = " + r1b)
-         } else {
-           println("[OK] Any is correct.")
-         }
-         if (r2b != false) {
-           println("[FAIL] Expected value = false, Actual value = " + r2b)
-         } else {
-           println("[OK] Any is correct.")
-         }
-         if (r3b != false) {
-           println("[FAIL] Expected value = false, Actual value = " + r3b)
-         } else {
-           println("[OK] Any is correct.")
-         }
-       }
-     }
-
-     "test_traversals" should "compile" in {
-       val x: Any = optiGraph {
-         val g = Graph()
-         val n1 = g.AddNode
-         val n2 = g.AddNode
-         val n3 = g.AddNode
-         val n4 = g.AddNode
-         val n5 = g.AddNode
-         val n6 = g.AddNode
-         g.AddEdge(n1, n2)
-         g.AddEdge(n1, n3)
-         g.AddEdge(n2, n4)
-         g.AddEdge(n2, n5)
-         g.AddEdge(n4, n5)
-         g.AddEdge(n4, n1)
-         g.AddEdge(n4, n6)
-         g.AddEdge(n6, n4)
-         g.Freeze
-
-         println("Test BFS")
-         val nord = NodeSeq()
-         val nordR = NodeSeq()
-         val downNbrs = NodeSet()
-         val upNbrs = NodeSet()
-
-         InBFS(g, n1, { (n: Node) ⇒
-           nord.PushBack(n)
-           println("nId = " + n.Id)
-           //TODO (TOASK) - here I don't change anything and it works (I mean == to >)
-           if (n.Id == n4.Id) {
-             downNbrs.AddSet(n.DownNbrs.toSet)
-             upNbrs.AddSet(n.UpNbrs.toSet)
-           }
-         }, InReverse(n ⇒ nordR.PushBack(n)))
-
-         if (!((downNbrs.Size == 1) && (downNbrs.Has(n6)))) {
-           println("[FAIL] DownNbrs set is incorrect")
-         } else {
-           println("[OK] DownNbrs set is correct")
-         }
-
-         if (!((upNbrs.Size == 1) && (upNbrs.Has(n2)))) {
-           println("[FAIL] UpNbrs set is incorrect")
-         } else {
-           println("[OK] UpNbrs set is correct")
-         }
-
-         if (nord.Size != 6) {
-           println("[FAIL] Number of nodes traversed is incorrect")
-         } else {
-           println("[OK] Number of nodes traversed is correct")
-         }
-
-         if (nord(5).Id != n6.Id || nord(0).Id != n1.Id) {
-           println("[FAIL] Traversal order is incorrect")
-         }
-
-         if (nordR(5).Id != n1.Id || nordR(0).Id != n6.Id) {
-           println("[FAIL] Reverse traversal order is incorrect")
-         }
-
-         //      //these are todo from delite
-         //      // TODO: sort by Ids and test actual sequence
-         //
-         //      // TODO: DFS
-         println("Test DFS")
-         val nord2 = NodeSeq()
-         val nordR2 = NodeSeq()
-         InDFS(g, n1, { (n: Node) ⇒
-           nord2.PushBack(n)
-         }, InPost(n ⇒ nordR2.PushBack(n)))
-
-         if (nord2(0).Id != n1.Id) {
-           println("[FAIL] Traversal order is incorrect")
-         }
-
-         if (nordR2(5).Id != n1.Id) {
-           println("[FAIL] Reverse traversal order is incorrect")
-         }
-       }
-     }
-
-     "test_nodeOpsEdgeOps" should "compile" in {
-       val x: Any = optiGraph {
-         val g = Graph()
-         val n1 = g.AddNode
-         val n2 = g.AddNode
-         val n3 = g.AddNode
-         val n4 = g.AddNode
-         val e1 = g.AddEdge(n1, n2)
-         val e2 = g.AddEdge(n1, n3)
-         val e3 = g.AddEdge(n2, n1)
-         val e4 = g.AddEdge(n4, n1)
-         val e5 = g.AddEdge(n3, n4)
-         g.Freeze
-
-         println("Test Node Out-Nbrs")
-         val outNbrs = n1.OutNbrs.toSet
-         if (outNbrs.Size != 2) {
-           println("[FAIL] [Expected size = 2] [Actual size = " + outNbrs.Size + "]")
-         } else {
-           println("[OK] Size correct.")
-         }
-         if (!(outNbrs.Has(n2) && outNbrs.Has(n3))) {
-           println("[FAIL] Node missing.")
-         } else {
-           println("[OK] All nodes present.")
-         }
-
-         //-------//
-
-         println("Test Node In-Nbrs")
-         val inNbrs = n1.InNbrs.toSet
-         if (inNbrs.Size != 2) {
-           println("[FAIL] [Expected size = 2] [Actual size = " + inNbrs.Size + "]")
-         } else {
-           println("[OK] Size correct.")
-         }
-         if (!(inNbrs.Has(n2) && inNbrs.Has(n4))) {
-           println("[FAIL] Node missing.")
-         } else {
-           println("[OK] All nodes present.")
-         }
-
-         //-------//
-
-         println("Test Node Out-Edges")
-         val outEdges = n1.OutEdges.toSet
-         if (outEdges.Size != 2) {
-           println("[FAIL] [Expected size = 2] [Actual size = " + outEdges.Size + "]")
-         } else {
-           println("[OK] Size correct.")
-         }
-         if (!(outEdges.Has(e1) && outEdges.Has(e2))) {
-           println("[FAIL] Edge missing.")
-         } else {
-           println("[OK] All edges present.")
-         }
-
-         //-------//
-
-         println("Test Node In-Edges")
-         val inEdges = n1.InEdges.toSet
-         if (inEdges.Size != 2) {
-           println("[FAIL] [Expected size = 2] [Actual size = " + inEdges.Size + "]")
-         } else {
-           println("[OK] Size correct.")
-         }
-         if (!(inEdges.Has(e3) && inEdges.Has(e4))) {
-           println("[FAIL] Edge missing.")
-         } else {
-           println("[OK] All edges present.")
-         }
-
-         //-------//
-
-         println("Test Node Out-Degree")
-         val outDeg = n1.OutDegree
-         if (outDeg != 2) {
-           println("[FAIL] [Expected degree = 2] [Actual degree = " + outDeg + "]")
-         } else {
-           println("[OK] Degree correct.")
-         }
-
-         //-------//
-
-         println("Test Node In-Degree")
-         val inDeg = n1.InDegree
-         if (inDeg != 2) {
-           println("[FAIL] [Expected degree = 2] [Actual degree = " + inDeg + "]")
-         } else {
-           println("[OK] Degree correct.")
-         }
-
-         //-------//
-
-         println("Test Edge From/To")
-         if (e1.From.Id != n1.Id || e1.To.Id != n2.Id) {
-           println("[FAIL] Edge To/From incorrectly set")
-         } else {
-           println("[OK] Edge To/From are correct.")
-         }
-       }
-     }
-
-     "test_filters" should "compile" in {
-       val x: Any = optiGraph {
-
-         //TODO (is it correct?) -
-         //to make test work I inserted test
-         //definition here
-         def rand_graph(): Graph = {
-           val g = Graph()
-           val n1 = g.AddNode
-           val n2 = g.AddNode
-           val n3 = g.AddNode
-           val n4 = g.AddNode
-           val n5 = g.AddNode
-
-           g.AddEdge(n1, n2)
-           g.AddEdge(n1, n3)
-           g.AddEdge(n2, n4)
-           g.AddEdge(n3, n5)
-           g.Snapshot
-         }
-
-         val G = rand_graph()
-         val prop = NodeProperty[Int](G, 1)
-
-         // 1. filter
-         println("Test: Filter")
-         val filteredNone = G.Nodes.filter(n ⇒ prop(n) == 1)
-         println("[Expected size = " + G.NumNodes + "] [Filtered size = " + filteredNone.toSet.Size + "]")
-         val filteredAll = G.Nodes.filter(n ⇒ prop(n) == 2)
-         println("[Expected size = 0] [Filtered size = " + filteredAll.toSet.Size + "]")
-
-         //-------//
-
-         // 2. sequential For with filter
-         println("Test: For with filter")
-
-         //TODO: replace (prop(n) > 1) with (prop(n) == 1)
-         For(G.Nodes, (n: Node) ⇒ (prop(n) > 1)) { n ⇒
-           println("[OK] n.Id = " + n.Id)
-         }
-
-         //TODO: replace (prop(n) > 2) with (prop(n) == 2)
-         For(G.Nodes, (n: Node) ⇒ (prop(n) > 2)) { n ⇒
-           println("[FAIL] n.Id = " + n.Id)
-         }
-
-         //-------//
-
-         // 3. parallel Foreach/foreach with filter
-         println("Test: Foreach with filter")
-         for (n ← G.Nodes if prop(n) == 1) {
-           println("[OK] n.Id = " + n.Id)
-         }
-
-         for (n ← G.Nodes if prop(n) == 2) {
-           println("[FAIL] n.Id = " + n.Id)
-         }
-
-         //TODO: replace (prop(n) > 1) with (prop(n) == 1)
-         Foreach(G.Nodes, (n: Node) ⇒ (prop(n) > 1)) { n ⇒
-           println("[OK] n.Id = " + n.Id)
-         }
-
-         //TODO: replace (prop(n) > 2) with (prop(n) == 2)
-         Foreach(G.Nodes, (n: Node) ⇒ (prop(n) > 2)) { n ⇒
-           println("[FAIL] n.Id = " + n.Id)
-         }
-
-         //-------//
-
-         // 4. DFS with filter (i.e. navigator)
-         println("Test: DFS with filter")
-         //TODO: replace (prop(n) > 1) with (prop(n) == 1)
-         InDFS(G, G.Node(0), (n: Node) ⇒ prop(n) > 1, { (n: Node) ⇒
-           //TODO: in original method there is no ()
-           //without () we get as a result ... => Unit
-           //but we need Rep[Unit]
-           //can't transform println
-           { println("[OK] n.Id = " + n.Id); () }
-         })
-         //TODO: replace (prop(n) > 2) with (prop(n) == 2)
-         InDFS(G, G.Node(0), (n: Node) ⇒ prop(n) > 2, { (n: Node) ⇒
-           //TODO: in original method there is no ()
-           //without () we get as a result ... => Unit
-           //but we need Rep[Unit]
-           //can't transform println
-           { println("[FAIL] n.Id = " + n.Id); () }
-         })
-
-         //-------//
-
-         // 5. BFS with filter (i.e. navigator)
-         println("Test: BFS with filter")
-         //TODO: replace (prop(n) > 1) with (prop(n) == 1)
-         InBFS(G, G.Node(0), (n: Node) ⇒ prop(n) > 1, { (n: Node) ⇒
-           //TODO: in original method there is no ()
-           //without () we get as a result ... => Unit
-           //but we need Rep[Unit]
-           //can't transform println
-           { println("[OK] n.Id = " + n.Id); () }
-         })
-         //TODO: replace (prop(n) > 2) with (prop(n) == 2)
-         InBFS(G, G.Node(0), (n: Node) ⇒ prop(n) > 2, { (n: Node) ⇒
-           //TODO: in original method there is no ()
-           //without () we get as a result ... => Unit
-           //but we need Rep[Unit]
-           //can't transform println
-           { println("[FAIL] n.Id = " + n.Id); () }
-         })
-       }
-     }
-
-     "test_iterations" should "compile" in {
-       val x: Any = optiGraph {
-
-         // empty / non-empty
-
-         println("Test Parallel For-each")
-         val set = NodeSet()
-         for (n ← set.Items) {
-           println("[FAIL] Iterable collection is empty")
-         }
-         Foreach(set.Items) { n ⇒
-           println("[FAIL] Iterable collection is empty ")
-         }
-
-         val G = Graph()
-         val n1 = G.AddNode
-         val n2 = G.AddNode
-         G.Freeze
-         val np = NodeProperty[Int](G, 0)
-
-         val i = Reduceable[Int](0)
-         for (n ← G.Nodes) {
-           np(n) = 1
-           i += 1
-         }
-         if (i.value != 2) {
-           println("[FAIL] Expected number of iterations = 2, Actual number of iterations = " + i.value)
-         } else {
-           println("[OK] Num iterations is correct.")
-         }
-         if (np(n1) != 1 || np(n2) != 1) {
-           println("[FAIL] Iteration block was not executed.")
-         } else {
-           println("[OK] Iteration block was executed.")
-         }
-
-         i.setValue(0)
-         Foreach(G.Nodes) { n ⇒
-           np(n) = 2
-           i += 1
-         }
-         if (i.value != G.NumNodes) {
-           println("[FAIL] Expected number of iterations = 2, Actual number of iterations = " + i.value)
-         } else {
-           println("[OK] Num iterations is correct.")
-         }
-         if (np(n1) != 2 || np(n2) != 2) {
-           println("[FAIL] Iteration block was not executed.")
-         } else {
-           println("[OK] Iteration block was executed.")
-         }
-
-         //-------//
-
-         println("Test Sequential For")
-         For[Node, GIterable[Node]](G.Nodes) { (n: Node) ⇒
-           np(n) = 3
-         }
-         if (np(n1) != 3 || np(n2) != 3) {
-           println("[FAIL] Iteration block was not executed.")
-         } else {
-           println("[OK] Iteration block was executed.")
-         }
-
-       }
-     }
-
-     "test_nodeEdgeProps" should "compile" in {
-       val x: Any = optiGraph {
-         val g = Graph()
-         val n1 = g.AddNode
-         val n2 = g.AddNode
-         val e1 = g.AddEdge(n1, n2)
-         val e2 = g.AddEdge(n2, n1)
-         val e3 = g.AddEdge(n1, n1)
-         g.Freeze
-
-         println("Test NodeProperty")
-         val np = NodeProperty[Int](g, 1)
-         val np2 = NodeProperty[Int](g)
-         // alias constructor
-         val np3 = NP[Int](g, 0)
-
-         if (np(n1) != 1 || np(n2) != 1) {
-           println("[FAIL] Expected value = 1, different actual value for node(s)")
-         } else {
-           println("[OK] Got correct value for all nodes ")
-         }
-         np(n1) = 2
-         if (np(n1) != 2) {
-           println("[FAIL] Updated expected value = 2, Actual value = " + np(n1))
-         } else {
-           println("[OK] Updated value correctly")
-         }
-
-         np.setAll(3)
-         if (np(n1) != 3 || np(n2) != 3) {
-           println("[FAIL] Set all expected value = 3, different actual value for node(s)")
-         } else {
-           println("[OK] Set all values correctly")
-         }
-
-         np <= (n2, 5)
-         if (np(n2) != 3) {
-           println("[FAIL] After deferral, expected value = 3, Actual value = " + np(n2))
-         } else {
-           println("[OK] Deferral did not affect current value")
-         }
-
-         np.assign(n2)
-         if (np(n2) != 5) {
-           println("[FAIL] After assignment, expected value = 5, Actual value = " + np(n2))
-         } else {
-           println("[OK] Assigned correct value")
-         }
-
-         np(n2) = 3
-         np.assign(n2)
-         if (np(n2) != 3) {
-           println("[FAIL] After repeated assignment, expected value = 3, Actual value = " + np(n2))
-         } else {
-           println("[OK] Repeated assignment did not affect value")
-         }
-
-         np <= (n1, 5)
-         np <= (n2, 5)
-         if (np(n1) != 3 || np(n2) != 3) {
-           println("[FAIL] After deferral, expected value = 3, different actual value for node(s)")
-         } else {
-           println("[OK] Deferral did not affect current values")
-         }
-
-         np.assignAll()
-         if (np(n1) != 5 || np(n2) != 5) {
-           println("[FAIL] After assignment, expected value = 5, different actual value for node(s)")
-         } else {
-           println("[OK] Assigned correct values")
-         }
-
-         np(n1) = 3
-         np(n2) = 3
-         np.assignAll()
-         if (np(n1) != 3 || np(n2) != 3) {
-           println("[FAIL] After repeated assignment, expected value = 3, different actual value for node(s)")
-         } else {
-           println("[OK] Repeated assignment did not affect values")
-         }
-
-         //---------//
-
-         println("Test EdgeProperty")
-         val ep = EdgeProperty[Int](g, 1)
-         val ep2 = EdgeProperty[Int](g)
-         // alias constructor
-         val ep3 = EP[Int](g, 0)
-
-         if (ep(e1) != 1 || ep(e2) != 1 || ep(e3) != 1) {
-           println("[FAIL] Expected value = 1, different actual value for edge(s)")
-         } else {
-           println("[OK] Got correct value for all edges ")
-         }
-         ep(e1) = 2
-         if (ep(e1) != 2) {
-           println("[FAIL] Updated expected value = 2, Actual value = " + ep(e1))
-         } else {
-           println("[OK] Updated value correctly")
-         }
-
-         ep.setAll(3)
-         if (ep(e1) != 3 || ep(e2) != 3 || ep(e3) != 3) {
-           println("[FAIL] Set all expected value = 3, different actual value for edge(s)")
-         } else {
-           println("[OK] Set all values correctly")
-         }
-
-         ep <= (e2, 5)
-         if (ep(e2) != 3) {
-           println("[FAIL] After deferral, expected value = 3, Actual value = " + ep(e2))
-         } else {
-           println("[OK] Deferral did not affect current value")
-         }
-
-         ep.assign(e2)
-         if (ep(e2) != 5) {
-           println("[FAIL] After assignment, expected value = 5, Actual value = " + ep(e2))
-         } else {
-           println("[OK] Assigned correct value")
-         }
-
-         ep(e2) = 3
-         ep.assign(e2)
-         if (ep(e2) != 3) {
-           println("[FAIL] After repeated assignment, expected value = 3, Actual value = " + ep(e2))
-         } else {
-           println("[OK] Repeated assignment did not affect value")
-         }
-
-         ep <= (e1, 5)
-         ep <= (e2, 5)
-         ep <= (e3, 5)
-         if (ep(e1) != 3 || ep(e2) != 3 || ep(e3) != 3) {
-           println("[FAIL] After deferral, expected value = 3, different actual value for edge(s)")
-         } else {
-           println("[OK] Deferral did not affect current values")
-         }
-
-         ep.assignAll()
-         if (ep(e1) != 5 || ep(e2) != 5 || ep(e3) != 5) {
-           println("[FAIL] After assignment, expected value = 5, different actual value for edge(s)")
-         } else {
-           println("[OK] Assigned correct values")
-         }
-
-         ep(e1) = 3
-         ep(e2) = 3
-         ep(e3) = 3
-         ep.assignAll()
-         if (ep(e1) != 3 || ep(e2) != 3 || ep(e3) != 3) {
-           println("[FAIL] After repeated assignment, expected value = 3, different actual value for edge(s)")
-         } else {
-           println("[OK] Repeated assignment did not affect values")
-         }
-       }
-     }
-
-     "basic" should "compile" in {
-       val x: Any = optiGraph {
-         val g: Graph = null
-         val g_empty: Graph = null
-         val n1: Node = null
-         val n2: Node = null
-         val n3: Node = null
-         val n4: Node = null
-         val e: Edge = null
-         val np: NodeProperty[Int] = null
-         val np2: NodeProperty[String] = null
-         val np3: NodeProperty[Boolean] = null
-
-         //TODO: change == to =
-         g == Graph()
-         //TODO: change == to =
-         n1 == g.AddNode
-         //TODO: change == to =
-         n2 == g.AddNode
-         //TODO: change == to =
-         n3 == g.AddNode
-         //TODO: change == to =
-         n4 == g.AddNode
-         //TODO: change == to =
-         e == g.AddEdge(n1, n2)
-         g.Freeze
-
-         println("Graph construction finished")
-         println("Num nodes: " + g.NumNodes)
-         println("Num edges: " + g.NumEdges)
-         println("Nodes: " + g.Nodes)
-         println("Node 1: " + n1)
-         println("Node 2: " + n2)
-         println("Node 3: " + n3)
-         println("Node 4: " + n4)
-         println("Edges: " + g.Edges)
-         println("Node 1 num neighbors: " + n1.NumNbrs)
-         println("Node 2 num neighbors: " + n2.NumNbrs)
-
-         println("FOREACH:")
-         for (n ← g.Nodes) {
-           println("Node: " + n)
-         }
-         Foreach(g.Nodes) { (n: Node) ⇒ println("Node in Foreach: " + n) }
-
-         println("NODE PROP")
-         //TODO: change == to =
-         np == NodeProperty[Int](g, 1)
-         println("Created")
-         println("n1.np = " + np(n1))
-         println("n2.np = " + np(n2))
-         np(n1) = 5
-         np(n2) = 6
-         println("n1.np = " + np(n1))
-
-         //TODO: change == to =
-         np2 == NodeProperty[String](g, "a")
-         //TODO: change == to =
-         np3 == NodeProperty[Boolean](g)
-         val ep = EP[Int](g)
-
-         println("n1.np2 = " + np2(n1))
-         println("n2.np3 = " + np3(n2))
-         np3.setAll(true)
-         println("n1.np3 = " + np3(n1))
-         println("n2.np3 = " + np3(n2))
-
-         println("SUM = " + Sum(g.Nodes) { np(_) })
-         println("PROD = " + Product(g.Nodes) { np(_) })
-         println("MAX = " + Max(g.Nodes) { np(_) })
-         println("MIN = " + Min(g.Nodes) { np(_) })
-         println("COUNT = " + Count(g.Nodes) { np(_) == 5 })
-         println("ALL = " + All(g.Nodes) { np(_) == 5 })
-         println("ANY = " + Any(g.Nodes) { np(_) == 5 })
-
-         println("NODE SET")
-         val ns = NodeSet()
-         ns.Add(n1)
-         println("Node set size = " + ns.Size)
-         println("Node set contains n1 = " + ns.Has(n1))
-
-         println("IN BFS")
-         InBFS(g, n1, n ⇒ println("node prop: " + np(n)))
-
-         println("NODE ORDER")
-         val no = NodeOrder()
-         no.PushFront(n1)
-         no.PushFront(n2)
-         no.PushFront(n3)
-         no.PushFront(n4)
-
-         val no2 = NodeOrder()
-         no2.PushBack(n1)
-         no2.PushBack(n2)
-         no2.PushBack(n3)
-         no2.PushBack(n4)
-
-         println("Node order size = " + no.Size)
-         println("Node order contains n1 = " + no.Has(n1))
-
-         for (i ← no.Items) {
-           println("Node: " + i)
-         }
-
-         for (i ← no2.Items) {
-           println("Node: " + i)
-         }
-       }
-     }
-
-     "rand_graph" should "compile" in {
-       val x: Any = optiGraph {
-         //      def rand_graph(): Graph = {
-         //        val g = Graph()
-         //        val n1 = g.AddNode
-         //        val n2 = g.AddNode
-         //        val n3 = g.AddNode
-         //        val n4 = g.AddNode
-         //        val n5 = g.AddNode
-         //
-         //        g.AddEdge(n1, n2)
-         //        g.AddEdge(n1, n3)
-         //        g.AddEdge(n2, n4)
-         //        g.AddEdge(n3, n5)
-         //        g.Snapshot
-         //      }
-         //      rand_graph()
-
-         val g = Graph()
-         val n1 = g.AddNode
-         val n2 = g.AddNode
-         val n3 = g.AddNode
-         val n4 = g.AddNode
-         val n5 = g.AddNode
-
-         g.AddEdge(n1, n2)
-         g.AddEdge(n1, n3)
-         g.AddEdge(n2, n4)
-         g.AddEdge(n3, n5)
-         g.Snapshot
-       }
-     }
-
-/*  "page_rank" should "compile" in {
+  "test_reductions" should "compile" in {
+    val x: Any = optiGraph {
+      val g = Graph()
+      val n1 = g.AddNode
+      val n2 = g.AddNode
+      val n3 = g.AddNode
+      val n4 = g.AddNode
+      g.Freeze
+      val np1 = NodeProperty[Int](g, 1)
+      val np2 = NodeProperty[Boolean](g, true)
+      val ns = NodeSet()
+
+      // check empty/non-empty collections, with/without filters
+
+      println("Test Reduction Expressions: SUM")
+      //TODO original def:
+      //def Sum[T: Manifest, A: Manifest: Numeric](items: GIterable[T])(block: T => A): A = ???
+      //we can't remove Manifest and leave Numeric (which we need)
+      //def Sum[T: Manifest, A: Manifest: Numeric](items: GIterable[T])(block: T => A): A = ???
+      //if we try
+      //def Sum[T, A: Numeric](items: GIterable[T])(block: T => A): A = ???
+      //we'll have an error: not enough arguments for method Sum
+      val r1 = Sum(g.Nodes) {
+        np1(_)
+      }
+      //TODO: change > to == in (n.Id > 1)
+      val r2 = Sum(g.Nodes, (n: Node) => (n.Id > 1)) {
+        np1(_)
+      }
+      val r3 = Sum(ns.Items) {
+        np1(_)
+      }
+
+      if (r1 != 4) {
+        println("[FAIL] Expected value = 4, Actual value = " + r1)
+      } else {
+        println("[OK] Sum is correct.")
+      }
+      if (r2 != 1) {
+        println("[FAIL] Expected value = 1, Actual value = " + r2)
+      } else {
+        println("[OK] Sum is correct.")
+      }
+      if (r3 != 0) {
+        println("[FAIL] Expected value = 0, Actual value = " + r3)
+      } else {
+        println("[OK] Sum is correct.")
+      }
+
+      //-------//
+
+      println("Test Reduction Expressions: PRODUCT")
+      //TODO: change > to = in r1 > ...
+      r1 > Product(g.Nodes) {
+        np1(_)
+      }
+      //TODO: change > to = in r2 > ...
+      //TODO: change > to == in (n.id > 1)
+      r2 > Product(g.Nodes, (n: Node) => (n.Id > 1)) {
+        n => 5
+      }
+      //TODO: change > to = in r3 > ...
+      r3 > Product(ns.Items) {
+        np1(_)
+      }
+
+      if (r1 != 1) {
+        println("[FAIL] Expected value = 1, Actual value = " + r1)
+      } else {
+        println("[OK] Product is correct.")
+      }
+      if (r2 != 5) {
+        println("[FAIL] Expected value = 5, Actual value = " + r2)
+      } else {
+        println("[OK] Product is correct.")
+      }
+      if (r3 != 0) {
+        println("[FAIL] Expected value = 0, Actual value = " + r3)
+      } else {
+        println("[OK] Product is correct.")
+      }
+
+      //-------//
+
+      println("Test Reduction Expressions: COUNT")
+      //TODO: here and below to the end of the test change all r1 > ..., r2 > ..., r3 > ..., to r1 = ..., r2 = ..., r3 = ...
+      r1 > Count(g.Nodes) { (n: Node) => (n.Id != 1) }
+      //TODO: change > to == in (n.id > 1)
+      r2 > Count(g.Nodes) { (n: Node) => (n.Id > 1) }
+      //TODO: change > to == in (n.id > 1)
+      r3 > Count(ns.Items) { (n: Node) => (n.Id > 1) }
+
+      if (r1 != 3) {
+        println("[FAIL] Expected value = 3, Actual value = " + r1)
+      } else {
+        println("[OK] Count is correct.")
+      }
+      if (r2 != 1) {
+        println("[FAIL] Expected value = 1, Actual value = " + r2)
+      } else {
+        println("[OK] Count is correct.")
+      }
+      if (r3 != 0) {
+        println("[FAIL] Expected value = 0, Actual value = " + r3)
+      } else {
+        println("[OK] Count is correct.")
+      }
+
+      //-------//
+
+      println("Test Reduction Expressions: MIN")
+      r1 > Min(g.Nodes) { (n: Node) => n.Id }
+      //TODO: change > to == in (n.id > 1)
+      r2 > Min(g.Nodes, (n: Node) => (n.Id > 1)) { (n: Node) => n.Id }
+      r3 > Min(ns.Items) { np1(_) }
+
+      if (r1 != 0) {
+        println("[FAIL] Expected value = 0, Actual value = " + r1)
+      } else {
+        println("[OK] Min is correct.")
+      }
+      if (r2 != 1) {
+        println("[FAIL] Expected value = 1, Actual value = " + r2)
+      } else {
+        println("[OK] Min is correct.")
+      }
+      if (r3 != MAX_INT) {
+        println("[FAIL] Expected value = MAX_INT, Actual value = " + r3)
+      } else {
+        println("[OK] Min is correct.")
+      }
+
+      //-------//
+
+      println("Test Reduction Expressions: MAX")
+      r1 > Max(g.Nodes) { (n: Node) => n.Id }
+      //TODO: change > to == in (n.id > 1)
+      r2 > Max(g.Nodes, (n: Node) => (n.Id > 1)) { (n: Node) => n.Id }
+      r3 > Max(ns.Items) { np1(_) }
+
+      if (r1 != 3) {
+        println("[FAIL] Expected value = 3, Actual value = " + r1)
+      } else {
+        println("[OK] Max is correct.")
+      }
+      if (r2 != 1) {
+        println("[FAIL] Expected value = 1, Actual value = " + r2)
+      } else {
+        println("[OK] Max is correct.")
+      }
+      if (r3 != MIN_INT) {
+        println("[FAIL] Expected value = MIN_INT, Actual value = " + r3)
+      } else {
+        println("[OK] Max is correct.")
+      }
+
+      //-------//
+
+      println("Test Reduction Expressions: ALL")
+      val r1b = All(g.Nodes) { (n: Node) => (n.Id < 5) }
+      //TODO: change > to == in (n.id > 1)
+      //TODO: change > to == in (n.id > 2)
+      val r2b = All(g.Nodes, (n: Node) => (n.Id > 1)) { (n: Node) => (n.Id > 2) }
+      val r3b = All(ns.Items) { (n: Node) => (n.Id < 5) }
+
+      if (r1b != true) {
+        println("[FAIL] Expected value = true, Actual value = " + r1b)
+      } else {
+        println("[OK] All is correct.")
+      }
+      if (r2b != false) {
+        println("[FAIL] Expected value = false, Actual value = " + r2b)
+      } else {
+        println("[OK] All is correct.")
+      }
+      if (r3b != true) {
+        println("[FAIL] Expected value = true, Actual value = " + r3b)
+      } else {
+        println("[OK] All is correct.")
+      }
+
+      //-------//
+
+      println("Test Reduction Expressions: ANY")
+      //TODO: change all r1b == ..., r2b == ..., r3b == ..., to r1b = ..., r2b = ..., r3b = ...
+      r1b == Any(g.Nodes) { (n: Node) => (n.Id > 2) }
+      //TODO: change > to == in (n.id > 1)
+      //TODO: change > to == in (n.id > 2)
+      r2b == Any(g.Nodes, (n: Node) => (n.Id > 1)) { (n: Node) => (n.Id > 2) }
+      r3b == Any(ns.Items) { (n: Node) => (n.Id < 5) }
+
+      if (r1b != true) {
+        println("[FAIL] Expected value = true, Actual value = " + r1b)
+      } else {
+        println("[OK] Any is correct.")
+      }
+      if (r2b != false) {
+        println("[FAIL] Expected value = false, Actual value = " + r2b)
+      } else {
+        println("[OK] Any is correct.")
+      }
+      if (r3b != false) {
+        println("[FAIL] Expected value = false, Actual value = " + r3b)
+      } else {
+        println("[OK] Any is correct.")
+      }
+    }
+  }
+
+  "test_traversals" should "compile" in {
+    val x: Any = optiGraph {
+      val g = Graph()
+      val n1 = g.AddNode
+      val n2 = g.AddNode
+      val n3 = g.AddNode
+      val n4 = g.AddNode
+      val n5 = g.AddNode
+      val n6 = g.AddNode
+      g.AddEdge(n1, n2)
+      g.AddEdge(n1, n3)
+      g.AddEdge(n2, n4)
+      g.AddEdge(n2, n5)
+      g.AddEdge(n4, n5)
+      g.AddEdge(n4, n1)
+      g.AddEdge(n4, n6)
+      g.AddEdge(n6, n4)
+      g.Freeze
+
+      println("Test BFS")
+      val nord = NodeSeq()
+      val nordR = NodeSeq()
+      val downNbrs = NodeSet()
+      val upNbrs = NodeSet()
+
+      InBFS(g, n1, { (n: Node) =>
+        nord.PushBack(n)
+        println("nId = " + n.Id)
+        //TODO (TOASK) - here I don't change anything and it works (I mean == to >)
+        if (n.Id == n4.Id) {
+          downNbrs.AddSet(n.DownNbrs.toSet)
+          upNbrs.AddSet(n.UpNbrs.toSet)
+        }
+      }, InReverse(n => nordR.PushBack(n)))
+
+      if (!((downNbrs.Size == 1) && (downNbrs.Has(n6)))) {
+        println("[FAIL] DownNbrs set is incorrect")
+      } else {
+        println("[OK] DownNbrs set is correct")
+      }
+
+      if (!((upNbrs.Size == 1) && (upNbrs.Has(n2)))) {
+        println("[FAIL] UpNbrs set is incorrect")
+      } else {
+        println("[OK] UpNbrs set is correct")
+      }
+
+      if (nord.Size != 6) {
+        println("[FAIL] Number of nodes traversed is incorrect")
+      } else {
+        println("[OK] Number of nodes traversed is correct")
+      }
+
+      if (nord(5).Id != n6.Id || nord(0).Id != n1.Id) {
+        println("[FAIL] Traversal order is incorrect")
+      }
+
+      if (nordR(5).Id != n1.Id || nordR(0).Id != n6.Id) {
+        println("[FAIL] Reverse traversal order is incorrect")
+      }
+
+      println("Test DFS")
+      val nord2 = NodeSeq()
+      val nordR2 = NodeSeq()
+
+      InDFS(g, n1, { (n: Node) =>
+        nord2.PushBack(n)
+      }, InPost(n => nordR2.PushBack(n)))
+
+      if (nord2(0).Id != n1.Id) {
+        println("[FAIL] Traversal order is incorrect")
+      }
+
+      if (nordR2(5).Id != n1.Id) {
+        println("[FAIL] Reverse traversal order is incorrect")
+      }
+    }
+  }
+
+  "test_nodeOpsEdgeOps" should "compile" in {
+    val x: Any = optiGraph {
+      val g = Graph()
+      val n1 = g.AddNode
+      val n2 = g.AddNode
+      val n3 = g.AddNode
+      val n4 = g.AddNode
+      val e1 = g.AddEdge(n1, n2)
+      val e2 = g.AddEdge(n1, n3)
+      val e3 = g.AddEdge(n2, n1)
+      val e4 = g.AddEdge(n4, n1)
+      val e5 = g.AddEdge(n3, n4)
+      g.Freeze
+
+      println("Test Node Out-Nbrs")
+      val outNbrs = n1.OutNbrs.toSet
+      if (outNbrs.Size != 2) {
+        println("[FAIL] [Expected size = 2] [Actual size = " + outNbrs.Size + "]")
+      } else {
+        println("[OK] Size correct.")
+      }
+      if (!(outNbrs.Has(n2) && outNbrs.Has(n3))) {
+        println("[FAIL] Node missing.")
+      } else {
+        println("[OK] All nodes present.")
+      }
+
+      //-------//
+
+      println("Test Node In-Nbrs")
+      val inNbrs = n1.InNbrs.toSet
+      if (inNbrs.Size != 2) {
+        println("[FAIL] [Expected size = 2] [Actual size = " + inNbrs.Size + "]")
+      } else {
+        println("[OK] Size correct.")
+      }
+      if (!(inNbrs.Has(n2) && inNbrs.Has(n4))) {
+        println("[FAIL] Node missing.")
+      } else {
+        println("[OK] All nodes present.")
+      }
+
+      //-------//
+
+      println("Test Node Out-Edges")
+      val outEdges = n1.OutEdges.toSet
+      if (outEdges.Size != 2) {
+        println("[FAIL] [Expected size = 2] [Actual size = " + outEdges.Size + "]")
+      } else {
+        println("[OK] Size correct.")
+      }
+      if (!(outEdges.Has(e1) && outEdges.Has(e2))) {
+        println("[FAIL] Edge missing.")
+      } else {
+        println("[OK] All edges present.")
+      }
+
+      //-------//
+
+      println("Test Node In-Edges")
+      val inEdges = n1.InEdges.toSet
+      if (inEdges.Size != 2) {
+        println("[FAIL] [Expected size = 2] [Actual size = " + inEdges.Size + "]")
+      } else {
+        println("[OK] Size correct.")
+      }
+      if (!(inEdges.Has(e3) && inEdges.Has(e4))) {
+        println("[FAIL] Edge missing.")
+      } else {
+        println("[OK] All edges present.")
+      }
+
+      //-------//
+
+      println("Test Node Out-Degree")
+      val outDeg = n1.OutDegree
+      if (outDeg != 2) {
+        println("[FAIL] [Expected degree = 2] [Actual degree = " + outDeg + "]")
+      } else {
+        println("[OK] Degree correct.")
+      }
+
+      //-------//
+
+      println("Test Node In-Degree")
+      val inDeg = n1.InDegree
+      if (inDeg != 2) {
+        println("[FAIL] [Expected degree = 2] [Actual degree = " + inDeg + "]")
+      } else {
+        println("[OK] Degree correct.")
+      }
+
+      //-------//
+
+      println("Test Edge From/To")
+      if (e1.From.Id != n1.Id || e1.To.Id != n2.Id) {
+        println("[FAIL] Edge To/From incorrectly set")
+      } else {
+        println("[OK] Edge To/From are correct.")
+      }
+    }
+  }
+
+  "test_filters" should "compile" in {
+    val x: Any = optiGraph {
+
+      def rand_graph(): Graph = {
+        val g = Graph()
+        val n1 = g.AddNode
+        val n2 = g.AddNode
+        val n3 = g.AddNode
+        val n4 = g.AddNode
+        val n5 = g.AddNode
+
+        g.AddEdge(n1, n2)
+        g.AddEdge(n1, n3)
+        g.AddEdge(n2, n4)
+        g.AddEdge(n3, n5)
+        g.Snapshot
+      }
+
+      val G = rand_graph()
+      val prop = NodeProperty[Int](G, 1)
+
+      // 1. filter
+      println("Test: Filter")
+      val filteredNone = G.Nodes.filter(n => prop(n) == 1)
+      println("[Expected size = " + G.NumNodes + "] [Filtered size = " + filteredNone.toSet.Size + "]")
+      val filteredAll = G.Nodes.filter(n => prop(n) == 2)
+      println("[Expected size = 0] [Filtered size = " + filteredAll.toSet.Size + "]")
+
+      //-------//
+
+      // 2. sequential For with filter
+      println("Test: For with filter")
+
+      For(G.Nodes, (n: Node) => (prop(n) == 1)) { n =>
+        println("[OK] n.Id = " + n.Id)
+      }
+
+      For(G.Nodes, (n: Node) => (prop(n) == 2)) { n =>
+        println("[FAIL] n.Id = " + n.Id)
+      }
+
+      //-------//
+
+      // 3. parallel Foreach/foreach with filter
+      println("Test: Foreach with filter")
+      for (n ← G.Nodes if prop(n) == 1) {
+        println("[OK] n.Id = " + n.Id)
+      }
+
+      for (n ← G.Nodes if prop(n) == 2) {
+        println("[FAIL] n.Id = " + n.Id)
+      }
+
+      Foreach(G.Nodes, (n: Node) => (prop(n) == 1)) { n =>
+        println("[OK] n.Id = " + n.Id)
+      }
+
+      Foreach(G.Nodes, (n: Node) => (prop(n) == 2)) { n =>
+        println("[FAIL] n.Id = " + n.Id)
+      }
+
+      //-------//
+
+      // 4. DFS with filter (i.e. navigator)
+      println("Test: DFS with filter")
+
+      InDFS(G, G.Node(0), (n: Node) => prop(n) > 1, { (n: Node) =>
+        //TODO: in original method there is no ()
+        //without () we get as a result ... => Unit
+        //but we need Rep[Unit]
+        //can't transform println
+        { println("[OK] n.Id = " + n.Id); () }
+      })
+
+      //TODO: replace (prop(n) > 2) with (prop(n) == 2)
+      InDFS(G, G.Node(0), (n: Node) => prop(n) == 2, { (n: Node) =>
+        { println("[FAIL] n.Id = " + n.Id) }
+      })
+
+      //-------//
+
+      // 5. BFS with filter (i.e. navigator)
+      println("Test: BFS with filter")
+      //TODO: replace (prop(n) > 1) with (prop(n) == 1)
+      InBFS(G, G.Node(0), (n: Node) => prop(n) > 1, { (n: Node) =>
+        //TODO: in original method there is no ()
+        //without () we get as a result ... => Unit
+        //but we need Rep[Unit]
+        //can't transform println
+        { println("[OK] n.Id = " + n.Id); () }
+      })
+      //TODO: replace (prop(n) > 2) with (prop(n) == 2)
+      InBFS(G, G.Node(0), (n: Node) => prop(n) > 2, { (n: Node) =>
+        //TODO: in original method there is no ()
+        //without () we get as a result ... => Unit
+        //but we need Rep[Unit]
+        //can't transform println
+        { println("[FAIL] n.Id = " + n.Id); () }
+      })
+
+    }
+  }
+
+  "test_iterations" should "compile" in {
+    val x: Any = optiGraph {
+
+      // empty / non-empty
+
+      println("Test Parallel For-each")
+      val set = NodeSet()
+      for (n ← set.Items) {
+        println("[FAIL] Iterable collection is empty")
+      }
+      Foreach(set.Items) { n =>
+        println("[FAIL] Iterable collection is empty ")
+      }
+
+      val G = Graph()
+      val n1 = G.AddNode
+      val n2 = G.AddNode
+      G.Freeze
+      val np = NodeProperty[Int](G, 0)
+
+      val i = Reduceable[Int](0)
+      for (n ← G.Nodes) {
+        np(n) = 1
+        i += 1
+      }
+      if (i.value != 2) {
+        println("[FAIL] Expected number of iterations = 2, Actual number of iterations = " + i.value)
+      } else {
+        println("[OK] Num iterations is correct.")
+      }
+      if (np(n1) != 1 || np(n2) != 1) {
+        println("[FAIL] Iteration block was not executed.")
+      } else {
+        println("[OK] Iteration block was executed.")
+      }
+
+      i.setValue(0)
+      Foreach(G.Nodes) { n =>
+        np(n) = 2
+        i += 1
+      }
+      if (i.value != G.NumNodes) {
+        println("[FAIL] Expected number of iterations = 2, Actual number of iterations = " + i.value)
+      } else {
+        println("[OK] Num iterations is correct.")
+      }
+      if (np(n1) != 2 || np(n2) != 2) {
+        println("[FAIL] Iteration block was not executed.")
+      } else {
+        println("[OK] Iteration block was executed.")
+      }
+
+      //-------//
+
+      println("Test Sequential For")
+      For[Node, GIterable[Node]](G.Nodes) { (n: Node) =>
+        np(n) = 3
+      }
+      if (np(n1) != 3 || np(n2) != 3) {
+        println("[FAIL] Iteration block was not executed.")
+      } else {
+        println("[OK] Iteration block was executed.")
+      }
+
+    }
+  }
+
+  "test_nodeEdgeProps" should "compile" in {
+    val x: Any = optiGraph {
+      val g = Graph()
+      val n1 = g.AddNode
+      val n2 = g.AddNode
+      val e1 = g.AddEdge(n1, n2)
+      val e2 = g.AddEdge(n2, n1)
+      val e3 = g.AddEdge(n1, n1)
+      g.Freeze
+
+      println("Test NodeProperty")
+      val np = NodeProperty[Int](g, 1)
+      val np2 = NodeProperty[Int](g)
+      // alias constructor
+      val np3 = NP[Int](g, 0)
+
+      if (np(n1) != 1 || np(n2) != 1) {
+        println("[FAIL] Expected value = 1, different actual value for node(s)")
+      } else {
+        println("[OK] Got correct value for all nodes ")
+      }
+      np(n1) = 2
+      if (np(n1) != 2) {
+        println("[FAIL] Updated expected value = 2, Actual value = " + np(n1))
+      } else {
+        println("[OK] Updated value correctly")
+      }
+
+      np.setAll(3)
+      if (np(n1) != 3 || np(n2) != 3) {
+        println("[FAIL] Set all expected value = 3, different actual value for node(s)")
+      } else {
+        println("[OK] Set all values correctly")
+      }
+
+      np <= (n2, 5)
+      if (np(n2) != 3) {
+        println("[FAIL] After deferral, expected value = 3, Actual value = " + np(n2))
+      } else {
+        println("[OK] Deferral did not affect current value")
+      }
+
+      np.assign(n2)
+      if (np(n2) != 5) {
+        println("[FAIL] After assignment, expected value = 5, Actual value = " + np(n2))
+      } else {
+        println("[OK] Assigned correct value")
+      }
+
+      np(n2) = 3
+      np.assign(n2)
+      if (np(n2) != 3) {
+        println("[FAIL] After repeated assignment, expected value = 3, Actual value = " + np(n2))
+      } else {
+        println("[OK] Repeated assignment did not affect value")
+      }
+
+      np <= (n1, 5)
+      np <= (n2, 5)
+      if (np(n1) != 3 || np(n2) != 3) {
+        println("[FAIL] After deferral, expected value = 3, different actual value for node(s)")
+      } else {
+        println("[OK] Deferral did not affect current values")
+      }
+
+      np.assignAll()
+      if (np(n1) != 5 || np(n2) != 5) {
+        println("[FAIL] After assignment, expected value = 5, different actual value for node(s)")
+      } else {
+        println("[OK] Assigned correct values")
+      }
+
+      np(n1) = 3
+      np(n2) = 3
+      np.assignAll()
+      if (np(n1) != 3 || np(n2) != 3) {
+        println("[FAIL] After repeated assignment, expected value = 3, different actual value for node(s)")
+      } else {
+        println("[OK] Repeated assignment did not affect values")
+      }
+
+      //---------//
+
+      println("Test EdgeProperty")
+      val ep = EdgeProperty[Int](g, 1)
+      val ep2 = EdgeProperty[Int](g)
+      // alias constructor
+      val ep3 = EP[Int](g, 0)
+
+      if (ep(e1) != 1 || ep(e2) != 1 || ep(e3) != 1) {
+        println("[FAIL] Expected value = 1, different actual value for edge(s)")
+      } else {
+        println("[OK] Got correct value for all edges ")
+      }
+      ep(e1) = 2
+      if (ep(e1) != 2) {
+        println("[FAIL] Updated expected value = 2, Actual value = " + ep(e1))
+      } else {
+        println("[OK] Updated value correctly")
+      }
+
+      ep.setAll(3)
+      if (ep(e1) != 3 || ep(e2) != 3 || ep(e3) != 3) {
+        println("[FAIL] Set all expected value = 3, different actual value for edge(s)")
+      } else {
+        println("[OK] Set all values correctly")
+      }
+
+      ep <= (e2, 5)
+      if (ep(e2) != 3) {
+        println("[FAIL] After deferral, expected value = 3, Actual value = " + ep(e2))
+      } else {
+        println("[OK] Deferral did not affect current value")
+      }
+
+      ep.assign(e2)
+      if (ep(e2) != 5) {
+        println("[FAIL] After assignment, expected value = 5, Actual value = " + ep(e2))
+      } else {
+        println("[OK] Assigned correct value")
+      }
+
+      ep(e2) = 3
+      ep.assign(e2)
+      if (ep(e2) != 3) {
+        println("[FAIL] After repeated assignment, expected value = 3, Actual value = " + ep(e2))
+      } else {
+        println("[OK] Repeated assignment did not affect value")
+      }
+
+      ep <= (e1, 5)
+      ep <= (e2, 5)
+      ep <= (e3, 5)
+      if (ep(e1) != 3 || ep(e2) != 3 || ep(e3) != 3) {
+        println("[FAIL] After deferral, expected value = 3, different actual value for edge(s)")
+      } else {
+        println("[OK] Deferral did not affect current values")
+      }
+
+      ep.assignAll()
+      if (ep(e1) != 5 || ep(e2) != 5 || ep(e3) != 5) {
+        println("[FAIL] After assignment, expected value = 5, different actual value for edge(s)")
+      } else {
+        println("[OK] Assigned correct values")
+      }
+
+      ep(e1) = 3
+      ep(e2) = 3
+      ep(e3) = 3
+      ep.assignAll()
+      if (ep(e1) != 3 || ep(e2) != 3 || ep(e3) != 3) {
+        println("[FAIL] After repeated assignment, expected value = 3, different actual value for edge(s)")
+      } else {
+        println("[OK] Repeated assignment did not affect values")
+      }
+    }
+  }
+
+  "basic" should "compile" in {
+    val x: Any = optiGraph {
+      val g: Graph = null
+      val g_empty: Graph = null
+      val n1: Node = null
+      val n2: Node = null
+      val n3: Node = null
+      val n4: Node = null
+      val e: Edge = null
+      val np: NodeProperty[Int] = null
+      val np2: NodeProperty[String] = null
+      val np3: NodeProperty[Boolean] = null
+
+      //TODO: change == to =
+      g == Graph()
+      //TODO: change == to =
+      n1 == g.AddNode
+      //TODO: change == to =
+      n2 == g.AddNode
+      //TODO: change == to =
+      n3 == g.AddNode
+      //TODO: change == to =
+      n4 == g.AddNode
+      //TODO: change == to =
+      e == g.AddEdge(n1, n2)
+      g.Freeze
+
+      println("Graph construction finished")
+      println("Num nodes: " + g.NumNodes)
+      println("Num edges: " + g.NumEdges)
+      println("Nodes: " + g.Nodes)
+      println("Node 1: " + n1)
+      println("Node 2: " + n2)
+      println("Node 3: " + n3)
+      println("Node 4: " + n4)
+      println("Edges: " + g.Edges)
+      println("Node 1 num neighbors: " + n1.NumNbrs)
+      println("Node 2 num neighbors: " + n2.NumNbrs)
+
+      println("FOREACH:")
+      for (n ← g.Nodes) {
+        println("Node: " + n)
+      }
+      Foreach(g.Nodes) { (n: Node) => println("Node in Foreach: " + n) }
+
+      println("NODE PROP")
+      //TODO: change == to =
+      np == NodeProperty[Int](g, 1)
+      println("Created")
+      println("n1.np = " + np(n1))
+      println("n2.np = " + np(n2))
+      np(n1) = 5
+      np(n2) = 6
+      println("n1.np = " + np(n1))
+
+      //TODO: change == to =
+      np2 == NodeProperty[String](g, "a")
+      //TODO: change == to =
+      np3 == NodeProperty[Boolean](g)
+      val ep = EP[Int](g)
+
+      println("n1.np2 = " + np2(n1))
+      println("n2.np3 = " + np3(n2))
+      np3.setAll(true)
+      println("n1.np3 = " + np3(n1))
+      println("n2.np3 = " + np3(n2))
+
+      println("SUM = " + Sum(g.Nodes) { np(_) })
+      println("PROD = " + Product(g.Nodes) { np(_) })
+      println("MAX = " + Max(g.Nodes) { np(_) })
+      println("MIN = " + Min(g.Nodes) { np(_) })
+      println("COUNT = " + Count(g.Nodes) { np(_) == 5 })
+      println("ALL = " + All(g.Nodes) { np(_) == 5 })
+      println("ANY = " + Any(g.Nodes) { np(_) == 5 })
+
+      println("NODE SET")
+      val ns = NodeSet()
+      ns.Add(n1)
+      println("Node set size = " + ns.Size)
+      println("Node set contains n1 = " + ns.Has(n1))
+
+      println("IN BFS")
+      InBFS(g, n1, n => println("node prop: " + np(n)))
+
+      println("NODE ORDER")
+      val no = NodeOrder()
+      no.PushFront(n1)
+      no.PushFront(n2)
+      no.PushFront(n3)
+      no.PushFront(n4)
+
+      val no2 = NodeOrder()
+      no2.PushBack(n1)
+      no2.PushBack(n2)
+      no2.PushBack(n3)
+      no2.PushBack(n4)
+
+      println("Node order size = " + no.Size)
+      println("Node order contains n1 = " + no.Has(n1))
+
+      for (i ← no.Items) {
+        println("Node: " + i)
+      }
+
+      for (i ← no2.Items) {
+        println("Node: " + i)
+      }
+    }
+  }
+
+  "rand_graph" should "compile" in {
+    val x: Any = optiGraph {
+      //      def rand_graph(): Graph = {
+      //        val g = Graph()
+      //        val n1 = g.AddNode
+      //        val n2 = g.AddNode
+      //        val n3 = g.AddNode
+      //        val n4 = g.AddNode
+      //        val n5 = g.AddNode
+      //
+      //        g.AddEdge(n1, n2)
+      //        g.AddEdge(n1, n3)
+      //        g.AddEdge(n2, n4)
+      //        g.AddEdge(n3, n5)
+      //        g.Snapshot
+      //      }
+      //      rand_graph()
+
+      val g = Graph()
+      val n1 = g.AddNode
+      val n2 = g.AddNode
+      val n3 = g.AddNode
+      val n4 = g.AddNode
+      val n5 = g.AddNode
+
+      g.AddEdge(n1, n2)
+      g.AddEdge(n1, n3)
+      g.AddEdge(n2, n4)
+      g.AddEdge(n3, n5)
+      g.Snapshot
+    }
+  }
+
+  "page_rank" should "compile" in {
     val x: Any = optiGraph {
 
       //val G = RandUniformGraph(5,5,1997L)
@@ -1246,7 +1213,7 @@ class OptiGraphSpec extends FlatSpec with ShouldMatchers with LanguageOps {
         //val Val: Double = ((1.0 - d) / N) + unit(d) * Sum(t.InNbrs){
         //how do I should transform this line
         val Val: Double = ((1.0 - d) / N) + d * Sum(t.InNbrs) {
-          w ⇒ PR(w) / deg(w.Id) //w.OutDegree
+          w => PR(w) / deg(w.Id) //w.OutDegree
         }
         //val Val = v
         PR <= (t, Val)
@@ -1298,11 +1265,11 @@ class OptiGraphSpec extends FlatSpec with ShouldMatchers with LanguageOps {
       //    while (num < 4) {
 
       //TODO: change member(u) > num to member(u) == num
-      val Din = Sum(G.Nodes, (u: Node) ⇒ member(u) > num) { _.Degree }
-      val Dout = Sum(G.Nodes, (u: Node) ⇒ member(u) != num) { _.Degree }
+      val Din = Sum(G.Nodes, (u: Node) => member(u) > num) { _.Degree }
+      val Dout = Sum(G.Nodes, (u: Node) => member(u) != num) { _.Degree }
       //TODO: change member(u) > num to member(u) == num
-      val Cross = Sum(G.Nodes, (u: Node) ⇒ member(u) > num) { u ⇒
-        Count(u.Nbrs) { j ⇒ member(j) != num }
+      val Cross = Sum(G.Nodes, (u: Node) => member(u) > num) { u =>
+        Count(u.Nbrs) { j => member(j) != num }
       }
       val m = if (Din < Dout) Din else Dout
       val retVal = if (m == 0) {
@@ -1321,7 +1288,7 @@ class OptiGraphSpec extends FlatSpec with ShouldMatchers with LanguageOps {
     }
   }
 
- "SSC" should "compile" in {
+  "SSC" should "compile" in {
 
     val x: Any = optiGraph {
 
@@ -1348,17 +1315,17 @@ class OptiGraphSpec extends FlatSpec with ShouldMatchers with LanguageOps {
       val P = NodeOrder()
       CompID.setAll(-1)
 
-      For /*[Node, GIterable[Node]]*/ (G.Nodes, (t: Node) ⇒ !(P.Has(t))) { t ⇒
+      For /*[Node, GIterable[Node]]*/ (G.Nodes, (t: Node) => !(P.Has(t))) { t =>
         //TODO: how do we should change unit in def InDFS:
         //InDFS(G, t, (s: Node) => !P.Has(s), { t => unit()},
         //simply to () ?
-        InDFS(G, t, (s: Node) ⇒ !P.Has(s), { t ⇒ () },
-          { InPost(s ⇒ P.PushFront(s)) })
+        InDFS(G, t, (s: Node) => !P.Has(s), { t => () },
+          { InPost(s => P.PushFront(s)) })
       }
 
       //TODO: change CompID(s) > -1 to CompID(s) == -1
-      For(P.Items, (s: Node) ⇒ CompID(s) > -1) { s ⇒
-        InBFS(G^, s, /*(t:Rep[Node]) => CompID(s) == -1,*/ { t ⇒
+      For(P.Items, (s: Node) => CompID(s) > -1) { s =>
+        InBFS(G^, s, /*(t:Rep[Node]) => CompID(s) == -1,*/ { t =>
           if (CompID(s) == -1) CompID(t) = numC
         })
         numC += 1;
@@ -1366,49 +1333,49 @@ class OptiGraphSpec extends FlatSpec with ShouldMatchers with LanguageOps {
       println("TIME_LOOP: " + (wall_time() - start_time))
       println("NumC = " + numC)
     }
-  }*/
+  }
 
-  //    "BC" should "compile" in {
-  //      val x: Any = optiGraph {
-  //        def rand_graph(): Graph = {
-  //          val g = Graph()
-  //          val n1 = g.AddNode
-  //          val n2 = g.AddNode
-  //          val n3 = g.AddNode
-  //          val n4 = g.AddNode
-  //          val n5 = g.AddNode
-  //
-  //          g.AddEdge(n1, n2)
-  //          g.AddEdge(n1, n3)
-  //          g.AddEdge(n2, n4)
-  //          g.AddEdge(n3, n5)
-  //          g.Snapshot
-  //        }
-  //
-  //        val G = rand_graph()
-  //        val BC = NodeProperty[Float](G, 0f)
-  //
-  //        for (s ← G.Nodes) {
-  //          // define temporary properties
-  //          val Sigma = NodeProperty[Float](G);
-  //          val Delta = NodeProperty[Float](G);
-  //          Sigma(s) = 1f;
-  //
-  //          // Traverse graph in BFS-order from s
-  //          InBFS(G, s, (v: Node) ⇒ v != s, { v ⇒
-  //            // sum over BFS-parents
-  //            Sigma(v) = Sum(v.UpNbrs) { w ⇒ Sigma(w) };
-  //          },
-  //            InReverse({ v ⇒
-  //              // sum over BFS-children
-  //              Delta(v) = Sum(v.DownNbrs) { w ⇒
-  //                Sigma(v) / Sigma(w) * (1f + Delta(w))
-  //              }
-  //              // TODO: this needs to be a reduction op
-  //              BC(v) += Delta(v); //accumulate BC
-  //            }))
-  //        }
-  //        }
-  //  }
+  "BC" should "compile" in {
+    val x: Any = optiGraph {
+      def rand_graph(): Graph = {
+        val g = Graph()
+        val n1 = g.AddNode
+        val n2 = g.AddNode
+        val n3 = g.AddNode
+        val n4 = g.AddNode
+        val n5 = g.AddNode
+
+        g.AddEdge(n1, n2)
+        g.AddEdge(n1, n3)
+        g.AddEdge(n2, n4)
+        g.AddEdge(n3, n5)
+        g.Snapshot
+      }
+
+      val G = rand_graph()
+      val BC = NodeProperty[Float](G, 0f)
+
+      for (s ← G.Nodes) {
+        // define temporary properties
+        val Sigma = NodeProperty[Float](G);
+        val Delta = NodeProperty[Float](G);
+        Sigma(s) = 1f;
+
+        // Traverse graph in BFS-order from s
+        InBFS(G, s, (v: Node) => v != s, { v =>
+          // sum over BFS-parents
+          Sigma(v) = Sum(v.UpNbrs) { w => Sigma(w) };
+        },
+          InReverse({ v =>
+            // sum over BFS-children
+            Delta(v) = Sum(v.DownNbrs) { w =>
+              Sigma(v) / Sigma(w) * (1f + Delta(w))
+            }
+            // TODO: this needs to be a reduction op
+            BC(v) += Delta(v); //accumulate BC
+          }))
+      }
+    }
+  }
 
 }

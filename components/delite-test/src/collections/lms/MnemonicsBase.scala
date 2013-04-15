@@ -22,7 +22,7 @@ abstract class MnemonicsBase
   with RangeOpsExp
   with SeqOpsExp
   with StringOpsExp
-  with CompileScala { self ⇒
+  with CompileScala { self =>
 
   type LString = scala.List[Char]
 

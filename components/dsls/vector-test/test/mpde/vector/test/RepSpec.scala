@@ -36,8 +36,8 @@ class RepSpec extends FlatSpec with ShouldMatchers {
       val a = DenseVector(1, 2)
       //val b = a
       //val c: Vector[Int] = DenseVector(1, 2, 3)
-      //a.map(x ⇒ x + 2)
-      a.reconstruct((x, y) ⇒ x + y)
+      //a.map(x => x + 2)
+      a.reconstruct((x, y) => x + y)
       a.reconstruct(_ + _)
       //b.map(_ + 2)
       //
@@ -88,11 +88,11 @@ class RepSpec extends FlatSpec with ShouldMatchers {
   /*it should "test function type lift" in {
 
     val x = dsl.la.laLiftRep {
-      val a = (x: Int) ⇒ x + 5 //generated$dsllarepVectorDSL12.this.Rep[Int] => generated$dsllarepVectorDSL12.this.Rep[Int]
-      val b: Int ⇒ Byte ⇒ Double = ??? //generated$dsllarepVectorDSL12.this.Rep[Int] => generated$dsllarepVectorDSL12.this.Rep[Byte => Double]
-      val c: (Int, Byte) ⇒ Double = ??? //(generated$dsllarepVectorDSL12.this.Rep[Int], generated$dsllarepVectorDSL12.this.Rep[Byte]) => generated$dsllarepVectorDSL12.this.Rep[Double]
-      val d: Vector[Int] ⇒ Vector[Double] = ??? //generated$dsllarepVectorDSL12.this.Rep[dsl.la.Vector[Int]] => generated$dsllarepVectorDSL12.this.Rep[dsl.la.Vector[Double]]
-      val e: List[Int ⇒ Int] = ??? //generated$dsllarepVectorDSL12.this.Rep[List[Int => Int]]
+      val a = (x: Int) => x + 5 //generated$dsllarepVectorDSL12.this.Rep[Int] => generated$dsllarepVectorDSL12.this.Rep[Int]
+      val b: Int => Byte => Double = ??? //generated$dsllarepVectorDSL12.this.Rep[Int] => generated$dsllarepVectorDSL12.this.Rep[Byte => Double]
+      val c: (Int, Byte) => Double = ??? //(generated$dsllarepVectorDSL12.this.Rep[Int], generated$dsllarepVectorDSL12.this.Rep[Byte]) => generated$dsllarepVectorDSL12.this.Rep[Double]
+      val d: Vector[Int] => Vector[Double] = ??? //generated$dsllarepVectorDSL12.this.Rep[dsl.la.Vector[Int]] => generated$dsllarepVectorDSL12.this.Rep[dsl.la.Vector[Double]]
+      val e: List[Int => Int] = ??? //generated$dsllarepVectorDSL12.this.Rep[List[Int => Int]]
     }
 
     ()
@@ -103,7 +103,7 @@ class RepSpec extends FlatSpec with ShouldMatchers {
     val x = dsl.la.laLiftRep {
       val a = 5
       val b = 3 + a
-      val e: Int ⇒ Int = ???
+      val e: Int => Int = ???
       val f = a
       a + b
       val bvar: Int = 5

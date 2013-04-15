@@ -35,15 +35,15 @@ class Graph(g: Graph) extends ppl.dsl.optigraph.Graph {
   /** Flips the direction of edges in the graph (TODO) */
   def ^ : Graph = ???
   /** BFS traversals (with optional filter and inReverse clauses) */
-  def InBFS(from: Node, block: Node ⇒ Unit): Unit = ???
-  def InBFS(from: Node, filter: Node ⇒ Boolean, block: Node ⇒ Unit): Unit = ???
+  def InBFS(from: Node, block: Node => Unit): Unit = ???
+  def InBFS(from: Node, filter: Node => Boolean, block: Node => Unit): Unit = ???
   //    def InBFS(from: Node, block: Node => Unit, inReverse: Node => Unit)(implicit o: Overloaded2): Unit = ???
-  def InBFS(from: Node, filter: Node ⇒ Boolean, block: Node ⇒ Unit, inReverse: Node ⇒ Unit): Unit = ???
+  def InBFS(from: Node, filter: Node => Boolean, block: Node => Unit, inReverse: Node => Unit): Unit = ???
   /** DFS traversals (with optional filter and inPost clauses) */
-  def InDFS(from: Node, block: Node ⇒ Unit): Unit = ???
-  def InDFS(from: Node, filter: Node ⇒ Boolean, block: Node ⇒ Unit): Unit = ???
+  def InDFS(from: Node, block: Node => Unit): Unit = ???
+  def InDFS(from: Node, filter: Node => Boolean, block: Node => Unit): Unit = ???
   //    def InDFS(from: Node, block: Node => Unit, inPost: Node => Unit)(implicit o: Overloaded2): Unit = ???
-  def InDFS(from: Node, filter: Node ⇒ Boolean, block: Node ⇒ Unit, inPost: Node ⇒ Unit): Unit = ???
+  def InDFS(from: Node, filter: Node => Boolean, block: Node => Unit, inPost: Node => Unit): Unit = ???
   // mutable graph ops (for testing)
   /** Adds a new node to the graph and returns this node */
   def AddNode: Node = ???

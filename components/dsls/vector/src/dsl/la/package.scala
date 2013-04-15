@@ -6,13 +6,13 @@ import scala.reflect.macros.Context
 
 package object la {
 
-  def laLift[T](block: ⇒ T): Unit = macro implementations.lift[T]
-  def laDebug[T](block: ⇒ T): Unit = macro implementations.liftDebug[T]
+  def laLift[T](block: => T): Unit = macro implementations.lift[T]
+  def laDebug[T](block: => T): Unit = macro implementations.liftDebug[T]
 
-  def laLiftRep[T](block: ⇒ T): Unit = macro implementations.liftRep[T]
-  def laDebugRep[T](block: ⇒ T): Unit = macro implementations.liftDebugRep[T]
-  def laLiftNoRep[T](block: ⇒ T): Unit = macro implementations.liftNoRep[T]
-  def laDebugNoRep[T](block: ⇒ T): Unit = macro implementations.liftDebugNoRep[T]
+  def laLiftRep[T](block: => T): Unit = macro implementations.liftRep[T]
+  def laDebugRep[T](block: => T): Unit = macro implementations.liftDebugRep[T]
+  def laLiftNoRep[T](block: => T): Unit = macro implementations.liftNoRep[T]
+  def laDebugNoRep[T](block: => T): Unit = macro implementations.liftDebugNoRep[T]
 
   object implementations {
     def lift[T](c: Context)(block: c.Expr[T]): c.Expr[T] = new YYTransformer[c.type, T](c, "dsl.la.norep.VectorDSL")(block)

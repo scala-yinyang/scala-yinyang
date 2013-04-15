@@ -23,11 +23,11 @@
     //    while (num < 4) {
 
     //TODO: change member(u) > num to member(u) == num
-    val Din = Sum(G.Nodes, (u: Node) ⇒ member(u) > num) { _.Degree }
-    val Dout = Sum(G.Nodes, (u: Node) ⇒ member(u) != num) { _.Degree }
+    val Din = Sum(G.Nodes, (u: Node) => member(u) > num) { _.Degree }
+    val Dout = Sum(G.Nodes, (u: Node) => member(u) != num) { _.Degree }
     //TODO: change member(u) > num to member(u) == num
-    val Cross = Sum(G.Nodes, (u: Node) ⇒ member(u) > num) { u ⇒
-      Count(u.Nbrs) { j ⇒ member(j) != num }
+    val Cross = Sum(G.Nodes, (u: Node) => member(u) > num) { u =>
+      Count(u.Nbrs) { j => member(j) != num }
     }
     val m = if (Din < Dout) Din else Dout
     val retVal = if (m == 0) {
@@ -44,4 +44,4 @@
     //println("Dout = " + Dout)
     //println("Retval = " + retVal)
   }
-}*/
+}*/ 

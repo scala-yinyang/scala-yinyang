@@ -19,7 +19,7 @@ abstract class TpchBase
   with MoreTupleOpsExp
   with NumericOpsExpOpt
   with StringOpsExp
-  with CompileScala { self ⇒
+  with CompileScala { self =>
 
   /** Method to be compiled by LMS. */
   def apply(params: Rep[(List[OrdersRow], List[LineitemRow], String, String, Date)]): Rep[List[(String, Int, Int)]] =

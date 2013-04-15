@@ -15,10 +15,10 @@
     var num = 0
     while (num < 4) {
 
-      val Din = Sum(G.Nodes, (u: Rep[Node]) ⇒ member(u) == num) { _.Degree }
-      val Dout = Sum(G.Nodes, (u: Rep[Node]) ⇒ member(u) != num) { _.Degree }
-      val Cross = Sum(G.Nodes, (u: Rep[Node]) ⇒ member(u) == num) { u ⇒
-        Count(u.Nbrs) { j ⇒ member(j) != num }
+      val Din = Sum(G.Nodes, (u: Rep[Node]) => member(u) == num) { _.Degree }
+      val Dout = Sum(G.Nodes, (u: Rep[Node]) => member(u) != num) { _.Degree }
+      val Cross = Sum(G.Nodes, (u: Rep[Node]) => member(u) == num) { u =>
+        Count(u.Nbrs) { j => member(j) != num }
       }
       val m = if (Din < Dout) Din else Dout
 
@@ -33,4 +33,4 @@
     println("TIME_LOOP: " + (wall_time() - start_time))
   }
 
-}*/
+}*/ 

@@ -18,9 +18,9 @@ trait PrintDSL
   def break(x: Int) = {
     sb.append("scala.Predef.println(\"break called with " + x.toString + "\");\n")
     x match {
-      case Hole(tpe, id) ⇒
+      case Hole(tpe, id) =>
         recompileHoles += id
-      case _ ⇒
+      case _ =>
     }
   }
 
@@ -43,8 +43,8 @@ trait PrintDSL
     val distinctHoles = holes.distinct
     s"""
       class $className extends Function${distinctHoles.size}[${"Int, " * distinctHoles.size} Int] {
-        def apply(${distinctHoles.map(y ⇒ y.toString + ": " + y.tpe.toString).mkString("", ",", "")}) = {
-          ${sb.toString} 
+        def apply(${distinctHoles.map(y => y.toString + ": " + y.tpe.toString).mkString("", ",", "")}) = {
+          ${sb.toString}
           ${res.toString}
         }
       }
@@ -53,15 +53,15 @@ trait PrintDSL
 
   override def interpret[T: Manifest](params: Any*): T = {
     if (compiledCode == null) {
-      compiledCode = compile[T, () ⇒ T]
+      compiledCode = compile[T, () => T]
     }
     compiledCode.apply().asInstanceOf[T]
   }
 
-  var compiledCode: () ⇒ Any = _
+  var compiledCode: () => Any = _
 }
 
-trait MiniIntDSL extends BaseYinYang { self: CodeGenerator ⇒
+trait MiniIntDSL extends BaseYinYang { self: CodeGenerator =>
 
   type Int = IntOps
 

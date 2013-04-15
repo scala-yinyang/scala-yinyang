@@ -124,7 +124,8 @@ trait OptiGraph extends OptiGraphApplicationRunner with LMSYinYang with Interpre
 
   def interpret[T: Manifest](params: Any*) = 0.asInstanceOf[T]
 
-  /*type Int = scala.Int
+  /* If we really need this.
+  type Int = scala.Int
   type Float = scala.Float
   type Double = scala.Double
   type Boolean = scala.Boolean
@@ -146,21 +147,17 @@ trait OptiGraph extends OptiGraphApplicationRunner with LMSYinYang with Interpre
   type NodeProperty[T] = ppl.dsl.optigraph.NodeProperty[T]
   type EdgeProperty[T] = ppl.dsl.optigraph.EdgeProperty[T]*/
 
+  implicit def fixClosureContravariance[T](v: Rep[shallow.optigraph.Node] => Rep[T]) =
+    v.asInstanceOf[Rep[ppl.dsl.optigraph.Node] => Rep[T]]
+  implicit def fixOverloaded(x: Rep[Overloaded1]) = null.asInstanceOf[Overloaded1]
   override implicit def repNodeToNodeOps(n: Rep[Node]) = new NodeOpsCls(n)
-
-  //  implicit object LanguageObj {
-  //    def MIN_INT = 128
-  //  }
-
-  //implicit object IntIsIntegral extends Numeric.IntIsIntegral with Ordering.IntOrdering
-
   implicit val ManifestFactory = scala.reflect.ManifestFactory
   implicit val IntIsIntegral = scala.math.Numeric.IntIsIntegral
   object Numeric {
     val IntIsIntegral = scala.math.Numeric.IntIsIntegral
+    val DoubleIsFractional = scala.math.Numeric.DoubleIsFractional
   }
   val DoubleIsFractional = scala.math.Numeric.DoubleIsFractional
 
-  //  def ====(ths: Rep[Any], t: Rep[Any]): Rep[Boolean] = ths == t
-
+  object Overloaded1 extends Overloaded1
 }

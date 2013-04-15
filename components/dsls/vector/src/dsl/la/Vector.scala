@@ -6,13 +6,13 @@ import scala.collection.mutable.WrappedArray
 
 trait Vector[T] {
   //TODO try to implement
-  //  type VectorConverter[Vector1[T] <: Vector[T], Vector2[T] <: Vector[T]] = Vector1[T] ⇒ Vector2[T]
+  //  type VectorConverter[Vector1[T] <: Vector[T], Vector2[T] <: Vector[T]] = Vector1[T] => Vector2[T]
 
   protected[la] def underlying: IndexedSeq[T]
   def *(v: Vector[T]): Vector[T]
   def +(v: Vector[T]): Vector[T]
-  def map[U: Numeric: ClassTag](v: T ⇒ U): Vector[U]
-  def reconstruct[U: Numeric: ClassTag](v: (T, T) ⇒ U): Vector[U]
+  def map[U: Numeric: ClassTag](v: T => U): Vector[U]
+  def reconstruct[U: Numeric: ClassTag](v: (T, T) => U): Vector[U]
 
   //three simple methods just to example
   //method without parameters which should return List of Vectors (our type)
@@ -27,7 +27,7 @@ trait Vector[T] {
 
   //divide vector on 2 vectors according to condition
   //to see behaviour of function with various types as parameter and tuple (result)
-  def partition(fun: T ⇒ Boolean): (Vector[T], Vector[T])
+  def partition(fun: T => Boolean): (Vector[T], Vector[T])
 
   //to see behaviour of varargs parameters with Rep types
   def splice(vs: Vector[T]*): Vector[T]
@@ -36,7 +36,7 @@ trait Vector[T] {
   def spliceT(v: (Vector[T], Vector[T])): Vector[T]
 
   //to see behaviour of functional type parameter with generics
-  def transform[U: Numeric: ClassTag](fn: Vector[T] ⇒ Vector[U]): Vector[U]
+  def transform[U: Numeric: ClassTag](fn: Vector[T] => Vector[U]): Vector[U]
 
   def apply(i: Int): T
 
@@ -44,11 +44,11 @@ trait Vector[T] {
   def sort(implicit ord: Ordering[T]): Vector[T]
 
   //to test implicit parameter and work with several parameter lists
-  def sort[B](f: (T) ⇒ B)(implicit ord: Ordering[B]): Vector[T]
+  def sort[B](f: (T) => B)(implicit ord: Ordering[B]): Vector[T]
 
   //nest two functions to test work with functional parameters and bounded type parameter
-  def corresponds[B](that: Vector[B])(p: (T, B) ⇒ Boolean): Boolean
-  def fold[A1 >: T](z: A1)(op: (A1, A1) ⇒ A1): A1
+  def corresponds[B](that: Vector[B])(p: (T, B) => Boolean): Boolean
+  def fold[A1 >: T](z: A1)(op: (A1, A1) => A1): A1
 
   //TODO try to implement
   //  def convert[Vector1, Vector2](implicit conv: VectorConverter[Vector1, Vector2]): Vector2
@@ -71,31 +71,31 @@ final private class DenseVector[T: Numeric: ClassTag](val x: Array[T]) extends V
   def num = implicitly[Numeric[T]]
 
   def +(v: Vector[T]) = new DenseVector[T](
-    ((underlying zip v.underlying) map ((x: (T, T)) ⇒ num.plus(x._1, x._2))).toArray)
+    ((underlying zip v.underlying) map ((x: (T, T)) => num.plus(x._1, x._2))).toArray)
 
   def *(v: Vector[T]) = new DenseVector[T](
-    ((underlying zip v.underlying) map ((x: (T, T)) ⇒ num.times(x._1, x._2))).toArray)
+    ((underlying zip v.underlying) map ((x: (T, T)) => num.times(x._1, x._2))).toArray)
 
-  def map[U: Numeric: ClassTag](f: T ⇒ U): Vector[U] = new DenseVector(underlying.map(f).toArray)
+  def map[U: Numeric: ClassTag](f: T => U): Vector[U] = new DenseVector(underlying.map(f).toArray)
 
-  def reconstruct[U: Numeric: ClassTag](v: (T, T) ⇒ U): Vector[U] = ???
+  def reconstruct[U: Numeric: ClassTag](v: (T, T) => U): Vector[U] = ???
 
   def negate = new DenseVector[T](underlying.map(num.negate(_)).toArray)
 
-  def length = scala.math.sqrt(num.toDouble(underlying.map((x) ⇒ num.times(x, x)).sum))
+  def length = scala.math.sqrt(num.toDouble(underlying.map((x) => num.times(x, x)).sum))
 
-  def dotProduct(v: Vector[T]): T = underlying.zip(v.underlying).map((x) ⇒ num.times(x._1, x._2)).sum
+  def dotProduct(v: Vector[T]): T = underlying.zip(v.underlying).map((x) => num.times(x._1, x._2)).sum
 
   def baseVectors: List[Vector[T]] = underlying.zipWithIndex.map {
-    case (x, i) ⇒ new DenseVector({
+    case (x, i) => new DenseVector({
       val mas = Array.fill(underlying.length)(num.zero)
       mas(i) = x
       mas
     })
   } toList
 
-  def partition(fun: T ⇒ Boolean): (Vector[T], Vector[T]) = underlying partition (fun) match {
-    case (head, tail) ⇒ (new DenseVector(head toArray), new DenseVector(tail toArray))
+  def partition(fun: T => Boolean): (Vector[T], Vector[T]) = underlying partition (fun) match {
+    case (head, tail) => (new DenseVector(head toArray), new DenseVector(tail toArray))
   }
 
   def splice(vs: Vector[T]*): Vector[T] = new DenseVector(vs flatMap (_.underlying) toArray)
@@ -103,20 +103,20 @@ final private class DenseVector[T: Numeric: ClassTag](val x: Array[T]) extends V
   //warning very ineffective
   def spliceT(v: (Vector[T], Vector[T])): Vector[T] = new DenseVector[T](v._1.underlying ++ v._2.underlying toArray)
 
-  def transform[U: Numeric: ClassTag](fn: Vector[T] ⇒ Vector[U]): Vector[U] = {
+  def transform[U: Numeric: ClassTag](fn: Vector[T] => Vector[U]): Vector[U] = {
     fn(this)
   }
 
   //TODO provide correct implementation for methods below
   def apply(i: Int): T = underlying(i)
 
-  def sort[B](f: (T) ⇒ B)(implicit ord: Ordering[B]): Vector[T] = this
+  def sort[B](f: (T) => B)(implicit ord: Ordering[B]): Vector[T] = this
 
   def sort(implicit ord: Ordering[T]): Vector[T] = this
 
-  def corresponds[B](that: Vector[B])(p: (T, B) ⇒ Boolean): Boolean = underlying.zipWithIndex.forall(x ⇒ p(x._1, that.apply(x._2)))
+  def corresponds[B](that: Vector[B])(p: (T, B) => Boolean): Boolean = underlying.zipWithIndex.forall(x => p(x._1, that.apply(x._2)))
 
-  def fold[A1 >: T](z: A1)(op: (A1, A1) ⇒ A1): A1 = z
+  def fold[A1 >: T](z: A1)(op: (A1, A1) => A1): A1 = z
 
   //TODO why I can't (shouldn't) setup here type parameter T for DenseVector and SparseVector
   //I mean VectorConverter[DenseVector[T], SparseVector[T]]
@@ -127,8 +127,8 @@ final private class DenseVector[T: Numeric: ClassTag](val x: Array[T]) extends V
   //  }
 
   override def equals(that: Any) = that match {
-    case t: Vector[T] ⇒ t.underlying.toSeq == underlying.toSeq
-    case _            ⇒ false
+    case t: Vector[T] => t.underlying.toSeq == underlying.toSeq
+    case _            => false
   }
 
   override def toString = underlying.mkString("DenseVector(", ",", ")")
@@ -156,32 +156,32 @@ final private class SparseVector[T: Numeric: ClassTag](val x: List[T]) extends V
 
   // these can be slow, we do not care
   def +(v: Vector[T]) = new DenseVector[T](
-    ((underlying zip v.underlying) map ((x: (T, T)) ⇒ num.plus(x._1, x._2))).toArray)
+    ((underlying zip v.underlying) map ((x: (T, T)) => num.plus(x._1, x._2))).toArray)
 
   // these can be slow, we do not care
   def *(v: Vector[T]) = new DenseVector[T](
-    ((underlying zip v.underlying) map ((x: (T, T)) ⇒ num.times(x._1, x._2))).toArray)
+    ((underlying zip v.underlying) map ((x: (T, T)) => num.times(x._1, x._2))).toArray)
 
-  def map[U: Numeric: ClassTag](f: T ⇒ U): Vector[U] = new SparseVector(underlying.map(f).toList)
+  def map[U: Numeric: ClassTag](f: T => U): Vector[U] = new SparseVector(underlying.map(f).toList)
 
-  def reconstruct[U: Numeric: ClassTag](v: (T, T) ⇒ U): Vector[U] = ???
+  def reconstruct[U: Numeric: ClassTag](v: (T, T) => U): Vector[U] = ???
 
   def negate = new SparseVector[T](underlying.map(num.negate(_)).toList)
 
-  def length = scala.math.sqrt(num.toDouble(underlying.map((x) ⇒ num.times(x, x)).sum))
+  def length = scala.math.sqrt(num.toDouble(underlying.map((x) => num.times(x, x)).sum))
 
-  def dotProduct(v: Vector[T]): T = underlying.zip(v.underlying).map((x) ⇒ num.times(x._1, x._2)).sum
+  def dotProduct(v: Vector[T]): T = underlying.zip(v.underlying).map((x) => num.times(x._1, x._2)).sum
 
   def baseVectors: List[Vector[T]] = underlying.zipWithIndex.map {
-    case (x, i) ⇒ new SparseVector({
+    case (x, i) => new SparseVector({
       val listBuffer = ListBuffer.fill(underlying.length)(num.zero)
       listBuffer(i) = x
       listBuffer.toList
     })
   } toList
 
-  def partition(fun: T ⇒ Boolean): (Vector[T], Vector[T]) = underlying partition (fun) match {
-    case (head, tail) ⇒ (new SparseVector(head toList), new SparseVector(tail toList))
+  def partition(fun: T => Boolean): (Vector[T], Vector[T]) = underlying partition (fun) match {
+    case (head, tail) => (new SparseVector(head toList), new SparseVector(tail toList))
   }
 
   def splice(vs: Vector[T]*): Vector[T] = new SparseVector(vs flatMap (_.underlying) toList)
@@ -189,28 +189,28 @@ final private class SparseVector[T: Numeric: ClassTag](val x: List[T]) extends V
   def spliceT(v: (Vector[T], Vector[T])): Vector[T] = new SparseVector[T](v._1.underlying ++ v._2.underlying toList)
 
   //TODO change implementation
-  def transform[U: Numeric: ClassTag](fn: Vector[T] ⇒ Vector[U]): Vector[U] = {
+  def transform[U: Numeric: ClassTag](fn: Vector[T] => Vector[U]): Vector[U] = {
     fn(this)
   }
 
   //TODO provide correct implementation for methods below
   def apply(i: Int): T = underlying(i)
 
-  def sort[B](f: (T) ⇒ B)(implicit ord: Ordering[B]): Vector[T] = this
+  def sort[B](f: (T) => B)(implicit ord: Ordering[B]): Vector[T] = this
 
   def sort(implicit ord: Ordering[T]): Vector[T] = this
 
-  def corresponds[B](that: Vector[B])(p: (T, B) ⇒ Boolean): Boolean = underlying.zipWithIndex.forall(x ⇒ p(x._1, that.apply(x._2)))
+  def corresponds[B](that: Vector[B])(p: (T, B) => Boolean): Boolean = underlying.zipWithIndex.forall(x => p(x._1, that.apply(x._2)))
 
-  def fold[A1 >: T](z: A1)(op: (A1, A1) ⇒ A1): A1 = z
+  def fold[A1 >: T](z: A1)(op: (A1, A1) => A1): A1 = z
 
   //  def convert(implicit conv: VectorConverter[SparseVector, DenseVector]): DenseVector[T] = {
   //    conv(this)
   //  }
 
   override def equals(that: Any) = that match {
-    case t: Vector[T] ⇒ t.underlying.toSeq == underlying.toSeq
-    case _            ⇒ false
+    case t: Vector[T] => t.underlying.toSeq == underlying.toSeq
+    case _            => false
   }
 
   override def toString = underlying.mkString("SparseVector(", ",", ")")

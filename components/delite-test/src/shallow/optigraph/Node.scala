@@ -61,7 +61,7 @@ object NP {
 }
 
 /** Operations on NodeProperties */
-class NodeProperty[A](np: NodeProperty[A]) {
+class NodeProperty[A](np: NodeProperty[A]) extends ppl.dsl.optigraph.NodeProperty[A] {
   /** Return the property value of node n */
   def apply(n: Node): A = ???
   /** Update the property value of node n to x */
@@ -74,4 +74,8 @@ class NodeProperty[A](np: NodeProperty[A]) {
   def assign(n: Node): Unit = ???
   /** Assign the values deferred for all the nodes (parallel operation) */
   def assignAll(): Unit = ???
+
+  def dcApply(idx: Int): A = ???
+  def dcSize: Int = ???
+  def dcUpdate(idx: Int, x: A): Unit = ???
 }

@@ -30,7 +30,7 @@ object PR extends LanguageOps {
     diff.setValue(0.0)
     for (t ← G.Nodes) {
       val Val: Double = ((1.0 - d) / N) + d * Sum(t.InNbrs) {
-        w ⇒ PR(w) / deg(w.Id) //w.OutDegree
+        w => PR(w) / deg(w.Id) //w.OutDegree
       }
       //val Val = v
       PR <= (t, Val)
@@ -52,4 +52,4 @@ object PR extends LanguageOps {
     toc(())
   }
 }
-*/
+*/ 

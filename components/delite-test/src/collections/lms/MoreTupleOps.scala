@@ -180,221 +180,221 @@ trait MoreTupleOpsExp extends MoreTupleOps with TupleOpsExp {
 
   def tuple9_get1[A: Manifest](t: Exp[(A, _, _, _, _, _, _, _, _)])(
     implicit pos: SourceContext) = t match {
-    case Def(ETuple9(a, _, _, _, _, _, _, _, _)) ⇒ a
-    case _                                       ⇒ Tuple9Access1(t)
+    case Def(ETuple9(a, _, _, _, _, _, _, _, _)) => a
+    case _                                       => Tuple9Access1(t)
   }
   def tuple9_get2[A: Manifest](t: Exp[(_, A, _, _, _, _, _, _, _)])(
     implicit pos: SourceContext) = t match {
-    case Def(ETuple9(_, a, _, _, _, _, _, _, _)) ⇒ a
-    case _                                       ⇒ Tuple9Access2(t)
+    case Def(ETuple9(_, a, _, _, _, _, _, _, _)) => a
+    case _                                       => Tuple9Access2(t)
   }
   def tuple9_get3[A: Manifest](t: Exp[(_, _, A, _, _, _, _, _, _)])(
     implicit pos: SourceContext) = t match {
-    case Def(ETuple9(_, _, a, _, _, _, _, _, _)) ⇒ a
-    case _                                       ⇒ Tuple9Access3(t)
+    case Def(ETuple9(_, _, a, _, _, _, _, _, _)) => a
+    case _                                       => Tuple9Access3(t)
   }
   def tuple9_get4[A: Manifest](t: Exp[(_, _, _, A, _, _, _, _, _)])(
     implicit pos: SourceContext) = t match {
-    case Def(ETuple9(_, _, _, a, _, _, _, _, _)) ⇒ a
-    case _                                       ⇒ Tuple9Access4(t)
+    case Def(ETuple9(_, _, _, a, _, _, _, _, _)) => a
+    case _                                       => Tuple9Access4(t)
   }
   def tuple9_get5[A: Manifest](t: Exp[(_, _, _, _, A, _, _, _, _)])(
     implicit pos: SourceContext) = t match {
-    case Def(ETuple9(_, _, _, _, a, _, _, _, _)) ⇒ a
-    case _                                       ⇒ Tuple9Access5(t)
+    case Def(ETuple9(_, _, _, _, a, _, _, _, _)) => a
+    case _                                       => Tuple9Access5(t)
   }
   def tuple9_get6[A: Manifest](t: Exp[(_, _, _, _, _, A, _, _, _)])(
     implicit pos: SourceContext) = t match {
-    case Def(ETuple9(_, _, _, _, _, a, _, _, _)) ⇒ a
-    case _                                       ⇒ Tuple9Access6(t)
+    case Def(ETuple9(_, _, _, _, _, a, _, _, _)) => a
+    case _                                       => Tuple9Access6(t)
   }
   def tuple9_get7[A: Manifest](t: Exp[(A, _, _, _, _, _, A, _, _)])(
     implicit pos: SourceContext) = t match {
-    case Def(ETuple9(_, _, _, _, _, _, a, _, _)) ⇒ a
-    case _                                       ⇒ Tuple9Access7(t)
+    case Def(ETuple9(_, _, _, _, _, _, a, _, _)) => a
+    case _                                       => Tuple9Access7(t)
   }
   def tuple9_get8[A: Manifest](t: Exp[(_, _, _, _, _, _, _, A, _)])(
     implicit pos: SourceContext) = t match {
-    case Def(ETuple9(_, _, _, _, _, _, _, a, _)) ⇒ a
-    case _                                       ⇒ Tuple9Access8(t)
+    case Def(ETuple9(_, _, _, _, _, _, _, a, _)) => a
+    case _                                       => Tuple9Access8(t)
   }
   def tuple9_get9[A: Manifest](t: Exp[(_, _, _, _, _, _, _, _, A)])(
     implicit pos: SourceContext) = t match {
-    case Def(ETuple9(_, _, _, _, _, _, _, _, a)) ⇒ a
-    case _                                       ⇒ Tuple9Access9(t)
+    case Def(ETuple9(_, _, _, _, _, _, _, _, a)) => a
+    case _                                       => Tuple9Access9(t)
   }
 
   def tuple16_get1[A: Manifest](t: Exp[(A, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _)])(
     implicit pos: SourceContext) = t match {
-    case Def(ETuple16(a, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _)) ⇒ a
-    case _ ⇒ Tuple16Access1(t)
+    case Def(ETuple16(a, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _)) => a
+    case _ => Tuple16Access1(t)
   }
   def tuple16_get2[A: Manifest](t: Exp[(_, A, _, _, _, _, _, _, _, _, _, _, _, _, _, _)])(
     implicit pos: SourceContext) = t match {
-    case Def(ETuple16(_, a, _, _, _, _, _, _, _, _, _, _, _, _, _, _)) ⇒ a
-    case _ ⇒ Tuple16Access2(t)
+    case Def(ETuple16(_, a, _, _, _, _, _, _, _, _, _, _, _, _, _, _)) => a
+    case _ => Tuple16Access2(t)
   }
   def tuple16_get3[A: Manifest](t: Exp[(_, _, A, _, _, _, _, _, _, _, _, _, _, _, _, _)])(
     implicit pos: SourceContext) = t match {
-    case Def(ETuple16(_, _, a, _, _, _, _, _, _, _, _, _, _, _, _, _)) ⇒ a
-    case _ ⇒ Tuple16Access3(t)
+    case Def(ETuple16(_, _, a, _, _, _, _, _, _, _, _, _, _, _, _, _)) => a
+    case _ => Tuple16Access3(t)
   }
   def tuple16_get4[A: Manifest](t: Exp[(_, _, _, A, _, _, _, _, _, _, _, _, _, _, _, _)])(
     implicit pos: SourceContext) = t match {
-    case Def(ETuple16(_, _, _, a, _, _, _, _, _, _, _, _, _, _, _, _)) ⇒ a
-    case _ ⇒ Tuple16Access4(t)
+    case Def(ETuple16(_, _, _, a, _, _, _, _, _, _, _, _, _, _, _, _)) => a
+    case _ => Tuple16Access4(t)
   }
   def tuple16_get5[A: Manifest](t: Exp[(_, _, _, _, A, _, _, _, _, _, _, _, _, _, _, _)])(
     implicit pos: SourceContext) = t match {
-    case Def(ETuple16(_, _, _, _, a, _, _, _, _, _, _, _, _, _, _, _)) ⇒ a
-    case _ ⇒ Tuple16Access5(t)
+    case Def(ETuple16(_, _, _, _, a, _, _, _, _, _, _, _, _, _, _, _)) => a
+    case _ => Tuple16Access5(t)
   }
   def tuple16_get6[A: Manifest](t: Exp[(_, _, _, _, _, A, _, _, _, _, _, _, _, _, _, _)])(
     implicit pos: SourceContext) = t match {
-    case Def(ETuple16(_, _, _, _, _, a, _, _, _, _, _, _, _, _, _, _)) ⇒ a
-    case _ ⇒ Tuple16Access6(t)
+    case Def(ETuple16(_, _, _, _, _, a, _, _, _, _, _, _, _, _, _, _)) => a
+    case _ => Tuple16Access6(t)
   }
   def tuple16_get7[A: Manifest](t: Exp[(_, _, _, _, _, _, A, _, _, _, _, _, _, _, _, _)])(
     implicit pos: SourceContext) = t match {
-    case Def(ETuple16(_, _, _, _, _, _, a, _, _, _, _, _, _, _, _, _)) ⇒ a
-    case _ ⇒ Tuple16Access7(t)
+    case Def(ETuple16(_, _, _, _, _, _, a, _, _, _, _, _, _, _, _, _)) => a
+    case _ => Tuple16Access7(t)
   }
   def tuple16_get8[A: Manifest](t: Exp[(_, _, _, _, _, _, _, A, _, _, _, _, _, _, _, _)])(
     implicit pos: SourceContext) = t match {
-    case Def(ETuple16(_, _, _, _, _, _, _, a, _, _, _, _, _, _, _, _)) ⇒ a
-    case _ ⇒ Tuple16Access8(t)
+    case Def(ETuple16(_, _, _, _, _, _, _, a, _, _, _, _, _, _, _, _)) => a
+    case _ => Tuple16Access8(t)
   }
   def tuple16_get9[A: Manifest](t: Exp[(_, _, _, _, _, _, _, _, A, _, _, _, _, _, _, _)])(
     implicit pos: SourceContext) = t match {
-    case Def(ETuple16(_, _, _, _, _, _, _, _, a, _, _, _, _, _, _, _)) ⇒ a
-    case _ ⇒ Tuple16Access9(t)
+    case Def(ETuple16(_, _, _, _, _, _, _, _, a, _, _, _, _, _, _, _)) => a
+    case _ => Tuple16Access9(t)
   }
   def tuple16_get10[A: Manifest](t: Exp[(_, _, _, _, _, _, _, _, _, A, _, _, _, _, _, _)])(
     implicit pos: SourceContext) = t match {
-    case Def(ETuple16(_, _, _, _, _, _, _, _, _, a, _, _, _, _, _, _)) ⇒ a
-    case _ ⇒ Tuple16Access10(t)
+    case Def(ETuple16(_, _, _, _, _, _, _, _, _, a, _, _, _, _, _, _)) => a
+    case _ => Tuple16Access10(t)
   }
   def tuple16_get11[A: Manifest](t: Exp[(_, _, _, _, _, _, _, _, _, _, A, _, _, _, _, _)])(
     implicit pos: SourceContext) = t match {
-    case Def(ETuple16(_, _, _, _, _, _, _, _, _, _, a, _, _, _, _, _)) ⇒ a
-    case _ ⇒ Tuple16Access11(t)
+    case Def(ETuple16(_, _, _, _, _, _, _, _, _, _, a, _, _, _, _, _)) => a
+    case _ => Tuple16Access11(t)
   }
   def tuple16_get12[A: Manifest](t: Exp[(_, _, _, _, _, _, _, _, _, _, _, A, _, _, _, _)])(
     implicit pos: SourceContext) = t match {
-    case Def(ETuple16(_, _, _, _, _, _, _, _, _, _, _, a, _, _, _, _)) ⇒ a
-    case _ ⇒ Tuple16Access12(t)
+    case Def(ETuple16(_, _, _, _, _, _, _, _, _, _, _, a, _, _, _, _)) => a
+    case _ => Tuple16Access12(t)
   }
   def tuple16_get13[A: Manifest](t: Exp[(_, _, _, _, _, _, _, _, _, _, _, _, A, _, _, _)])(
     implicit pos: SourceContext) = t match {
-    case Def(ETuple16(_, _, _, _, _, _, _, _, _, _, _, _, a, _, _, _)) ⇒ a
-    case _ ⇒ Tuple16Access13(t)
+    case Def(ETuple16(_, _, _, _, _, _, _, _, _, _, _, _, a, _, _, _)) => a
+    case _ => Tuple16Access13(t)
   }
   def tuple16_get14[A: Manifest](t: Exp[(_, _, _, _, _, _, _, _, _, _, _, _, _, A, _, _)])(
     implicit pos: SourceContext) = t match {
-    case Def(ETuple16(_, _, _, _, _, _, _, _, _, _, _, _, _, a, _, _)) ⇒ a
-    case _ ⇒ Tuple16Access14(t)
+    case Def(ETuple16(_, _, _, _, _, _, _, _, _, _, _, _, _, a, _, _)) => a
+    case _ => Tuple16Access14(t)
   }
   def tuple16_get15[A: Manifest](t: Exp[(_, _, _, _, _, _, _, _, _, _, _, _, _, _, A, _)])(
     implicit pos: SourceContext) = t match {
-    case Def(ETuple16(_, _, _, _, _, _, _, _, _, _, _, _, _, _, a, _)) ⇒ a
-    case _ ⇒ Tuple16Access15(t)
+    case Def(ETuple16(_, _, _, _, _, _, _, _, _, _, _, _, _, _, a, _)) => a
+    case _ => Tuple16Access15(t)
   }
   def tuple16_get16[A: Manifest](t: Exp[(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, A)])(
     implicit pos: SourceContext) = t match {
-    case Def(ETuple16(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, a)) ⇒ a
-    case _ ⇒ Tuple16Access16(t)
+    case Def(ETuple16(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, a)) => a
+    case _ => Tuple16Access16(t)
   }
 
   override def mirror[A: Manifest](e: Def[A], f: Transformer)(
     implicit pos: SourceContext): Exp[A] = (e match {
-    case e @ ETuple9(a1, a2, a3, a4, a5, a6, a7, a8, a9) ⇒ make_tuple9(
+    case e @ ETuple9(a1, a2, a3, a4, a5, a6, a7, a8, a9) => make_tuple9(
       f(a1), f(a2), f(a3), f(a4), f(a5), f(a6), f(a7), f(a8), f(a9))(
         e.m1, e.m2, e.m3, e.m4, e.m5, e.m6, e.m7, e.m8, e.m9, pos)
-    case e @ Tuple9Access1(t) ⇒ tuple9_get1(f(t))(mtype(e.m), pos)
-    case e @ Tuple9Access2(t) ⇒ tuple9_get2(f(t))(mtype(e.m), pos)
-    case e @ Tuple9Access3(t) ⇒ tuple9_get3(f(t))(mtype(e.m), pos)
-    case e @ Tuple9Access4(t) ⇒ tuple9_get4(f(t))(mtype(e.m), pos)
-    case e @ Tuple9Access5(t) ⇒ tuple9_get5(f(t))(mtype(e.m), pos)
-    case e @ Tuple9Access6(t) ⇒ tuple9_get6(f(t))(mtype(e.m), pos)
-    case e @ Tuple9Access7(t) ⇒ tuple9_get7(f(t))(mtype(e.m), pos)
-    case e @ Tuple9Access8(t) ⇒ tuple9_get8(f(t))(mtype(e.m), pos)
-    case e @ Tuple9Access9(t) ⇒ tuple9_get9(f(t))(mtype(e.m), pos)
-    case Reflect(e @ Tuple9Access1(t), u, es) ⇒ reflectMirrored(
+    case e @ Tuple9Access1(t) => tuple9_get1(f(t))(mtype(e.m), pos)
+    case e @ Tuple9Access2(t) => tuple9_get2(f(t))(mtype(e.m), pos)
+    case e @ Tuple9Access3(t) => tuple9_get3(f(t))(mtype(e.m), pos)
+    case e @ Tuple9Access4(t) => tuple9_get4(f(t))(mtype(e.m), pos)
+    case e @ Tuple9Access5(t) => tuple9_get5(f(t))(mtype(e.m), pos)
+    case e @ Tuple9Access6(t) => tuple9_get6(f(t))(mtype(e.m), pos)
+    case e @ Tuple9Access7(t) => tuple9_get7(f(t))(mtype(e.m), pos)
+    case e @ Tuple9Access8(t) => tuple9_get8(f(t))(mtype(e.m), pos)
+    case e @ Tuple9Access9(t) => tuple9_get9(f(t))(mtype(e.m), pos)
+    case Reflect(e @ Tuple9Access1(t), u, es) => reflectMirrored(
       Reflect(Tuple9Access1(f(t))(mtype(e.m)), mapOver(f, u), f(es)))(mtype(manifest[A]))
-    case Reflect(e @ Tuple9Access2(t), u, es) ⇒ reflectMirrored(
+    case Reflect(e @ Tuple9Access2(t), u, es) => reflectMirrored(
       Reflect(Tuple9Access2(f(t))(mtype(e.m)), mapOver(f, u), f(es)))(mtype(manifest[A]))
-    case Reflect(e @ Tuple9Access3(t), u, es) ⇒ reflectMirrored(
+    case Reflect(e @ Tuple9Access3(t), u, es) => reflectMirrored(
       Reflect(Tuple9Access3(f(t))(mtype(e.m)), mapOver(f, u), f(es)))(mtype(manifest[A]))
-    case Reflect(e @ Tuple9Access4(t), u, es) ⇒ reflectMirrored(
+    case Reflect(e @ Tuple9Access4(t), u, es) => reflectMirrored(
       Reflect(Tuple9Access4(f(t))(mtype(e.m)), mapOver(f, u), f(es)))(mtype(manifest[A]))
-    case Reflect(e @ Tuple9Access5(t), u, es) ⇒ reflectMirrored(
+    case Reflect(e @ Tuple9Access5(t), u, es) => reflectMirrored(
       Reflect(Tuple9Access5(f(t))(mtype(e.m)), mapOver(f, u), f(es)))(mtype(manifest[A]))
-    case Reflect(e @ Tuple9Access6(t), u, es) ⇒ reflectMirrored(
+    case Reflect(e @ Tuple9Access6(t), u, es) => reflectMirrored(
       Reflect(Tuple9Access6(f(t))(mtype(e.m)), mapOver(f, u), f(es)))(mtype(manifest[A]))
-    case Reflect(e @ Tuple9Access7(t), u, es) ⇒ reflectMirrored(
+    case Reflect(e @ Tuple9Access7(t), u, es) => reflectMirrored(
       Reflect(Tuple9Access7(f(t))(mtype(e.m)), mapOver(f, u), f(es)))(mtype(manifest[A]))
-    case Reflect(e @ Tuple9Access8(t), u, es) ⇒ reflectMirrored(
+    case Reflect(e @ Tuple9Access8(t), u, es) => reflectMirrored(
       Reflect(Tuple9Access8(f(t))(mtype(e.m)), mapOver(f, u), f(es)))(mtype(manifest[A]))
-    case Reflect(e @ Tuple9Access9(t), u, es) ⇒ reflectMirrored(
+    case Reflect(e @ Tuple9Access9(t), u, es) => reflectMirrored(
       Reflect(Tuple9Access9(f(t))(mtype(e.m)), mapOver(f, u), f(es)))(mtype(manifest[A]))
 
     case e @ ETuple16(
       a1, a2, a3, a4, a5, a6, a7, a8,
-      a9, a10, a11, a12, a13, a14, a15, a16) ⇒ make_tuple16(
+      a9, a10, a11, a12, a13, a14, a15, a16) => make_tuple16(
       f(a1), f(a2), f(a3), f(a4), f(a5), f(a6), f(a7), f(a8),
       f(a9), f(a10), f(a11), f(a12), f(a13), f(a14), f(a15), f(a16))(
         e.m1, e.m2, e.m3, e.m4, e.m5, e.m6, e.m7, e.m8,
         e.m9, e.m10, e.m11, e.m12, e.m13, e.m14, e.m15, e.m16, pos)
-    case e @ Tuple16Access1(t)  ⇒ tuple16_get1(f(t))(mtype(e.m), pos)
-    case e @ Tuple16Access2(t)  ⇒ tuple16_get2(f(t))(mtype(e.m), pos)
-    case e @ Tuple16Access3(t)  ⇒ tuple16_get3(f(t))(mtype(e.m), pos)
-    case e @ Tuple16Access4(t)  ⇒ tuple16_get4(f(t))(mtype(e.m), pos)
-    case e @ Tuple16Access5(t)  ⇒ tuple16_get5(f(t))(mtype(e.m), pos)
-    case e @ Tuple16Access6(t)  ⇒ tuple16_get6(f(t))(mtype(e.m), pos)
-    case e @ Tuple16Access7(t)  ⇒ tuple16_get7(f(t))(mtype(e.m), pos)
-    case e @ Tuple16Access8(t)  ⇒ tuple16_get8(f(t))(mtype(e.m), pos)
-    case e @ Tuple16Access9(t)  ⇒ tuple16_get9(f(t))(mtype(e.m), pos)
-    case e @ Tuple16Access10(t) ⇒ tuple16_get10(f(t))(mtype(e.m), pos)
-    case e @ Tuple16Access11(t) ⇒ tuple16_get11(f(t))(mtype(e.m), pos)
-    case e @ Tuple16Access12(t) ⇒ tuple16_get12(f(t))(mtype(e.m), pos)
-    case e @ Tuple16Access13(t) ⇒ tuple16_get13(f(t))(mtype(e.m), pos)
-    case e @ Tuple16Access14(t) ⇒ tuple16_get14(f(t))(mtype(e.m), pos)
-    case e @ Tuple16Access15(t) ⇒ tuple16_get15(f(t))(mtype(e.m), pos)
-    case e @ Tuple16Access16(t) ⇒ tuple16_get16(f(t))(mtype(e.m), pos)
-    case Reflect(e @ Tuple16Access1(t), u, es) ⇒ reflectMirrored(
+    case e @ Tuple16Access1(t)  => tuple16_get1(f(t))(mtype(e.m), pos)
+    case e @ Tuple16Access2(t)  => tuple16_get2(f(t))(mtype(e.m), pos)
+    case e @ Tuple16Access3(t)  => tuple16_get3(f(t))(mtype(e.m), pos)
+    case e @ Tuple16Access4(t)  => tuple16_get4(f(t))(mtype(e.m), pos)
+    case e @ Tuple16Access5(t)  => tuple16_get5(f(t))(mtype(e.m), pos)
+    case e @ Tuple16Access6(t)  => tuple16_get6(f(t))(mtype(e.m), pos)
+    case e @ Tuple16Access7(t)  => tuple16_get7(f(t))(mtype(e.m), pos)
+    case e @ Tuple16Access8(t)  => tuple16_get8(f(t))(mtype(e.m), pos)
+    case e @ Tuple16Access9(t)  => tuple16_get9(f(t))(mtype(e.m), pos)
+    case e @ Tuple16Access10(t) => tuple16_get10(f(t))(mtype(e.m), pos)
+    case e @ Tuple16Access11(t) => tuple16_get11(f(t))(mtype(e.m), pos)
+    case e @ Tuple16Access12(t) => tuple16_get12(f(t))(mtype(e.m), pos)
+    case e @ Tuple16Access13(t) => tuple16_get13(f(t))(mtype(e.m), pos)
+    case e @ Tuple16Access14(t) => tuple16_get14(f(t))(mtype(e.m), pos)
+    case e @ Tuple16Access15(t) => tuple16_get15(f(t))(mtype(e.m), pos)
+    case e @ Tuple16Access16(t) => tuple16_get16(f(t))(mtype(e.m), pos)
+    case Reflect(e @ Tuple16Access1(t), u, es) => reflectMirrored(
       Reflect(Tuple16Access1(f(t))(mtype(e.m)), mapOver(f, u), f(es)))(mtype(manifest[A]))
-    case Reflect(e @ Tuple16Access2(t), u, es) ⇒ reflectMirrored(
+    case Reflect(e @ Tuple16Access2(t), u, es) => reflectMirrored(
       Reflect(Tuple16Access2(f(t))(mtype(e.m)), mapOver(f, u), f(es)))(mtype(manifest[A]))
-    case Reflect(e @ Tuple16Access3(t), u, es) ⇒ reflectMirrored(
+    case Reflect(e @ Tuple16Access3(t), u, es) => reflectMirrored(
       Reflect(Tuple16Access3(f(t))(mtype(e.m)), mapOver(f, u), f(es)))(mtype(manifest[A]))
-    case Reflect(e @ Tuple16Access4(t), u, es) ⇒ reflectMirrored(
+    case Reflect(e @ Tuple16Access4(t), u, es) => reflectMirrored(
       Reflect(Tuple16Access4(f(t))(mtype(e.m)), mapOver(f, u), f(es)))(mtype(manifest[A]))
-    case Reflect(e @ Tuple16Access5(t), u, es) ⇒ reflectMirrored(
+    case Reflect(e @ Tuple16Access5(t), u, es) => reflectMirrored(
       Reflect(Tuple16Access5(f(t))(mtype(e.m)), mapOver(f, u), f(es)))(mtype(manifest[A]))
-    case Reflect(e @ Tuple16Access6(t), u, es) ⇒ reflectMirrored(
+    case Reflect(e @ Tuple16Access6(t), u, es) => reflectMirrored(
       Reflect(Tuple16Access6(f(t))(mtype(e.m)), mapOver(f, u), f(es)))(mtype(manifest[A]))
-    case Reflect(e @ Tuple16Access7(t), u, es) ⇒ reflectMirrored(
+    case Reflect(e @ Tuple16Access7(t), u, es) => reflectMirrored(
       Reflect(Tuple16Access7(f(t))(mtype(e.m)), mapOver(f, u), f(es)))(mtype(manifest[A]))
-    case Reflect(e @ Tuple16Access8(t), u, es) ⇒ reflectMirrored(
+    case Reflect(e @ Tuple16Access8(t), u, es) => reflectMirrored(
       Reflect(Tuple16Access8(f(t))(mtype(e.m)), mapOver(f, u), f(es)))(mtype(manifest[A]))
-    case Reflect(e @ Tuple16Access9(t), u, es) ⇒ reflectMirrored(
+    case Reflect(e @ Tuple16Access9(t), u, es) => reflectMirrored(
       Reflect(Tuple16Access9(f(t))(mtype(e.m)), mapOver(f, u), f(es)))(mtype(manifest[A]))
-    case Reflect(e @ Tuple16Access10(t), u, es) ⇒ reflectMirrored(
+    case Reflect(e @ Tuple16Access10(t), u, es) => reflectMirrored(
       Reflect(Tuple16Access10(f(t))(mtype(e.m)), mapOver(f, u), f(es)))(mtype(manifest[A]))
-    case Reflect(e @ Tuple16Access11(t), u, es) ⇒ reflectMirrored(
+    case Reflect(e @ Tuple16Access11(t), u, es) => reflectMirrored(
       Reflect(Tuple16Access11(f(t))(mtype(e.m)), mapOver(f, u), f(es)))(mtype(manifest[A]))
-    case Reflect(e @ Tuple16Access12(t), u, es) ⇒ reflectMirrored(
+    case Reflect(e @ Tuple16Access12(t), u, es) => reflectMirrored(
       Reflect(Tuple16Access12(f(t))(mtype(e.m)), mapOver(f, u), f(es)))(mtype(manifest[A]))
-    case Reflect(e @ Tuple16Access13(t), u, es) ⇒ reflectMirrored(
+    case Reflect(e @ Tuple16Access13(t), u, es) => reflectMirrored(
       Reflect(Tuple16Access13(f(t))(mtype(e.m)), mapOver(f, u), f(es)))(mtype(manifest[A]))
-    case Reflect(e @ Tuple16Access14(t), u, es) ⇒ reflectMirrored(
+    case Reflect(e @ Tuple16Access14(t), u, es) => reflectMirrored(
       Reflect(Tuple16Access14(f(t))(mtype(e.m)), mapOver(f, u), f(es)))(mtype(manifest[A]))
-    case Reflect(e @ Tuple16Access15(t), u, es) ⇒ reflectMirrored(
+    case Reflect(e @ Tuple16Access15(t), u, es) => reflectMirrored(
       Reflect(Tuple16Access15(f(t))(mtype(e.m)), mapOver(f, u), f(es)))(mtype(manifest[A]))
-    case Reflect(e @ Tuple16Access16(t), u, es) ⇒ reflectMirrored(
+    case Reflect(e @ Tuple16Access16(t), u, es) => reflectMirrored(
       Reflect(Tuple16Access16(f(t))(mtype(e.m)), mapOver(f, u), f(es)))(mtype(manifest[A]))
 
-    case _ ⇒ super.mirror(e, f)
+    case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]]
 }
 
@@ -403,26 +403,26 @@ trait ScalaGenMoreTupleOps extends ScalaGenTupleOps {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    case ETuple9(a1, a2, a3, a4, a5, a6, a7, a8, a9) ⇒
+    case ETuple9(a1, a2, a3, a4, a5, a6, a7, a8, a9) =>
       emitValDef(sym, "(" +
         quote(a1) + ", " + quote(a2) + ", " +
         quote(a3) + ", " + quote(a4) + ", " +
         quote(a5) + ", " + quote(a6) + ", " +
         quote(a7) + ", " + quote(a8) + ", " +
         quote(a9) + ")")
-    case Tuple9Access1(t) ⇒ emitValDef(sym, quote(t) + "._1")
-    case Tuple9Access2(t) ⇒ emitValDef(sym, quote(t) + "._2")
-    case Tuple9Access3(t) ⇒ emitValDef(sym, quote(t) + "._3")
-    case Tuple9Access4(t) ⇒ emitValDef(sym, quote(t) + "._4")
-    case Tuple9Access5(t) ⇒ emitValDef(sym, quote(t) + "._5")
-    case Tuple9Access6(t) ⇒ emitValDef(sym, quote(t) + "._6")
-    case Tuple9Access7(t) ⇒ emitValDef(sym, quote(t) + "._7")
-    case Tuple9Access8(t) ⇒ emitValDef(sym, quote(t) + "._8")
-    case Tuple9Access9(t) ⇒ emitValDef(sym, quote(t) + "._9")
+    case Tuple9Access1(t) => emitValDef(sym, quote(t) + "._1")
+    case Tuple9Access2(t) => emitValDef(sym, quote(t) + "._2")
+    case Tuple9Access3(t) => emitValDef(sym, quote(t) + "._3")
+    case Tuple9Access4(t) => emitValDef(sym, quote(t) + "._4")
+    case Tuple9Access5(t) => emitValDef(sym, quote(t) + "._5")
+    case Tuple9Access6(t) => emitValDef(sym, quote(t) + "._6")
+    case Tuple9Access7(t) => emitValDef(sym, quote(t) + "._7")
+    case Tuple9Access8(t) => emitValDef(sym, quote(t) + "._8")
+    case Tuple9Access9(t) => emitValDef(sym, quote(t) + "._9")
 
     case ETuple16(
       a1, a2, a3, a4, a5, a6, a7, a8,
-      a9, a10, a11, a12, a13, a14, a15, a16) ⇒
+      a9, a10, a11, a12, a13, a14, a15, a16) =>
       emitValDef(sym, "(" +
         quote(a1) + ", " + quote(a2) + ", " +
         quote(a3) + ", " + quote(a4) + ", " +
@@ -432,23 +432,23 @@ trait ScalaGenMoreTupleOps extends ScalaGenTupleOps {
         quote(a11) + ", " + quote(a12) + ", " +
         quote(a13) + ", " + quote(a14) + ", " +
         quote(a15) + ", " + quote(a16) + ")")
-    case Tuple16Access1(t)  ⇒ emitValDef(sym, quote(t) + "._1")
-    case Tuple16Access2(t)  ⇒ emitValDef(sym, quote(t) + "._2")
-    case Tuple16Access3(t)  ⇒ emitValDef(sym, quote(t) + "._3")
-    case Tuple16Access4(t)  ⇒ emitValDef(sym, quote(t) + "._4")
-    case Tuple16Access5(t)  ⇒ emitValDef(sym, quote(t) + "._5")
-    case Tuple16Access6(t)  ⇒ emitValDef(sym, quote(t) + "._6")
-    case Tuple16Access7(t)  ⇒ emitValDef(sym, quote(t) + "._7")
-    case Tuple16Access8(t)  ⇒ emitValDef(sym, quote(t) + "._8")
-    case Tuple16Access9(t)  ⇒ emitValDef(sym, quote(t) + "._9")
-    case Tuple16Access10(t) ⇒ emitValDef(sym, quote(t) + "._10")
-    case Tuple16Access11(t) ⇒ emitValDef(sym, quote(t) + "._11")
-    case Tuple16Access12(t) ⇒ emitValDef(sym, quote(t) + "._12")
-    case Tuple16Access13(t) ⇒ emitValDef(sym, quote(t) + "._13")
-    case Tuple16Access14(t) ⇒ emitValDef(sym, quote(t) + "._14")
-    case Tuple16Access15(t) ⇒ emitValDef(sym, quote(t) + "._15")
-    case Tuple16Access16(t) ⇒ emitValDef(sym, quote(t) + "._16")
+    case Tuple16Access1(t)  => emitValDef(sym, quote(t) + "._1")
+    case Tuple16Access2(t)  => emitValDef(sym, quote(t) + "._2")
+    case Tuple16Access3(t)  => emitValDef(sym, quote(t) + "._3")
+    case Tuple16Access4(t)  => emitValDef(sym, quote(t) + "._4")
+    case Tuple16Access5(t)  => emitValDef(sym, quote(t) + "._5")
+    case Tuple16Access6(t)  => emitValDef(sym, quote(t) + "._6")
+    case Tuple16Access7(t)  => emitValDef(sym, quote(t) + "._7")
+    case Tuple16Access8(t)  => emitValDef(sym, quote(t) + "._8")
+    case Tuple16Access9(t)  => emitValDef(sym, quote(t) + "._9")
+    case Tuple16Access10(t) => emitValDef(sym, quote(t) + "._10")
+    case Tuple16Access11(t) => emitValDef(sym, quote(t) + "._11")
+    case Tuple16Access12(t) => emitValDef(sym, quote(t) + "._12")
+    case Tuple16Access13(t) => emitValDef(sym, quote(t) + "._13")
+    case Tuple16Access14(t) => emitValDef(sym, quote(t) + "._14")
+    case Tuple16Access15(t) => emitValDef(sym, quote(t) + "._15")
+    case Tuple16Access16(t) => emitValDef(sym, quote(t) + "._16")
 
-    case _                  ⇒ super.emitNode(sym, rhs)
+    case _                  => super.emitNode(sym, rhs)
   }
 }

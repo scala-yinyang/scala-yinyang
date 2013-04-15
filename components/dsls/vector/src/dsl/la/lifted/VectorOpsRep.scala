@@ -7,8 +7,8 @@ import scala.reflect.ClassTag
 /*
  * This is a prototype implementation of the embedded DSL with Rep[T] types. The Rep[T] marks that the value
  * will be available in the next stage of computation. In this prototype we will use the approach similar to LMS.
- * 
- * We need to provide the interface for basic Scala library features. 
+ *
+ * We need to provide the interface for basic Scala library features.
  */
 trait Base extends BaseYinYang {
   type Rep[+T]
@@ -207,12 +207,12 @@ trait ArrayDSL extends Base {
   implicit class ArrayOpsOf[T](v: Rep[Array[T]]) extends ArrayOps[T] {
     def apply(i: Rep[Int]): Rep[T] = ???
 
-    def aggregate[B](z: Rep[B])(seqop: (Rep[B], Rep[T]) ⇒ Rep[B], combop: (Rep[B], Rep[B]) ⇒ Rep[B]): Rep[B] = ???
+    def aggregate[B](z: Rep[B])(seqop: (Rep[B], Rep[T]) => Rep[B], combop: (Rep[B], Rep[B]) => Rep[B]): Rep[B] = ???
 
-    def fold[A1 >: T](z: Rep[A1])(op: (Rep[A1], Rep[A1]) ⇒ Rep[A1]): Rep[A1] = ???
+    def fold[A1 >: T](z: Rep[A1])(op: (Rep[A1], Rep[A1]) => Rep[A1]): Rep[A1] = ???
 
     //TODO (NEW) to ask - what type do we need here as output ArrayOps[T] or ArrayOps[Rep[T]]?
-    def sort[B](f: (Rep[T]) ⇒ Rep[B])(implicit ord: Ordering[Rep[B]]): Rep[Array[T]] = ???
+    def sort[B](f: (Rep[T]) => Rep[B])(implicit ord: Ordering[Rep[B]]): Rep[Array[T]] = ???
 
     def sort(implicit ord: Ordering[Rep[T]]): Rep[Array[T]] = ???
   }
@@ -221,7 +221,7 @@ trait ArrayDSL extends Base {
     def apply[T](values: T*): Rep[Array[T]] = ???
 
     //TODO (TOASK) (NEW) - what should we do with parameters like elem of type => T
-    def fill[T: ClassTag](n: Rep[Int])(elem: ⇒ Rep[T]): Rep[Array[T]] = ???
+    def fill[T: ClassTag](n: Rep[Int])(elem: => Rep[T]): Rep[Array[T]] = ???
     // TODO complete
   }
 
@@ -256,7 +256,7 @@ trait BooleanDSL extends Base {
 }
 
 trait IfThenElseDSL extends Base with BooleanDSL {
-  def __ifThenElse[T](c: ⇒ Rep[Boolean], t: Rep[T], e: Rep[T]) = ???
+  def __ifThenElse[T](c: => Rep[Boolean], t: Rep[T], e: Rep[T]) = ???
 }
 
 trait VectorDSL
@@ -271,8 +271,8 @@ trait VectorDSL
   trait VectorOps[T] {
     def *(v: Rep[Vector[T]]): Rep[Vector[T]]
     def +(v: Rep[Vector[T]]): Rep[Vector[T]]
-    def map[U: Numeric: ClassTag](v: Rep[T] ⇒ Rep[U]): Rep[Vector[U]]
-    def reconstruct[U: Numeric: ClassTag](v: (Rep[T], Rep[T]) ⇒ Rep[U]): Rep[Vector[U]]
+    def map[U: Numeric: ClassTag](v: Rep[T] => Rep[U]): Rep[Vector[U]]
+    def reconstruct[U: Numeric: ClassTag](v: (Rep[T], Rep[T]) => Rep[U]): Rep[Vector[U]]
 
     def negate: Rep[Vector[T]]
     def length: Rep[Double]
@@ -280,7 +280,7 @@ trait VectorDSL
     //returns list of Vectors - to test with Rep Types
     def baseVectors: ArrayOps[Rep[Vector[T]]] //find base vectors
 
-    def partition(fun: Rep[T] ⇒ Rep[Boolean]): Tuple2[Rep[Vector[T]], Rep[Vector[T]]]
+    def partition(fun: Rep[T] => Rep[Boolean]): Tuple2[Rep[Vector[T]], Rep[Vector[T]]]
 
     def dotProduct(v: Rep[Vector[T]]): Rep[T]
 
@@ -288,28 +288,28 @@ trait VectorDSL
 
     def spliceT(v: Tuple2[Rep[Vector[T]], Rep[Vector[T]]]): Rep[Vector[T]]
 
-    def transform[U: Numeric: ClassTag](fn: Rep[Vector[T]] ⇒ Rep[Vector[U]]): Rep[Vector[U]]
+    def transform[U: Numeric: ClassTag](fn: Rep[Vector[T]] => Rep[Vector[U]]): Rep[Vector[U]]
 
     //TODO check new methods
     //TODO (TOASK) - what ordering should do with Rep?
 
     def apply(i: Rep[Int]): Rep[T]
 
-    def sort[B](f: (Rep[T]) ⇒ Rep[B])(implicit ord: Ordering[Rep[B]]): Vector[T]
+    def sort[B](f: (Rep[T]) => Rep[B])(implicit ord: Ordering[Rep[B]]): Vector[T]
 
     def sort(implicit ord: Ordering[Rep[T]]): Vector[T]
 
-    def corresponds[B](that: Vector[B])(p: (Rep[T], Rep[B]) ⇒ Rep[Boolean]): Rep[Boolean]
+    def corresponds[B](that: Vector[B])(p: (Rep[T], Rep[B]) => Rep[Boolean]): Rep[Boolean]
 
-    def fold[A1 >: T](z: Rep[A1])(op: (Rep[A1], Rep[A1]) ⇒ Rep[A1]): Rep[A1]
+    def fold[A1 >: T](z: Rep[A1])(op: (Rep[A1], Rep[A1]) => Rep[A1]): Rep[A1]
 
   }
 
   implicit class VectorOpsOf[T](v: Rep[Vector[T]]) extends VectorOps[T] {
     def *(v: Rep[Vector[T]]): Rep[Vector[T]] = ???
     def +(v: Rep[Vector[T]]): Rep[Vector[T]] = ???
-    def map[U: Numeric: ClassTag](v: Rep[T] ⇒ Rep[U]): Rep[Vector[U]] = ???
-    def reconstruct[U: Numeric: ClassTag](v: (Rep[T], Rep[T]) ⇒ Rep[U]): Rep[Vector[U]] = ???
+    def map[U: Numeric: ClassTag](v: Rep[T] => Rep[U]): Rep[Vector[U]] = ???
+    def reconstruct[U: Numeric: ClassTag](v: (Rep[T], Rep[T]) => Rep[U]): Rep[Vector[U]] = ???
 
     def negate: Rep[Vector[T]] = ???
     def length: Rep[Double] = ???
@@ -317,7 +317,7 @@ trait VectorDSL
     //TODO (TOASK) - is it correct ArrayOps[Rep...] or it should be Rep[ArrayOps...]
     def baseVectors: ArrayOps[Rep[Vector[T]]] = ??? //find base vectors
 
-    def partition(fun: Rep[T] ⇒ Rep[Boolean]): Tuple2[Rep[Vector[T]], Rep[Vector[T]]] = ???
+    def partition(fun: Rep[T] => Rep[Boolean]): Tuple2[Rep[Vector[T]], Rep[Vector[T]]] = ???
 
     def dotProduct(v: Rep[Vector[T]]): Rep[T] = ???
 
@@ -325,17 +325,17 @@ trait VectorDSL
 
     def spliceT(v: Tuple2[Rep[Vector[T]], Rep[Vector[T]]]): Rep[Vector[T]] = ???
 
-    def transform[U: Numeric: ClassTag](fn: Rep[Vector[T]] ⇒ Rep[Vector[U]]): Rep[Vector[U]] = ???
+    def transform[U: Numeric: ClassTag](fn: Rep[Vector[T]] => Rep[Vector[U]]): Rep[Vector[U]] = ???
 
     def apply(i: Rep[Int]): Rep[T] = ???
 
-    def sort[B](f: (Rep[T]) ⇒ Rep[B])(implicit ord: Ordering[Rep[B]]): Vector[T] = ???
+    def sort[B](f: (Rep[T]) => Rep[B])(implicit ord: Ordering[Rep[B]]): Vector[T] = ???
 
     def sort(implicit ord: Ordering[Rep[T]]): Vector[T] = ???
 
-    def corresponds[B](that: Vector[B])(p: (Rep[T], Rep[B]) ⇒ Rep[Boolean]): Rep[Boolean] = ???
+    def corresponds[B](that: Vector[B])(p: (Rep[T], Rep[B]) => Rep[Boolean]): Rep[Boolean] = ???
 
-    def fold[A1 >: T](z: Rep[A1])(op: (Rep[A1], Rep[A1]) ⇒ Rep[A1]): Rep[A1] = ???
+    def fold[A1 >: T](z: Rep[A1])(op: (Rep[A1], Rep[A1]) => Rep[A1]): Rep[A1] = ???
   }
 
   object DenseVector {

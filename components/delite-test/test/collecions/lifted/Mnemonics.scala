@@ -51,7 +51,7 @@ object Mnemonics extends MnemonicsBase {
       (words groupBy wordCode)
 
     /** Return all ways to encode a number as a list of words */
-    def encode: Rep[LString ⇒ List[List[LString]]] = doLambda { number ⇒
+    def encode: Rep[LString => List[List[LString]]] = doLambda { number =>
       if (number.isEmpty)
         List(List())
       else {

@@ -9,7 +9,7 @@ import scala.tools.nsc.io._
 import scala.io._
 import scala.tools.nsc.interpreter.AbstractFileClassLoader
 
-class TimingWriter(val outputStream: ByteArrayOutputStream, val onFirstPrint: () ⇒ Unit) extends PrintWriter(outputStream) {
+class TimingWriter(val outputStream: ByteArrayOutputStream, val onFirstPrint: () => Unit) extends PrintWriter(outputStream) {
 
   var first = true
   override def print(s: String) = {
@@ -30,18 +30,18 @@ object TypeCheckingBenchmark {
   var compiler: Global = _
   var reporter: ConsoleReporter = _
   var lastErrorTime = 0L
-  var timingWriter = new TimingWriter(new ByteArrayOutputStream(), () ⇒ { lastErrorTime = System.currentTimeMillis(); () })
+  var timingWriter = new TimingWriter(new ByteArrayOutputStream(), () => { lastErrorTime = System.currentTimeMillis(); () })
 
   def settings() = {
     val settings = new Settings()
 
     settings.classpath.value = this.getClass.getClassLoader match {
-      case ctx: java.net.URLClassLoader ⇒ ctx.getURLs.map(_.getPath).mkString(":")
-      case _                            ⇒ System.getProperty("java.class.path")
+      case ctx: java.net.URLClassLoader => ctx.getURLs.map(_.getPath).mkString(":")
+      case _                            => System.getProperty("java.class.path")
     }
     settings.bootclasspath.value = Predef.getClass.getClassLoader match {
-      case ctx: java.net.URLClassLoader ⇒ ctx.getURLs.map(_.getPath).mkString(":")
-      case _                            ⇒ System.getProperty("sun.boot.class.path")
+      case ctx: java.net.URLClassLoader => ctx.getURLs.map(_.getPath).mkString(":")
+      case _                            => System.getProperty("sun.boot.class.path")
     }
     settings.encoding.value = "UTF-8"
     settings.outdir.value = "."

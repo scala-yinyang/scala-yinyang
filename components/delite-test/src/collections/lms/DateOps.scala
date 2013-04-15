@@ -49,27 +49,27 @@ trait DateOpsExp extends DateOps with BaseExp {
   def dateRemove(d: Rep[Date], years: Rep[Int], months: Rep[Int], days: Rep[Int]) = DateRemove(d, years, months, days)
 
   override def syms(e: Any): List[Sym[Any]] = e match {
-    case DateComparison(l, r, _) ⇒ syms(l, r)
-    case DateObjectApply(str)    ⇒ syms(str)
-    case DateAdd(d, y, m, days)  ⇒ syms(d, y, m, days)
-    case DateRemove(d, y, m, da) ⇒ syms(d, y, m, da)
-    case _                       ⇒ super.syms(e)
+    case DateComparison(l, r, _) => syms(l, r)
+    case DateObjectApply(str)    => syms(str)
+    case DateAdd(d, y, m, days)  => syms(d, y, m, days)
+    case DateRemove(d, y, m, da) => syms(d, y, m, da)
+    case _                       => super.syms(e)
   }
 
   override def symsFreq(e: Any): List[(Sym[Any], Double)] = e match {
-    case DateComparison(l, r, _) ⇒ freqNormal(l, r)
-    case DateObjectApply(str)    ⇒ freqNormal(str)
-    case DateAdd(d, y, m, days)  ⇒ freqNormal(d, y, m, days)
-    case DateRemove(d, y, m, da) ⇒ freqNormal(d, y, m, da)
-    case _                       ⇒ super.symsFreq(e)
+    case DateComparison(l, r, _) => freqNormal(l, r)
+    case DateObjectApply(str)    => freqNormal(str)
+    case DateAdd(d, y, m, days)  => freqNormal(d, y, m, days)
+    case DateRemove(d, y, m, da) => freqNormal(d, y, m, da)
+    case _                       => super.symsFreq(e)
   }
 
   override def mirrorDef[A: Manifest](e: Def[A], f: Transformer)(implicit pos: SourceContext): Def[A] = (e match {
-    case DateComparison(l, r, c) ⇒ DateComparison(f(l), f(r), c)
-    case DateObjectApply(s)      ⇒ DateObjectApply(f(s))
-    case DateAdd(d, y, m, days)  ⇒ DateAdd(f(d), f(y), f(m), f(days))
-    case DateRemove(d, y, m, da) ⇒ DateAdd(f(d), f(y), f(m), f(da))
-    case _                       ⇒ super.mirrorDef(e, f)
+    case DateComparison(l, r, c) => DateComparison(f(l), f(r), c)
+    case DateObjectApply(s)      => DateObjectApply(f(s))
+    case DateAdd(d, y, m, days)  => DateAdd(f(d), f(y), f(m), f(days))
+    case DateRemove(d, y, m, da) => DateAdd(f(d), f(y), f(m), f(da))
+    case _                       => super.mirrorDef(e, f)
   }).asInstanceOf[Def[A]]
 }
 
@@ -78,13 +78,13 @@ trait ScalaGenDateOps extends ScalaGenBase {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    case DateObjectApply(str)            ⇒ emitValDef(sym, "common.Date(" + quote(str) + ")")
-    case DateComparison(ls, rd, compare) ⇒ emitValDef(sym, quote(ls) + " " + compare + " " + quote(rd))
-    case DateAdd(d, y, m, days) ⇒ emitValDef(
+    case DateObjectApply(str)            => emitValDef(sym, "common.Date(" + quote(str) + ")")
+    case DateComparison(ls, rd, compare) => emitValDef(sym, quote(ls) + " " + compare + " " + quote(rd))
+    case DateAdd(d, y, m, days) => emitValDef(
       sym, quote(d) + " + (" + quote(y) + ", " + quote(m) + ", " + quote(days) + ")")
-    case DateRemove(d, y, m, days) ⇒ emitValDef(
+    case DateRemove(d, y, m, days) => emitValDef(
       sym, quote(d) + " - (" + quote(y) + ", " + quote(m) + ", " + quote(days) + ")")
-    case _ ⇒ super.emitNode(sym, rhs)
+    case _ => super.emitNode(sym, rhs)
   }
 
 }

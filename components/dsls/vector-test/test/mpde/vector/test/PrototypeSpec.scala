@@ -68,7 +68,7 @@ class PrototypeSpec extends FlatSpec with ShouldMatchers {
 
   it should "closures should be converted into a cake" in {
     val x = dsl.la.laLift {
-      dsl.la.DenseVector(1, 2, 3).map(x ⇒ x + 1)
+      dsl.la.DenseVector(1, 2, 3).map(x => x + 1)
     }
     ()
   }
