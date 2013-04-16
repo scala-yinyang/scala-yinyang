@@ -10,6 +10,7 @@ import language.experimental.macros
 
 import yinyang.api._
 import java.util.concurrent.atomic.AtomicLong
+import scala.reflect.runtime.universe.definitions.FunctionClass
 
 object Debug {
   def show[T](x: => T): T = macro showImpl[T]
@@ -61,108 +62,88 @@ final class YYTransformer[C <: Context, T](
     if (!FeatureAnalyzer(block.tree) || shallow)
       block
     else { // ascription according to original types
-      val ascribed = if (rep) { // TODO Remove this.
-        val ascrBody = new AscriptionTransformer().injectAscription(block.tree)
-        log("Ascription: " + show(ascrBody))
-        ascrBody
-      } else {
-        block.tree
-      }
-
       // mark captured variables as holes
       val allCaptured = freeVariables(block.tree)
-      val lifted = LiftLiteralTransformer(ascribed)
-      val injected = ScopeInjectionTransformer(lifted)
-      val transfBody = new HoleMarkerTransformer(allCaptured map symbolId) mark injected
-      log("Transformed Body: " + showRaw(transfBody))
+      def transform(holes: List[Int], idents: List[Symbol])(block: Tree): Tree =
+        (AscriptionTransformer andThen
+          LiftLiteralTransformer(idents) andThen
+          ScopeInjectionTransformer andThen
+          HoleTransformer(holes) andThen
+          composeDSL)(block)
 
-      // generates the Embedded DSL cake with the transformed "main" method.
-      val dslClassPre = c.resetAllAttrs(composeDSL(transfBody)) // TODO this should not exist
+      val dslPre = transform(allCaptured map symbolId, Nil)(block.tree)
 
-      log(s"Pre eval: \n ${show(dslClassPre)}")
-      // if the DSL inherits the StaticallyChecked trait stage it and do the static analysis
-      if (dslInstance(dslClassPre).isInstanceOf[StaticallyChecked])
-        dslInstance(dslClassPre).asInstanceOf[StaticallyChecked].staticallyCheck(c)
+      // if the DSL inherits the StaticallyChecked trait reflectively do the static analysis
+      if (reflInstance(dslPre).isInstanceOf[StaticallyChecked])
+        reflInstance(dslPre).asInstanceOf[StaticallyChecked].staticallyCheck(c)
 
       // DSL returns what holes it needs
-      val requiredVariables = dslInstance(dslClassPre).asInstanceOf[BaseYinYang].stagingAnalyze().map(symbolById)
-      val canCompile = requiredVariables.isEmpty
+      val reqVars =
+        reflInstance(dslPre).asInstanceOf[BaseYinYang].stagingAnalyze().map(symbolById)
+      val holes = allCaptured diff reqVars
 
-      val holes = allCaptured diff requiredVariables
+      // re-transform the tree with new holes if there are required vars
+      val dsl = if (reqVars.isEmpty) dslPre
+      else transform(holes map symbolId, reqVars)(block.tree)
 
-      // re-transform the tree with new holes
-      val toTransform =
-        if (canCompile) transfBody
-        else {
-          // TODO Duy this is not clean. Maybe we could make a new transformer to just flip the hole into lift.
-          val lifted = LiftLiteralTransformer(ascribed, idents = requiredVariables, free = allCaptured)
-          val injected = ScopeInjectionTransformer(lifted)
-          val transfBody = new HoleMarkerTransformer(holes map symbolId).mark(injected)
-          transfBody
-        }
-      log("toTransform: " + show(toTransform))
-      val dslClass = c.resetAllAttrs(composeDSL(toTransform))
-      log("DSL Class: " + show(dslClass))
       def args(holes: List[Symbol]): String =
         holes.map({ y: Symbol => y.name.decoded }).mkString("", ",", "")
 
-      val dslTree = dslInstance(dslClassPre) match {
-        case dsl: CodeGenerator if canCompile =>
+      val dslTree = reflInstance(dsl) match {
+        case dslInst: CodeGenerator if reqVars.isEmpty =>
           /*
            * If DSL does not require run-time data it can be completely
            * generated at compile time and wired for execution.
            */
-          val codeGenerator = dslInstance(dslClass).asInstanceOf[CodeGenerator]
-
-          val code = s"""
-          ${codeGenerator generateCode className}
-          new $className().apply(${args(allCaptured)})
-        """
-          log(s"generated: ${code}")
-          c parse (code)
-
-        case dsl =>
+          c parse s"""
+            ${dslInst generateCode className}
+            new $className().apply(${args(allCaptured)})
+          """
+        case dslInst =>
           /*
-       * If DSL need runtime info send it to run-time and install a guard for re-compilation based on required symbols.
-       */
+           * If DSL need run-time info send it to run-time and install recompilation guard.
+           */
           val programId = new scala.util.Random().nextLong
           val retType: String = block.tree.tpe.toString
           val functionType = s"""${(0 until args(holes).length).map(y => "scala.Any").mkString("(", ", ", ")")} => ${retType}"""
-          val refs = requiredVariables filterNot (isPrimitive)
+          val refs = reqVars filterNot (isPrimitive)
           val dslInit = s"""
-          val dslInstance = ch.epfl.lamp.yinyang.runtime.YYStorage.lookup(${programId}L, new $className())
-          val values: Seq[Any] = Seq(${(requiredVariables diff refs) map (_.name.decoded) mkString ", "})
-          val refs: Seq[Any] = Seq(${refs map (_.name.decoded) mkString ", "})
+            val dslInstance = ch.epfl.lamp.yinyang.runtime.YYStorage.lookup(${programId}L, new $className())
+            val values: Seq[Any] = Seq(${(reqVars diff refs) map (_.name.decoded) mkString ", "})
+            val refs: Seq[Any] = Seq(${refs map (_.name.decoded) mkString ", "})
           """
 
-          val guardedExecute = c parse dslInit + (dsl match {
+          val guardedExecute = c parse dslInit + (dslInst match {
             case _: CodeGenerator => s"""
-            def recompile(): () => Any = dslInstance.compile[$retType, $functionType]
-            val program = ch.epfl.lamp.yinyang.runtime.YYStorage.$guardType[$functionType](${programId}L, values, refs, recompile)
-            program.apply(${args(holes)})
+              def recompile(): () => Any = dslInstance.compile[$retType, $functionType]
+              val program = ch.epfl.lamp.yinyang.runtime.YYStorage.$guardType[$functionType](
+                ${programId}L, values, refs, recompile
+              )
+              program.apply(${args(holes)})
             """
             case _: Interpreted => s"""
-            def invalidate(): () => Any = () => dslInstance.reset
-            ch.epfl.lamp.yinyang.runtime.YYStorage.$guardType[Any](${programId}L, values, refs, invalidate)
-            dslInstance.interpret[${retType}](${args(holes)})
+              def invalidate(): () => Any = () => dslInstance.reset
+              ch.epfl.lamp.yinyang.runtime.YYStorage.$guardType[Any](
+                ${programId}L, values, refs, invalidate
+              )
+              dslInstance.interpret[${retType}](${args(holes)})
             """
           })
 
-          val finalBlock = Block(dslClass, guardedExecute)
-          log("Guarded block:" + show(finalBlock))
-          finalBlock
+          Block(dsl, guardedExecute)
       }
 
-      log("Final tree untyped: " + show(c.resetAllAttrs(dslTree)))
-      log("Final tree: " + show(c.typeCheck(c.resetAllAttrs(dslTree))))
+      log(s"""Final untyped: ${show(c.resetAllAttrs(dslTree))}
+        Final typed: ${show(c.typeCheck(c.resetAllAttrs(dslTree)))}""")
       c.Expr[T](c.resetAllAttrs(dslTree))
     }
   }
 
   def rewiredToThis(s: String) = s == "package" || s == "Predef"
-  def freeVariables(tree: Tree): List[Symbol] = new FreeVariableCollector().collect(tree)
+  def freeVariables(tree: Tree): List[Symbol] =
+    new FreeVariableCollector().collect(tree)
 
-  object FeatureAnalyzer {
+  object FeatureAnalyzer extends ((Tree, Seq[MethodInv]) => Boolean) {
     def apply(tree: Tree, lifted: Seq[MethodInv] = Seq()): Boolean = {
       val (virtualized, lifted) = VirtualizationTransformer(tree)
       val st = System.currentTimeMillis()
@@ -276,10 +257,11 @@ final class YYTransformer[C <: Context, T](
 
     val res = try {
       // block containing only dummy methods that were applied.
-      val block = Block(composeDSL(Block(methodSet.map(x => application(x)).toSeq: _*)), Literal(Constant(())))
-      log("Block before typecheck: " + show(block))
-      log("Block before typecheck: " + showRaw(block))
-      c.typeCheck(c.resetAllAttrs(block))
+      val block = c.resetAllAttrs(Block(composeDSL(
+        Block(methodSet.map(x => application(x)).toSeq: _*)), Literal(Constant(()))))
+      log(s"Block: ${show(block)})")
+      log(s"Block raw: ${showRaw(block)})")
+      c.typeCheck(block)
       true
     } catch {
       case e: Throwable =>
@@ -300,7 +282,9 @@ final class YYTransformer[C <: Context, T](
     override def traverse(tree: Tree) = tree match {
       case i @ Ident(s) => {
         val sym = i.symbol
-        if (sym.isTerm && !(sym.isMethod || sym.isPackage || sym.isModule) && isFree(sym)) collected append sym
+        if (sym.isTerm &&
+          !(sym.isMethod || sym.isPackage || sym.isModule) &&
+          isFree(sym)) collected append sym
       }
       case _ => super.traverse(tree)
     }
@@ -325,14 +309,10 @@ final class YYTransformer[C <: Context, T](
         traverse(rhs)
       case dd @ DefDef(mods, name, tparams, vparamss, tpt, rhs) =>
         definedMethods += dd.symbol
-        vparamss.flatten.foreach(x => traverse(x))
+        vparamss.flatten.foreach(traverse)
         traverse(rhs)
       case _ =>
         super.traverse(tree)
-      //TODO: remove if works correctly
-      //      case vd: ValDef => definedValues += vd.symbol
-      //      case dd: DefDef => definedMethods += dd.symbol
-      //      case _          => super.traverse(tree)
     }
 
     def definedSymbols(tree: Tree): List[Symbol] = {
@@ -344,10 +324,6 @@ final class YYTransformer[C <: Context, T](
 
   }
 
-  private def dslConstructor = constructor(className, List())
-
-  private def dslClass(mainBody: Tree): Tree = c.resetAllAttrs(composeDSL(mainBody))
-
   def constructor(classname: String, arguments: List[Tree]): Tree =
     invoke(newClass(classname), nme.CONSTRUCTOR, arguments)
 
@@ -357,14 +333,13 @@ final class YYTransformer[C <: Context, T](
     nev
   }
 
+  object AscriptionTransformer extends (Tree => Tree) {
+    def apply(tree: Tree) = new AscriptionTransformer().transform(tree)
+  }
+
   private final class AscriptionTransformer extends Transformer {
     var ident = 0
     var externalApplyFound = false
-
-    def injectAscription(tree: Tree): Tree = {
-      val ascrTree = transform(tree)
-      ascrTree
-    }
 
     override def transform(tree: Tree): Tree = {
       log(" " * ident + " ==> " + tree)
@@ -410,26 +385,26 @@ final class YYTransformer[C <: Context, T](
   }
 
   private object LiftLiteralTransformer {
-    def apply(tree: Tree, idents: List[Symbol] = Nil, free: List[Symbol] = Nil) =
-      new LiftLiteralTransformer(idents, free)(tree)
+    def apply(idents: List[Symbol] = Nil)(tree: Tree) =
+      new LiftLiteralTransformer(idents).transform(tree)
   }
 
-  private final class LiftLiteralTransformer(
-    val idents: List[Symbol],
-    val free: List[Symbol]) extends Transformer {
+  private final class LiftLiteralTransformer(val idents: List[Symbol])
+    extends Transformer {
+
+    def lift(t: Tree) =
+      Apply(Select(This(newTypeName(className)), newTermName("lift")), List(t))
 
     override def transform(tree: Tree): Tree = {
       tree match {
-        case t @ Literal(Constant(v)) =>
-          Apply(Select(This(newTypeName(className)), newTermName("lift")), List(t))
-        case t @ Ident(v) if free.contains(t.symbol) && idents.contains(t.symbol) =>
-          Apply(Select(This(newTypeName(className)), newTermName("lift")), List(t))
+        case t @ Literal(Constant(_)) =>
+          lift(t)
+        case t @ Ident(_) if idents.contains(t.symbol) =>
+          lift(t)
         case _ =>
           super.transform(tree)
       }
     }
-
-    def apply(tree: Tree) = transform(tree)
   }
 
   private object VirtualizationTransformer {
@@ -492,47 +467,39 @@ final class YYTransformer[C <: Context, T](
     def apply(tree: Tree) = (transform(tree), lifted.toSeq)
   }
 
+  object HoleTransformer {
+    def apply(toMark: List[Int] = Nil)(tree: Tree) =
+      new HoleTransformer(toMark).transform(tree)
+  }
   /**
-   * Replace all variables in `toMark` with `hole[](id)`
+   * Replace all variables in `toMark` with `hole[T](classTag[T], symbolId)`
    */
-  private final class HoleMarkerTransformer(toMark: List[Int]) extends Transformer {
+  private final class HoleTransformer(toMark: List[Int]) extends Transformer {
 
     override def transform(tree: Tree): Tree = tree match {
       case i @ Ident(s) =>
+        // TODO WTF?
         val id = symbolId(i)
         symbolIds.put(id, i.symbol)
         if (toMark contains id)
           Apply(
             TypeApply(Select(This(newTypeName(className)), newTermName(holeMethod)), List(TypeTree(), TypeTree())),
-            //List(Apply(TypeApply(Select(Select(This(newTypeName("scala")), newTermName("Predef")), newTermName("manifest")), List(TypeTree(i.tpe))), List()),
             List(Apply(TypeApply(Ident(newTermName("manifest")), List(constructPolyTree(i.tpe))), List()),
               Literal(Constant(id))))
-        //TODO: remove if it works
-        //List(Apply(TypeApply(Ident(newTermName("manifest")), List(TypeTree(i.tpe))), List()),
-        //changed because we need to rewire type parameters
         else
           super.transform(tree)
-      //case s @ Select(id: Ident, _) if toMark contains id.symbol =>
-      //mark(s.symbol)
       case _ =>
         super.transform(tree)
     }
-
-    def mark(tree: Tree): Tree = {
-      log(s"To mark: ${toMark.toString}")
-      transform(tree)
-    }
-
   }
 
-  object ScopeInjectionTransformer {
-    def apply(tree: Tree) = new ScopeInjectionTransformer().transform(VirtualizationTransformer(tree)._1)
+  object ScopeInjectionTransformer extends (Tree => Tree) {
+    def apply(tree: Tree) =
+      new ScopeInjectionTransformer().transform(VirtualizationTransformer(tree)._1)
   }
 
   private final class ScopeInjectionTransformer extends Transformer {
-    //TODO: remove if works correctly
-    //    private val definedValues, definedMethods = collection.mutable.HashSet[Symbol]()
-
+    // TODO fix this
     val notLiftedTypes: Set[Type] = Set(
       c.universe.typeOf[scala.math.Numeric.IntIsIntegral.type],
       c.universe.typeOf[scala.math.Numeric.DoubleIsFractional.type],
@@ -541,22 +508,9 @@ final class YYTransformer[C <: Context, T](
     def isLifted(tp: Type): Boolean =
       !(notLiftedTypes exists (_ =:= tp.erasure))
 
-    //TODO: remove if works correctly
-    //    /**
-    //     * Current solution for finding outer scope idents.
-    //     */
-    //    def markDSLDefinition(tree: Tree) = tree match {
-    //      case _: ValDef => definedValues += tree.symbol
-    //      case _: DefDef => definedMethods += tree.symbol
-    //      case _         =>
-    //    }
-    //
-    //    private[this] final def isFree(s: Symbol) = !(definedValues.contains(s) || definedMethods.contains(s))
-
     private[this] final def isHole(tree: Tree): Boolean =
       tree match {
-        case Apply(
-          TypeApply(Select(This(_), methodName), List(TypeTree())),
+        case Apply(TypeApply(Select(This(_), methodName), List(TypeTree())),
           List(Literal(Constant(_: Int)))) if methodName.decoded == holeMethod => true
         case _ => false
       }
@@ -564,9 +518,6 @@ final class YYTransformer[C <: Context, T](
     var ident = 0
 
     override def transform(tree: Tree): Tree = {
-      //TODO: remove if works correctly
-      //markDSLDefinition(tree)
-
       log(" " * ident + " ==> " + tree)
       ident += 1
 
@@ -588,25 +539,21 @@ final class YYTransformer[C <: Context, T](
 
         // re-wire objects
         case s @ Select(Select(inn, t: TermName), name) // package object goes to this
-        if s.symbol.isMethod && rewiredToThis(t.toString) =>
-          Ident(name)
-
-        case s @ Select(Select(inn, t: TermName), name) // `this` goes to `this`
-        if s.symbol.isMethod && t.toString == "this" =>
+        if s.symbol.isMethod && (rewiredToThis(t.toString) || t.toString == "this") =>
           Ident(name)
 
         case s @ Select(inn, name) if s.symbol.isMethod =>
           Select(transform(inn), name)
 
         // replaces objects with their cake counterparts
-        case s @ Select(inn, name) => // TODO this needs to be narrowed down if s.symbol.isModule =>
+        case s @ Select(inn, name) =>
           Ident(name)
 
         //Added to rewire inherited methods to this class
         case th @ This(_) =>
           This(newTypeName(className))
 
-        case TypeApply(mth, targs) => // TODO this needs to be changed for LMS to include a type transformer
+        case TypeApply(mth, targs) =>
           if (rep) { // this check needs to go to the signatures of the method
             //Added because we need to rewire type parameters in TypeApply
             val liftedTargs = targs map { x: Tree => constructPolyTree(x.tpe) }
@@ -620,13 +567,9 @@ final class YYTransformer[C <: Context, T](
         case Import(_, _) =>
           EmptyTree
 
-        case f @ Function(p, b) =>
-          // TODO transform ValDef types here with an explicit type tree.
-          Function(p map (x => transform(x).asInstanceOf[ValDef]), transform(b))
-
         // ignore the hole
         case _ if isHole(tree) =>
-          println("***************************************** Does this get invoked? *********************************************")
+          println(s"${"!" * 10} Does this get invoked? ${"!" * 10}")
           tree
         case _ =>
           super.transform(tree)
@@ -642,9 +585,11 @@ final class YYTransformer[C <: Context, T](
   /*
   * Configuration parameters.
   */
+  val MaxFunctionArity = 22
   def interpretMethod = "interpret"
   val holeMethod = "hole"
-  val className = "generated$" + dslName.filter(_ != '.') + YYTransformer.uID.incrementAndGet
+  val className =
+    s"generated$$${dslName.filter(_ != '.') + YYTransformer.uID.incrementAndGet}"
   def constructTypeTree(inType: Type) = if (rep)
     constructRepTree(inType)
   else
@@ -652,21 +597,13 @@ final class YYTransformer[C <: Context, T](
   def isPrimitive(s: Symbol): Boolean = false
   val guardType = "checkRef"
 
-  //TODO (TOASK) - do we need tp.normalize here?
   private def isFunctionType(tp: Type): Boolean = tp.normalize match {
     case TypeRef(pre, sym, args) if args.nonEmpty =>
       val arity = args.length - 1
-      import scala.reflect.runtime.universe.definitions._
-      val MaxFunctionArity = 22
-      //TODO refactor symbol comparision
-      //val myuniverse2 = c.universe.asInstanceOf[scala.reflect.internal.Definitions with scala.reflect.internal.Types]
-      //log("isFunctionType = " + myuniverse2.definitions.isFunctionType(tp.asInstanceOf[myuniverse2.Type]))
-      //if (myuniverse2.definitions.isFunctionType(tp.asInstanceOf[myuniverse2.Type])) {
-      //log("sym.id = " + sym.asInstanceOf[scala.reflect.internal.Symbols#Symbol].id)
-      //log("FunctionClass(arity).id = " + FunctionClass(arity).asInstanceOf[scala.reflect.internal.Symbols#Symbol].id)
-      //}
-      FunctionClass(arity).fullName
-      arity <= MaxFunctionArity && arity >= 0 && sym.fullName == FunctionClass(arity).fullName
+
+      arity <= MaxFunctionArity &&
+        arity >= 0 &&
+        sym.fullName == FunctionClass(arity).fullName
     case _ =>
       false
   }
@@ -729,12 +666,17 @@ final class YYTransformer[C <: Context, T](
       TypeTree(another)
   }
 
-  def constructRepTree(inType: Type): Tree = { //transform Type1[Type2[...]] => Rep[Type1[Type2[...]]] for non-function types
+  /*
+   * transform Type1[Type2[...]] => Rep[Type1[Type2[...]]] for non-function types
+   */
+  def constructRepTree(inType: Type): Tree = {
     val universe = c.universe.asInstanceOf[scala.reflect.internal.Types]
 
-    def rep(inType: Type): Tree =
+    def rep(inType: Type): Tree = {
+      log(s"${"!" * 10} Rep ${showRaw(inType)}")
       AppliedTypeTree(Select(This(newTypeName(className)), newTypeName("Rep")),
-        List(TypeTree(inType)))
+        List(constructPolyTree(inType))) // TypeTree(inType)
+    }
 
     inType match {
       case inType if isFunctionType(inType) =>
@@ -742,7 +684,7 @@ final class YYTransformer[C <: Context, T](
         val retTyperees = args map { x => rep(x) }
         //we can't construnct baseTree using TypeTree(pre) - pre is only scala.type not FunctionN
         //val baseTree = TypeTree(pre) //pre = scala.type
-        //using such baseTree we get val a: scala.type[generated$dsllarepVectorDSL13.this.Rep[Int], generated$dsllarepVectorDSL13.this.Rep[Int]] = ...
+        //using such baseTree we get val a: scala.type[Rep[Int], Rep[Int]] = ...
         val baseTree = Select(Ident(newTermName("scala")), sym.name)
         AppliedTypeTree(baseTree, retTyperees)
 
@@ -779,44 +721,48 @@ final class YYTransformer[C <: Context, T](
 
   private lazy val dslTrait = {
     val names = dslName.split("\\.").toList.reverse
-    assert(names.length >= 1, "DSL trait name must be in the valid format. DSL trait name is " + dslName)
+    assert(names.length >= 1,
+      s"DSL trait name must be in the valid format. DSL trait name is ${dslName}")
 
     val tpeName = newTypeName(names.head)
     names.tail.reverse match {
       case head :: tail =>
-        Select(tail.foldLeft[Tree](Ident(newTermName(head)))((tree, name) => Select(tree, newTermName(name))), tpeName)
+        Select(tail.foldLeft[Tree](Ident(newTermName(head)))((tree, name) =>
+          Select(tree, newTermName(name))), tpeName)
       case Nil =>
         Ident(tpeName)
     }
   }
 
-  private var _dslInstance: Option[Object] = None
+  private var _reflInstance: Option[Object] = None
   /**
    * Returns a once initialized DSL instance when it is needed at compile time.
    */
-  private def dslInstance(dslDef: Tree) = {
-    if (_dslInstance == None) {
-      _dslInstance = Some(
-        c.eval(c.Expr(c.resetAllAttrs(Block(dslDef, dslConstructor)))))
+  private def reflInstance(dslDef: Tree) = {
+    if (_reflInstance == None) {
+      _reflInstance = Some(c.eval(
+        c.Expr(c.resetAllAttrs(Block(dslDef, constructor(className, List()))))))
     }
-    _dslInstance.get
+    _reflInstance.get
   }
 
-  private def constructor = Apply(Select(New(Ident(newTypeName(className))), nme.CONSTRUCTOR), List())
+  private def constructor = Apply(Select(New(Ident(newTypeName(className))),
+    nme.CONSTRUCTOR), List())
 
   def composeDSL(transformedBody: Tree) =
     // class MyDSL extends DSL {
-    ClassDef(Modifiers(), newTypeName(className), List(), Template(
-      List(dslTrait),
-      emptyValDef,
-      List(
-        DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(List()), TypeTree(),
-          Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List())), Literal(Constant(())))),
-        // def main = {
-        DefDef(Modifiers(), newTermName(mainMethod), List(), List(List()), Ident(newTypeName("Any")), transformedBody))))
+    ClassDef(Modifiers(), newTypeName(className), List(),
+      Template(List(dslTrait), emptyValDef,
+        List(
+          DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(List()), TypeTree(),
+            Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY),
+              nme.CONSTRUCTOR), List())), Literal(Constant(())))),
+          // def main = {
+          DefDef(Modifiers(), newTermName(mainMethod), List(), List(List()),
+            Ident(newTypeName("Any")), transformedBody))))
   //     }
   // }
 
-  def log(s: String) = if (debug) println(s)
+  def log(s: => String) = if (debug) println(s)
 
 }

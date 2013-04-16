@@ -8,6 +8,19 @@ import org.scalatest.junit.JUnitRunner
 @RunWith(classOf[JUnitRunner])
 class CodeGenSpec extends FlatSpec with ShouldMatchers {
 
+  class a extends PrintDSL {
+    val b: this.Int = (lift(0): this.Int);
+    (println((b: this.Int)): this.Int);
+    (break((b: this.Int)): this.Int);
+    (lift(1).$plus((b: this.Int)): this.Int)
+  }
+
+  "Eval test" should "work" in {
+    val y = liftPrint {
+      1
+    }
+  }
+
   "Static code staging" should "work" in {
     val x = liftPrint {
       val x = 1
@@ -19,14 +32,14 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
     assert(x == 7, "Should return the value 7!")
   }
 
-  "Dynamic code insertion" should "work" in {
+  /*"Dynamic code insertion" should "work" in {
     val x = 1
     val y = 2
 
     assert(
       liftPrint {
         val z = 4
-        println(z + x + y) // TODO x + y + z fails miserably
+        println(z + x + y)
         z + x + y
       } == 7)
   }
@@ -66,6 +79,6 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
           1 + b
         } == 1)
     }
-  }
+  }*/
 
 }

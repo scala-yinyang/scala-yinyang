@@ -8,10 +8,9 @@ import shallow.optigraph._
 @RunWith(classOf[JUnitRunner])
 class OptiMLSpec extends FlatSpec with ShouldMatchers {
 
-  ch.epfl.lamp.yinyang.Debug.show {
-  }
-
-  "A basic OptiML test should" should "rewire" in {
+  // TypeApply(Select(Literal(Constant(())), newTermName("asInstanceOf")), List(AppliedTypeTree(Select(This(newTypeName("generated$liftedOptiGraph2")), newTypeName("Rep")), List(Select(This(newTypeName("generated$liftedOptiGraph2")), newTermName("Graph"))))))
+  // TypeApply(Select(Literal(Constant(())), newTermName("asInstanceOf")), List(AppliedTypeTree(Select(This(newTypeName("generated$liftedOptiGraph2")), newTypeName("Rep")), List(Select(This(newTypeName("generated$liftedOptiGraph2")), newTermName("Graph"))))))
+  /*"A basic OptiML test should" should "rewire" in {
     val y = 1
     val x: Int = optiML {
       val x = y
@@ -24,21 +23,11 @@ class OptiMLSpec extends FlatSpec with ShouldMatchers {
       val k = z + 1
       k
     }
-  }
+  }*/
 
 }
 
 class OptiGraphSpec extends FlatSpec with ShouldMatchers {
-
-  "A basic OptiGraph test should" should "rewire" in {
-    val y = 1
-    val x: Int = optiGraph {
-      val x = y
-      val z = 1 + x
-      val k = z + 1
-      k
-    }
-  }
 
   "test_graphOps" should "compile" in {
     val x: Any = optiGraph {
@@ -1170,9 +1159,6 @@ class OptiGraphSpec extends FlatSpec with ShouldMatchers {
     val x: Any = optiGraph {
 
       //val G = RandUniformGraph(5,5,1997L)
-      //TODO graph_load shouldn't be the method of shallow
-      //it's one of conversion method
-      //should it be in shallow DSL?
       val G = graph_load("/home/viq/delite/Delite/test.bin")
 
       val e = 0.001
@@ -1189,7 +1175,7 @@ class OptiGraphSpec extends FlatSpec with ShouldMatchers {
 
       // move to ds
       val deg = NewArray[Int](G.NumNodes)
-      for (t ← G.Nodes) {
+      for (t <- G.Nodes) {
         deg(t.Id) = t.OutDegree
       }
 
@@ -1198,45 +1184,29 @@ class OptiGraphSpec extends FlatSpec with ShouldMatchers {
       //var v = 0.0
       var cond = true
       //val n = G.Node(0)
+      while (cond) {
+        diff.setValue(0.0)
+        for (t <- G.Nodes) {
+          /* Scala Virtualized Problem
+          ((1.0 - d) / N) +
+        */
+          val Val: Double = (d * Sum(t.InNbrs) {
+            w => PR(w) / deg(w.Id) //w.OutDegree
+          })
+          //val Val = v
+          PR <= (t, Val)
 
-      //TODO: problem with while(cond)
-      //Predef.__whileDo(cond, {...})
-      //we need to reconstruct while
-      //[error]  found   : generated$liftedOptiGraph3.this.Rep[generated$liftedOptiGraph3.this.Boolean]
-      //[error]     (which expands to)  generated$liftedOptiGraph3.this.Exp[Boolean]
-      //[error]  required: Boolean
-
-      //          while(cond) {
-      diff.setValue(0.0)
-      for (t ← G.Nodes) {
-        //TODO: question about unit: in (1.0 - d) there is no unit but after + unit(d) :
-        //val Val: Double = ((1.0 - d) / N) + unit(d) * Sum(t.InNbrs){
-        //how do I should transform this line
-        val Val: Double = ((1.0 - d) / N) + d * Sum(t.InNbrs) {
-          w => PR(w) / deg(w.Id) //w.OutDegree
+          diff += Math.abs(Val - PR(t))
+          //num_abs += 1
+          //v += 1.0
         }
-        //val Val = v
-        PR <= (t, Val)
-
-        //TODO: Question for Math.abs definition (see in LanguageOps for shallow - is it correct)
-        diff += Math.abs(Val - PR(t))
-        //num_abs += 1
-        //v += 1.0
+        PR.assignAll()
+        cnt += 1
+        cond = (diff.value > e) && (cnt < max_iter)
       }
-      PR.assignAll()
-      cnt += 1
-      cond = (diff.value > e) && (cnt < max_iter)
-      //          }
-
       println("count = " + cnt)
       //println("abs times = " + num_abs)
-
-      //TODO (FEATURE ANALYZER) problem with deps: Any* parameter and empty parameter list
-      toc(())
-
-      //    for(t <- G.Nodes) {
-      //      println(" PR " + t.Id + " " + PR(t))
-      //    }
+      toc()
     }
   }
 

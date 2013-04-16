@@ -12,14 +12,25 @@ package object lifted {
   def optiGraphAnalysis[T](block: => T): T = macro implementations.optiGraphAnalysis[T]
 
   object implementations {
-    def lift[T](c: Context)(block: c.Expr[T]): c.Expr[T] = new YYTransformer[c.type, T](c, "lifted.ScalaDSL", shallow = false, debug = false, rep = true)(block)
-    def liftDebug[T](c: Context)(block: c.Expr[T]): c.Expr[T] = new YYTransformer[c.type, T](c, "lifted.ScalaDSL", shallow = false, debug = true, rep = true)(block)
+    def lift[T](c: Context)(block: c.Expr[T]): c.Expr[T] =
+      new YYTransformer[c.type, T](c, "lifted.ScalaDSL",
+        shallow = false,
+        debug = false,
+        rep = true)(block)
+
+    def liftDebug[T](c: Context)(block: c.Expr[T]): c.Expr[T] =
+      new YYTransformer[c.type, T](c, "lifted.ScalaDSL",
+        shallow = false,
+        debug = true,
+        rep = true)(block)
+
     def optiML[T](c: Context)(block: c.Expr[T]): c.Expr[T] =
       new YYTransformer[c.type, T](c, "lifted.OptiML",
         shallow = false,
         debug = false,
         rep = true,
         mainMethod = "mainDelite")(block)
+
     def optiMLDebug[T](c: Context)(block: c.Expr[T]): c.Expr[T] =
       new YYTransformer[c.type, T](c, "lifted.OptiML",
         shallow = false,
@@ -29,16 +40,18 @@ package object lifted {
 
     def optiGraph[T](c: Context)(block: c.Expr[T]): c.Expr[T] =
       new YYTransformer[c.type, T](c, "lifted.OptiGraph",
-        shallow = true,
+        shallow = false,
         debug = false,
         rep = true,
         mainMethod = "mainDelite")(block)
+
     def optiGraphDebug[T](c: Context)(block: c.Expr[T]): c.Expr[T] =
       new YYTransformer[c.type, T](c, "lifted.OptiGraph",
         shallow = false,
         debug = true,
         rep = true,
         mainMethod = "mainDelite")(block)
+
     def optiGraphAnalysis[T](c: Context)(block: c.Expr[T]): c.Expr[T] =
       new YYTransformer[c.type, T](c, "lifted.OptiGraph",
         shallow = true,

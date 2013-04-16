@@ -5,22 +5,28 @@ import base._
 import scala.collection._
 
 /** The int printing DSL */
-trait PrintDSL
-  extends ScalaCompile with CodeGenerator with MiniIntDSL with Interpreted with BaseYinYang with Base {
+abstract class PrintDSL
+  extends ScalaCompile with CodeGenerator with MiniIntDSL
+  with Interpreted with BaseYinYang with Base {
 
   var sb: StringBuffer = new StringBuffer()
 
   val recompileHoles = mutable.Set[scala.Int]()
 
   // hey, we can refine println -- but we don't need it right now
-  def println(x: Int) = sb.append(s"scala.Predef.println(${x.toString});\n")
+  def println(x: Int): Int = {
+    sb.append(s"scala.Predef.println(${x.toString});\n")
+    IntConst(1)
+  }
 
-  def break(x: Int) = {
+  def break(x: Int): Int = {
     sb.append("scala.Predef.println(\"break called with " + x.toString + "\");\n")
     x match {
       case Hole(tpe, id) =>
         recompileHoles += id
+        IntConst(1)
       case _ =>
+        IntConst(1)
     }
   }
 

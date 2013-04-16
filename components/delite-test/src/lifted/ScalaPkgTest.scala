@@ -117,14 +117,16 @@ trait OptiML extends OptiMLApplicationRunner with LMSYinYang with Interpreted {
 
 import ppl.dsl.optigraph._
 
-trait OptiGraph extends OptiGraphApplicationRunner with LMSYinYang with Interpreted {
+abstract class OptiGraph extends OptiGraphApplicationRunner with LMSYinYang with Interpreted {
   def mainDelite(): Any
 
   override def main(): Unit = ???
 
   def interpret[T: Manifest](params: Any*) = 0.asInstanceOf[T]
 
-  /* If we really need this.
+  /* This rewireing is special for OptiGraph since it keeps the
+  Types locked in the Jar.*/
+  type Long = scala.Long
   type Int = scala.Int
   type Float = scala.Float
   type Double = scala.Double
@@ -145,10 +147,11 @@ trait OptiGraph extends OptiGraphApplicationRunner with LMSYinYang with Interpre
   type Deferrable[T] = ppl.dsl.optigraph.Deferrable[T]
   type Reduceable[T] = ppl.dsl.optigraph.Reduceable[T]
   type NodeProperty[T] = ppl.dsl.optigraph.NodeProperty[T]
-  type EdgeProperty[T] = ppl.dsl.optigraph.EdgeProperty[T]*/
+  type EdgeProperty[T] = ppl.dsl.optigraph.EdgeProperty[T]
 
   implicit def fixClosureContravariance[T](v: Rep[shallow.optigraph.Node] => Rep[T]) =
     v.asInstanceOf[Rep[ppl.dsl.optigraph.Node] => Rep[T]]
+
   implicit def fixOverloaded(x: Rep[Overloaded1]) = null.asInstanceOf[Overloaded1]
   override implicit def repNodeToNodeOps(n: Rep[Node]) = new NodeOpsCls(n)
   implicit val ManifestFactory = scala.reflect.ManifestFactory
