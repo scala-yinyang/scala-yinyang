@@ -2,9 +2,6 @@ package ch.epfl.lamp.yinyang.api
 
 trait BaseYinYang {
 
-  // TODO this is a hack
-  def manifest[T]()(implicit m: Manifest[T]) = m
-
   def stagingAnalyze(): List[Int]
 
   abstract class LiftEvidence[T: Manifest, Ret] {

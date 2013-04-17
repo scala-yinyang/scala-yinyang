@@ -280,6 +280,8 @@ final class YYTransformer[C <: Context, T](
     override def traverse(tree: Tree) = tree match {
       case i @ Ident(s) => {
         val sym = i.symbol
+        //store info about idents
+        symbolIds.put(symbolId(sym), sym)
         if (sym.isTerm &&
           !(sym.isMethod || sym.isPackage || sym.isModule) &&
           isFree(sym)) collected append sym
@@ -457,17 +459,12 @@ final class YYTransformer[C <: Context, T](
   private final class HoleTransformer(toMark: List[Int]) extends Transformer {
 
     override def transform(tree: Tree): Tree = tree match {
-      case i @ Ident(s) =>
-        // TODO WTF?
-        val id = symbolId(i)
-        symbolIds.put(id, i.symbol)
-        if (toMark contains id)
-          Apply(
-            TypeApply(Select(This(newTypeName(className)), newTermName(holeMethod)), List(TypeTree(), TypeTree())),
-            List(Apply(TypeApply(Ident(newTermName("manifest")), List(TypeTree(i.tpe))), List()),
-              Literal(Constant(id))))
-        else
-          super.transform(tree)
+      case i @ Ident(s) if toMark contains symbolId(i.symbol) =>
+        Apply(
+          Select(This(newTypeName(className)), newTermName(holeMethod)),
+          List(
+            TypeApply(Ident(newTermName("manifest")), List(TypeTree(i.tpe))),
+            Literal(Constant(symbolId(i.symbol)))))
       case _ =>
         super.transform(tree)
     }
