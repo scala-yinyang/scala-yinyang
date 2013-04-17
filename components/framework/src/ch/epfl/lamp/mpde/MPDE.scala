@@ -9,15 +9,6 @@ import language.experimental.macros
 import scala.reflect.runtime.universe.definitions.FunctionClass
 import java.util.concurrent.atomic.AtomicLong
 
-object Debug {
-  def show[T](x: => T): T = macro showImpl[T]
-  def showImpl[T](c: Context)(x: c.Expr[T]): c.Expr[T] = {
-    println(c.universe.show(x.tree))
-    println(c.universe.showRaw(x.tree))
-    x
-  }
-}
-
 object YYTransformer {
 
   def apply[C <: Context, T](c: C, dslName: String,
@@ -54,7 +45,7 @@ final class YYTransformer[C <: Context, T](
    * or at runtime.
    */
   def apply[T](block: c.Expr[T]): c.Expr[T] = {
-    log("Body: " + show(block.tree))
+    log("Body: " + showRaw(block.tree))
     // shallow or detect a non-existing feature => return the original block.
     if (!FeatureAnalyzer(block.tree) || shallow)
       block
@@ -141,8 +132,8 @@ final class YYTransformer[C <: Context, T](
   def freeVariables(tree: Tree): List[Symbol] =
     new FreeVariableCollector().collect(tree)
 
-  object FeatureAnalyzer extends ((Tree, Seq[MethodInv]) => Boolean) {
-    def apply(tree: Tree, lifted: Seq[MethodInv] = Seq()): Boolean = {
+  object FeatureAnalyzer extends ((Tree, Seq[DSLFeature]) => Boolean) {
+    def apply(tree: Tree, lifted: Seq[DSLFeature] = Seq()): Boolean = {
       val (virtualized, lifted) = VirtualizationTransformer(tree)
       val st = System.currentTimeMillis()
       val res = new FeatureAnalyzer(lifted).analyze(virtualized)
@@ -152,32 +143,19 @@ final class YYTransformer[C <: Context, T](
 
   }
 
-  private final class FeatureAnalyzer(val lifted: Seq[MethodInv]) extends Traverser {
+  private final class FeatureAnalyzer(val lifted: Seq[DSLFeature]) extends Traverser {
 
-    var methods = mutable.LinkedHashSet[MethodInv]()
+    var methods = mutable.LinkedHashSet[DSLFeature]()
 
     var parameterLists: List[List[Type]] = Nil
 
-    def addIfNotLifted(m: MethodInv) =
+    def addIfNotLifted(m: DSLFeature) =
       if (!lifted.exists(x => x.name == m.name)) {
         log(s"adding ${m}")
         methods += m
       }
 
-    // to skip object's method invocation
-    def isChecked(tree: Tree): Boolean =
-      tree.symbol != null && tree.symbol.isModule
-
-    def getObjType(obj: Tree): Type = {
-      val universe = c.universe.asInstanceOf[scala.reflect.internal.Types]
-      val tp: Type =
-        // if (obj.symbol != null && obj.symbol.isTerm && universe.isSingleType(obj.tpe.asInstanceOf[universe.Type]))
-        // obj.symbol.asTerm.typeSignature
-        // else
-        obj.tpe
-
-      tp
-    }
+    def getObjType(obj: Tree): Type = obj.tpe
 
     override def traverse(tree: Tree) = tree match {
       case Apply(ap @ Apply(_, _), args) => // TODO What about type apply?
@@ -188,18 +166,17 @@ final class YYTransformer[C <: Context, T](
         for (x <- args) traverse(x)
       case Apply(Select(obj, name), args) =>
         parameterLists = args.map(_.tpe) :: parameterLists
-        addIfNotLifted(MethodInv(Some(getObjType(obj)), name.toString, Nil, parameterLists))
+        addIfNotLifted(DSLFeature(Some(getObjType(obj)), name.toString, Nil, parameterLists))
         parameterLists = Nil
         for (x <- args) traverse(x)
       case Apply(TypeApply(Select(obj, name), targs), args) =>
         parameterLists = args.map(_.tpe) :: parameterLists
-        addIfNotLifted(MethodInv(Some(getObjType(obj)), name.toString, targs, parameterLists))
+        addIfNotLifted(DSLFeature(Some(getObjType(obj)), name.toString, targs, parameterLists))
         parameterLists = Nil
         for (x <- args) traverse(x)
-      // TODO think about this feature.
       case tr @ Select(obj, name) =>
         log(s"Select obj.tpe = ${obj.tpe}")
-        addIfNotLifted(MethodInv(Some(getObjType(obj)), name.toString, Nil, Nil))
+        addIfNotLifted(DSLFeature(Some(getObjType(obj)), name.toString, Nil, Nil))
       case tr =>
         log(s"Not Checking: ${showRaw(tr)}")
         super.traverse(tree)
@@ -211,11 +188,11 @@ final class YYTransformer[C <: Context, T](
       //Finds the first element of the sequence satisfying a predicate, if any.
       (methods ++ lifted).toSeq.find(!methodsExist(_)) match {
         case Some(methodError) if lifted.contains(methodError) =>
-          // report a language error
+          c.error(tree.pos, s"Language feature not supported.")
           false
         case Some(methodError) =>
           // missing method
-          c.error(tree.pos, s"error: Method $methodError not found.")
+          c.error(tree.pos, s"Method $methodError not found.")
           false
         case None =>
           true
@@ -224,12 +201,12 @@ final class YYTransformer[C <: Context, T](
 
   }
 
-  case class MethodInv(
+  case class DSLFeature(
     tpe: Option[Type], name: String, targs: List[Tree], args: List[List[Type]])
 
-  def methodsExist(methods: MethodInv*): Boolean = {
+  def methodsExist(methods: DSLFeature*): Boolean = {
     val methodSet = methods.toSet
-    def application(meth: MethodInv): Tree = {
+    def application(meth: DSLFeature): Tree = {
 
       def dummyTree(tpe: Type) = tpe match {
         case typeTag @ ThisType(_) => This(newTypeName(className))
@@ -242,21 +219,20 @@ final class YYTransformer[C <: Context, T](
       def app(tree: Tree) = meth.targs match {
         case Nil => tree
         case tparams: List[Tree] =>
-          TypeApply(tree, if (rep)
-            meth.targs
-          else
-            meth.targs map { x => constructPolyTree(x.tpe) })
+          TypeApply(tree, meth.targs map { x => constructPolyTree(x.tpe) })
       }
-
-      meth.tpe.map(dummyTree(_)).orElse(Some(This(className)))
+      log(s"Args ${meth.args}")
+      val res = meth.tpe.map(dummyTree(_)).orElse(Some(This(className)))
         .map(x => app(Select(x, newTermName(meth.name))))
         .map(f => meth.args.foldLeft(f)((x, y) => Apply(x, y.map(dummyTree)))).get
+      log(s"${showRaw(res)}")
+      res
     }
 
     val res = try {
       // block containing only dummy methods that were applied.
-      val block = c.resetAllAttrs(Block(composeDSL(
-        Block(methodSet.map(x => application(x)).toSeq: _*)), Literal(Constant(()))))
+      val block = Block(composeDSL(Block(
+        methodSet.map(x => application(x)).toSeq: _*)), Literal(Constant(())))
       log(s"Block: ${show(block)})")
       log(s"Block raw: ${showRaw(block)})")
       c.typeCheck(block)
@@ -413,33 +389,33 @@ final class YYTransformer[C <: Context, T](
 
   private final class VirtualizationTransformer extends Transformer {
 
-    val lifted = mutable.ArrayBuffer[MethodInv]()
+    val lifted = mutable.ArrayBuffer[DSLFeature]()
     override def transform(tree: Tree): Tree = {
       tree match {
         case t @ If(cond, then, elze) =>
-          lifted += MethodInv(None, "__ifThenElse", Nil, List(List(cond.tpe, then.tpe, elze.tpe)))
+          lifted += DSLFeature(None, "__ifThenElse", Nil, List(List(cond.tpe, then.tpe, elze.tpe)))
           method("__ifThenElse", List(transform(cond), transform(then), transform(elze)))
 
         case ValDef(mods, sym, tpt, rhs) if mods.hasFlag(Flag.MUTABLE) =>
-          lifted += MethodInv(None, "__newVar", Nil, List(List(rhs.tpe)))
+          lifted += DSLFeature(None, "__newVar", Nil, List(List(rhs.tpe)))
           ValDef(mods, sym, transform(tpt), method("__newVar", List(transform(rhs))))
 
         case Return(e) =>
-          lifted += MethodInv(None, "__return", Nil, List(List(e.tpe)))
+          lifted += DSLFeature(None, "__return", Nil, List(List(e.tpe)))
           method("__return", List(transform(e)))
 
         case Assign(lhs, rhs) =>
-          lifted += MethodInv(None, "__assign", Nil, List(List(lhs.tpe, rhs.tpe)))
+          lifted += DSLFeature(None, "__assign", Nil, List(List(lhs.tpe, rhs.tpe)))
           method("__assign", List(transform(lhs), transform(rhs)))
 
         case LabelDef(sym, List(), If(cond, Block(body :: Nil, Apply(Ident(label),
           List())), Literal(Constant()))) if label == sym => // While
-          lifted += MethodInv(None, "__whileDo", Nil, List(List(cond.tpe, body.tpe)))
+          lifted += DSLFeature(None, "__whileDo", Nil, List(List(cond.tpe, body.tpe)))
           method("__whileDo", List(transform(cond), transform(body)))
 
         case LabelDef(sym, List(), Block(body :: Nil, If(cond, Apply(Ident(label),
           List()), Literal(Constant())))) if label == sym => // DoWhile
-          lifted += MethodInv(None, "__doWhile", Nil, List(List(cond.tpe, body.tpe)))
+          lifted += DSLFeature(None, "__doWhile", Nil, List(List(cond.tpe, body.tpe)))
           method("__doWhile", List(transform(body), transform(cond)))
         case _ =>
           super.transform(tree)
@@ -590,24 +566,25 @@ final class YYTransformer[C <: Context, T](
       TypeTree(another)
   }
 
+  def toType(s: Symbol) = s.name
   def constructPolyTree(inType: Type): Tree = inType match {
 
     case TypeRef(pre, sym, Nil) if rewiredToThis(inType.typeSymbol.name.toString) =>
       SingletonTypeTree(This(tpnme.EMPTY))
 
     case TypeRef(pre, sym, Nil) =>
-      Select(This(newTypeName(className)), inType.typeSymbol.name)
+      Select(This(newTypeName(className)), toType(inType.typeSymbol))
 
     case TypeRef(pre, sym, args) if isFunctionType(inType) =>
-      AppliedTypeTree(Select(Ident(newTermName("scala")), sym.name),
+      AppliedTypeTree(Select(Ident(newTermName("scala")), toType(sym)),
         args map { x => constructPolyTree(x) })
 
     case TypeRef(pre, sym, args) =>
-      AppliedTypeTree(Select(This(newTypeName(className)), sym.name),
+      AppliedTypeTree(Select(This(newTypeName(className)), toType(sym)),
         args map { x => constructPolyTree(x) })
 
     case ConstantType(t) =>
-      Select(This(newTypeName(className)), inType.typeSymbol.name)
+      Select(This(newTypeName(className)), toType(inType.typeSymbol))
 
     case SingleType(pre, name) if rewiredToThis(inType.typeSymbol.name.toString) =>
       SingletonTypeTree(This(tpnme.EMPTY))
@@ -616,9 +593,10 @@ final class YYTransformer[C <: Context, T](
       SingletonTypeTree(Select(This(newTypeName(className)),
         newTermName(inType.typeSymbol.name.toString)))
 
-    case SingleType(pre, name) if inType.typeSymbol.isClass =>
-      Select(This(newTypeName(className)),
-        newTermName(inType.typeSymbol.name.toString))
+    case s @ SingleType(pre, name) if inType.typeSymbol.isClass =>
+      constructPolyTree(
+        s.asInstanceOf[scala.reflect.internal.Types#SingleType]
+          .underlying.asInstanceOf[YYTransformer.this.c.universe.Type])
 
     case another @ _ =>
       println(("!" * 10) + s"""Missed: $inType = ${
@@ -729,4 +707,14 @@ final class YYTransformer[C <: Context, T](
 
   def log(s: => String) = if (debug) println(s)
 
+}
+
+object Debug {
+
+  def show[T](x: => T): T = macro showImpl[T]
+  def showImpl[T](c: Context)(x: c.Expr[T]): c.Expr[T] = {
+    import c.universe._
+    println(s"Tree ${showRaw(x)}")
+    x
+  }
 }

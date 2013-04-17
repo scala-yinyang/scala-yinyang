@@ -8,8 +8,6 @@ import shallow.optigraph._
 @RunWith(classOf[JUnitRunner])
 class OptiMLSpec extends FlatSpec with ShouldMatchers {
 
-  // TypeApply(Select(Literal(Constant(())), newTermName("asInstanceOf")), List(AppliedTypeTree(Select(This(newTypeName("generated$liftedOptiGraph2")), newTypeName("Rep")), List(Select(This(newTypeName("generated$liftedOptiGraph2")), newTermName("Graph"))))))
-  // TypeApply(Select(Literal(Constant(())), newTermName("asInstanceOf")), List(AppliedTypeTree(Select(This(newTypeName("generated$liftedOptiGraph2")), newTypeName("Rep")), List(Select(This(newTypeName("generated$liftedOptiGraph2")), newTermName("Graph"))))))
   /*"A basic OptiML test should" should "rewire" in {
     val y = 1
     val x: Int = optiML {
