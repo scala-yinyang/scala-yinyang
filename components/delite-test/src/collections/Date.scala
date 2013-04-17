@@ -1,7 +1,5 @@
 package collections
 
-import collections.Date
-
 object Date {
   def apply(str: String): Date = new Date(str)
   private[collections] def apply(d: Date): Date = new Date(d.toString)

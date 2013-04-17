@@ -19,10 +19,14 @@ object YinYangBuild extends Build {
     .setPreference(AlignParameters, true)
     .setPreference(AlignSingleLineCaseStatements, true)
   }
-  lazy val scalaOrg = "org.scala-lang"
-  lazy val defaults = Defaults.defaultSettings ++ formatSettings ++ Seq(
-    // scala version + resolver
-    scalaVersion := "2.10.2-SNAPSHOT",
+  lazy val scalaOrg = "org.scala-lang.virtualized"
+  lazy val scalaSettings = Defaults.defaultSettings ++ Seq(
+    scalaHome := Some(file(Path.userHome + "/work/devl/scalac/scala-virtualized/build/pack")),
+    scalaOrganization := scalaOrg,
+    scalaVersion := "2.10.1-RC1"
+  )
+
+  lazy val defaults = scalaSettings ++ formatSettings ++ Seq(
     resolvers in ThisBuild += ScalaToolsSnapshots,
     resolvers +=  "OSSH" at "https://oss.sonatype.org/content/groups/public",
     resolvers += Resolver.sonatypeRepo("snapshots"),
@@ -40,26 +44,25 @@ object YinYangBuild extends Build {
     libraryDependencies <<= scalaVersion(ver => Seq(
       scalaOrg % "scala-library" % ver,
       scalaOrg % "scala-reflect" % ver,
-      scalaOrg % "scala-compiler" % ver, 
+      scalaOrg % "scala-compiler" % ver,
       "org.scalatest" % "scalatest_2.10" % "2.0.M6-SNAP7" % "test",
       "junit" % "junit" % "4.8.1" % "test" // we need JUnit explicitly
     )),
 
     // testing
     parallelExecution in Test := false
-    // testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-oD")
   )
-  
+
   // delite settings
- /* lazy val deliteSettings = defaults ++ Seq(
+  lazy val deliteSettings = defaults ++ Seq(
    libraryDependencies += "stanford-ppl" % "optiml_2.10" % "0.1-SNAPSHOT",
    libraryDependencies += "stanford-ppl" % "optigraph_2.10" % "0.1-SNAPSHOT",
    libraryDependencies += "EPFL" % "lms_2.10.1-RC1" % "0.3-SNAPSHOT"
-  )*/
+  )
 
   lazy val _yinyang           = Project(id = "yinyang",                  base = file(".")) aggregate (framework, vector_dsl, vector_dsl_test)
   lazy val framework       = Project(id = "yinyang-framework",        base = file("components/framework"), settings = defaults)
   lazy val vector_dsl      = Project(id = "yinyang-vector-dsl",       base = file("components/dsls/vector"), settings = defaults) dependsOn(framework)
   lazy val vector_dsl_test = Project(id = "yinyang-vector-dsl-test",  base = file("components/dsls/vector-test"), settings = defaults) dependsOn(framework, vector_dsl)
-//  lazy val delite_test = Project(id = "delite-test",  base = file("components/delite-test"), settings = deliteSettings) dependsOn(framework)
+  lazy val delite_test = Project(id = "delite-test",  base = file("components/delite-test"), settings = deliteSettings) dependsOn(framework)
 }

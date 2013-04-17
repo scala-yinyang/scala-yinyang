@@ -58,7 +58,7 @@ final class YYTransformer[C <: Context, T](
     // shallow or detect a non-existing feature => return the original block.
     if (!FeatureAnalyzer(block.tree) || shallow)
       block
-    else { // ascription according to original types
+    else {
       // mark captured variables as holes
       val allCaptured = freeVariables(block.tree)
       def transform(holes: List[Int], idents: List[Symbol])(block: Tree): Tree =
@@ -476,15 +476,6 @@ final class YYTransformer[C <: Context, T](
   }
 
   private final class ScopeInjectionTransformer extends Transformer {
-    // TODO fix this
-    val notLiftedTypes: Set[Type] = Set()
-    /*Set(
-      c.universe.typeOf[scala.math.Numeric.IntIsIntegral.type],
-      c.universe.typeOf[scala.math.Numeric.DoubleIsFractional.type],
-      c.universe.typeOf[scala.reflect.ClassTag[Int]].erasure)*/
-
-    def isLifted(tp: Type): Boolean =
-      !(notLiftedTypes exists (_ =:= tp.erasure))
 
     private[this] final def isHole(tree: Tree): Boolean =
       tree match {
@@ -508,9 +499,7 @@ final class YYTransformer[C <: Context, T](
         }
 
         case typTree: TypTree if typTree.tpe != null =>
-          //TODO move it to tree construction methods (and inject to them)
-          if (isLifted(typTree.tpe)) constructTypeTree(typTree.tpe)
-          else constructNotLiftedTree(typTree.tpe)
+          constructTypeTree(typTree.tpe)
 
         // re-wire objects
         case s @ Select(Select(inn, t: TermName), name) // package object goes to this
@@ -579,6 +568,7 @@ final class YYTransformer[C <: Context, T](
       false
   }
 
+  /* Do we really need this */
   def constructNotLiftedTree(inType: Type): Tree = inType match {
     case TypeRef(pre, sym, Nil) =>
       Select(This(newTypeName(className)), inType.typeSymbol.name)
