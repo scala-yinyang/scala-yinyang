@@ -102,7 +102,7 @@ final class YYTransformer[C <: Context, T](
            * If DSL need run-time info send it to run-time and install recompilation guard.
            */
           val programId = new scala.util.Random().nextLong
-          val retType: String = block.tree.tpe.toString
+          val retType = block.tree.tpe.toString
           val functionType = s"""${(0 until args(holes).length).map(y => "scala.Any").mkString("(", ", ", ")")} => ${retType}"""
           val refs = reqVars filterNot (isPrimitive)
           val dslInit = s"""
@@ -197,7 +197,7 @@ final class YYTransformer[C <: Context, T](
         parameterLists = Nil
         for (x <- args) traverse(x)
       // TODO think about this feature.
-      case tr @ Select(obj, name) => //if isChecked(obj) && tr.symbol.isMethod
+      case tr @ Select(obj, name) =>
         log(s"Select obj.tpe = ${obj.tpe}")
         addIfNotLifted(MethodInv(Some(getObjType(obj)), name.toString, Nil, Nil))
       case tr =>
@@ -334,7 +334,7 @@ final class YYTransformer[C <: Context, T](
   }
 
   object AscriptionTransformer extends (Tree => Tree) {
-    def apply(tree: Tree) = tree //new AscriptionTransformer().transform(tree)
+    def apply(tree: Tree) = new AscriptionTransformer().transform(tree)
   }
 
   private final class AscriptionTransformer extends Transformer {
@@ -477,10 +477,11 @@ final class YYTransformer[C <: Context, T](
 
   private final class ScopeInjectionTransformer extends Transformer {
     // TODO fix this
-    val notLiftedTypes: Set[Type] = Set(
+    val notLiftedTypes: Set[Type] = Set()
+    /*Set(
       c.universe.typeOf[scala.math.Numeric.IntIsIntegral.type],
       c.universe.typeOf[scala.math.Numeric.DoubleIsFractional.type],
-      c.universe.typeOf[scala.reflect.ClassTag[Int]].erasure)
+      c.universe.typeOf[scala.reflect.ClassTag[Int]].erasure)*/
 
     def isLifted(tp: Type): Boolean =
       !(notLiftedTypes exists (_ =:= tp.erasure))
@@ -507,12 +508,9 @@ final class YYTransformer[C <: Context, T](
         }
 
         case typTree: TypTree if typTree.tpe != null =>
-          if (isLifted(typTree.tpe)) {
-            constructTypeTree(typTree.tpe)
-          } else {
-            //TODO move it to tree construction methods (and inject to them)
-            constructNotLiftedTree(typTree.tpe)
-          }
+          //TODO move it to tree construction methods (and inject to them)
+          if (isLifted(typTree.tpe)) constructTypeTree(typTree.tpe)
+          else constructNotLiftedTree(typTree.tpe)
 
         // re-wire objects
         case s @ Select(Select(inn, t: TermName), name) // package object goes to this
@@ -544,10 +542,6 @@ final class YYTransformer[C <: Context, T](
         case Import(_, _) =>
           EmptyTree
 
-        // ignore the hole
-        case _ if isHole(tree) =>
-          println(s"${"!" * 10} Does this get invoked? ${"!" * 10}")
-          tree
         case _ =>
           super.transform(tree)
       }
