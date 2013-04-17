@@ -19,11 +19,10 @@ object YinYangBuild extends Build {
     .setPreference(AlignParameters, true)
     .setPreference(AlignSingleLineCaseStatements, true)
   }
-  lazy val scalaOrg = "org.scala-lang.virtualized"
+  lazy val scalaOrg = "org.scala-lang"
   lazy val scalaSettings = Defaults.defaultSettings ++ Seq(
-    scalaHome := Some(file(Path.userHome + "/work/devl/scalac/scala-virtualized/build/pack")),
     scalaOrganization := scalaOrg,
-    scalaVersion := "2.10.1-RC1"
+    scalaVersion := "2.10.2-SNAPSHOT"
   )
 
   lazy val defaults = scalaSettings ++ formatSettings ++ Seq(
@@ -54,15 +53,15 @@ object YinYangBuild extends Build {
   )
 
   // delite settings
-  lazy val deliteSettings = defaults ++ Seq(
+/*  lazy val deliteSettings = defaults ++ Seq(
    libraryDependencies += "stanford-ppl" % "optiml_2.10" % "0.1-SNAPSHOT",
    libraryDependencies += "stanford-ppl" % "optigraph_2.10" % "0.1-SNAPSHOT",
    libraryDependencies += "EPFL" % "lms_2.10.1-RC1" % "0.3-SNAPSHOT"
   )
-
+*/
   lazy val _yinyang           = Project(id = "yinyang",                  base = file(".")) aggregate (framework, vector_dsl, vector_dsl_test)
   lazy val framework       = Project(id = "yinyang-framework",        base = file("components/framework"), settings = defaults)
   lazy val vector_dsl      = Project(id = "yinyang-vector-dsl",       base = file("components/dsls/vector"), settings = defaults) dependsOn(framework)
   lazy val vector_dsl_test = Project(id = "yinyang-vector-dsl-test",  base = file("components/dsls/vector-test"), settings = defaults) dependsOn(framework, vector_dsl)
-  lazy val delite_test = Project(id = "delite-test",  base = file("components/delite-test"), settings = deliteSettings) dependsOn(framework)
+  //lazy val delite_test = Project(id = "delite-test",  base = file("components/delite-test"), settings = deliteSettings) dependsOn(framework)
 }
