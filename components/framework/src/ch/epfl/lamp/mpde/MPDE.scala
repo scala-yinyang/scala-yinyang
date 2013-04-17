@@ -1,16 +1,13 @@
-package ch.epfl.lamp
-package yinyang
+package ch.epfl.lamp.yinyang
 
-import scala.collection.mutable.ListBuffer
-import scala.collection.mutable.HashMap
+import ch.epfl.lamp.yinyang.api._
+import scala.collection.mutable
+import mutable.{ ListBuffer, HashMap }
 import scala.collection.immutable.Map
 import scala.reflect.macros.Context
-import scala.collection.mutable
 import language.experimental.macros
-
-import yinyang.api._
-import java.util.concurrent.atomic.AtomicLong
 import scala.reflect.runtime.universe.definitions.FunctionClass
+import java.util.concurrent.atomic.AtomicLong
 
 object Debug {
   def show[T](x: => T): T = macro showImpl[T]
@@ -73,6 +70,7 @@ final class YYTransformer[C <: Context, T](
 
       val dslPre = transform(allCaptured map symbolId, Nil)(block.tree)
 
+      log(s"Pre Eval: ${show(dslPre)}")
       // if the DSL inherits the StaticallyChecked trait reflectively do the static analysis
       if (reflInstance(dslPre).isInstanceOf[StaticallyChecked])
         reflInstance(dslPre).asInstanceOf[StaticallyChecked].staticallyCheck(c)
@@ -334,7 +332,7 @@ final class YYTransformer[C <: Context, T](
   }
 
   object AscriptionTransformer extends (Tree => Tree) {
-    def apply(tree: Tree) = new AscriptionTransformer().transform(tree)
+    def apply(tree: Tree) = tree //new AscriptionTransformer().transform(tree)
   }
 
   private final class AscriptionTransformer extends Transformer {
@@ -417,46 +415,28 @@ final class YYTransformer[C <: Context, T](
     override def transform(tree: Tree): Tree = {
       tree match {
         case t @ If(cond, then, elze) =>
-
-          // if (!featureExists("__ifThenElse", List(cond.tpe, then.tpe, elze.tpe))) {
-          // c.error(tree.pos, "The DSL doesn't support the conditionnal branches!")
-          // }
           lifted += MethodInv(None, "__ifThenElse", Nil, List(List(cond.tpe, then.tpe, elze.tpe)))
           method("__ifThenElse", List(transform(cond), transform(then), transform(elze)))
-        // Variable definition, assignment and return : VariableEmbeddingDSL
+
         case ValDef(mods, sym, tpt, rhs) if mods.hasFlag(Flag.MUTABLE) =>
-          // if (!featureExists("__newVar", List(rhs.tpe))) {
-          // c.error(tree.pos, "The DSL doesn't support the creation of variables!")
-          // }
           lifted += MethodInv(None, "__newVar", Nil, List(List(rhs.tpe)))
-          ValDef(mods, sym, transform(tpt), method("__newVar", List(transform(rhs)))) // If there is a type transformer, it would be good to transform also the type tree
+          ValDef(mods, sym, transform(tpt), method("__newVar", List(transform(rhs))))
 
         case Return(e) =>
-          // if (!featureExists("__return", List(e.tpe))) {
-          // c.error(tree.pos, "The DSL doesn't support the return of values!")
-          // }
           lifted += MethodInv(None, "__return", Nil, List(List(e.tpe)))
           method("__return", List(transform(e)))
 
         case Assign(lhs, rhs) =>
-          // if (!featureExists("__assign", List(lhs.tpe, rhs.tpe))) {
-          // c.error(tree.pos, "The DSL doesn't support the assignment!")
-          // }
           lifted += MethodInv(None, "__assign", Nil, List(List(lhs.tpe, rhs.tpe)))
           method("__assign", List(transform(lhs), transform(rhs)))
 
-        // While and DoWhile: ImperativeDSL
-        case LabelDef(sym, List(), If(cond, Block(body :: Nil, Apply(Ident(label), List())), Literal(Constant()))) if label == sym => // While
-          // if (!featureExists("__whileDo", List(cond.tpe, body.tpe))) {
-          // c.error(tree.pos, "The DSL doesn't support the while loops!")
-          // }
+        case LabelDef(sym, List(), If(cond, Block(body :: Nil, Apply(Ident(label),
+          List())), Literal(Constant()))) if label == sym => // While
           lifted += MethodInv(None, "__whileDo", Nil, List(List(cond.tpe, body.tpe)))
           method("__whileDo", List(transform(cond), transform(body)))
 
-        case LabelDef(sym, List(), Block(body :: Nil, If(cond, Apply(Ident(label), List()), Literal(Constant())))) if label == sym => // DoWhile
-          // if (!featureExists("__doWhile", List(body.tpe, cond.tpe))) {
-          // c.error(tree.pos, "The DSL doesn't support the do-while loops!")
-          // }
+        case LabelDef(sym, List(), Block(body :: Nil, If(cond, Apply(Ident(label),
+          List()), Literal(Constant())))) if label == sym => // DoWhile
           lifted += MethodInv(None, "__doWhile", Nil, List(List(cond.tpe, body.tpe)))
           method("__doWhile", List(transform(body), transform(cond)))
         case _ =>
@@ -484,7 +464,7 @@ final class YYTransformer[C <: Context, T](
         if (toMark contains id)
           Apply(
             TypeApply(Select(This(newTypeName(className)), newTermName(holeMethod)), List(TypeTree(), TypeTree())),
-            List(Apply(TypeApply(Ident(newTermName("manifest")), List(constructPolyTree(i.tpe))), List()),
+            List(Apply(TypeApply(Ident(newTermName("manifest")), List(TypeTree(i.tpe))), List()),
               Literal(Constant(id))))
         else
           super.transform(tree)
@@ -735,13 +715,16 @@ final class YYTransformer[C <: Context, T](
   }
 
   private var _reflInstance: Option[Object] = None
+
   /**
-   * Returns a once initialized DSL instance when it is needed at compile time.
+   * Reflectively instantiate and memoize a DSL instance.
    */
   private def reflInstance(dslDef: Tree) = {
     if (_reflInstance == None) {
+      val st = System.currentTimeMillis()
       _reflInstance = Some(c.eval(
         c.Expr(c.resetAllAttrs(Block(dslDef, constructor(className, List()))))))
+      log(s"Eval time: ${(System.currentTimeMillis() - st)}")
     }
     _reflInstance.get
   }
