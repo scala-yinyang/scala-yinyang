@@ -36,7 +36,7 @@ abstract class PrintDSL
     holes.clear
   }
 
-  def stagingAnalyze(): List[scala.Int] = {
+  def stagingAnalyze(allHoles: List[scala.Int]): List[scala.Int] = {
     reset()
     main()
 

@@ -20,7 +20,7 @@ trait LMSYinYang extends BaseYinYang with BaseExp { self =>
       def hole(m: Manifest[Any], symId: Int): Rep[T] = toAtom(Hole(symId))
     }
 
-  def stagingAnalyze() = Nil
+  def stagingAnalyze(allHoles: List[scala.Int]) = Nil
 }
 
 trait ScalaDSL extends ScalaOpsPkg with ScalaOpsPkgExp with LMSYinYang with CodeGenerator

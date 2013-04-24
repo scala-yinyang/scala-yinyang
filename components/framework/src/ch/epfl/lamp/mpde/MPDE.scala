@@ -68,7 +68,8 @@ final class YYTransformer[C <: Context, T](
 
       // DSL returns what holes it needs
       val reqVars =
-        reflInstance(dslPre).asInstanceOf[BaseYinYang].stagingAnalyze().map(symbolById)
+        reflInstance(dslPre).asInstanceOf[BaseYinYang].stagingAnalyze(allCaptured map symbolId)
+          .map(symbolById)
       val holes = allCaptured diff reqVars
 
       // re-transform the tree with new holes if there are required vars
@@ -134,11 +135,12 @@ final class YYTransformer[C <: Context, T](
 
   object FeatureAnalyzer extends ((Tree, Seq[DSLFeature]) => Boolean) {
     def apply(tree: Tree, lifted: Seq[DSLFeature] = Seq()): Boolean = {
-      val (virtualized, lifted) = VirtualizationTransformer(tree)
+      /*val (virtualized, lifted) = VirtualizationTransformer(tree)
       val st = System.currentTimeMillis()
       val res = new FeatureAnalyzer(lifted).analyze(virtualized)
       log(s"Feature checking time: ${(System.currentTimeMillis() - st)}")
-      res
+      res*/
+      true
     }
 
   }
@@ -310,7 +312,7 @@ final class YYTransformer[C <: Context, T](
   }
 
   object AscriptionTransformer extends (Tree => Tree) {
-    def apply(tree: Tree) = new AscriptionTransformer().transform(tree)
+    def apply(tree: Tree) = tree //new AscriptionTransformer().transform(tree)
   }
 
   private final class AscriptionTransformer extends Transformer {

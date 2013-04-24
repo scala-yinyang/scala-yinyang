@@ -227,7 +227,7 @@ trait VectorDSL
   with Interpreted {
   type Vector[T] = VectorOps[T]
 
-  def stagingAnalyze(): List[scala.Int] = Nil
+  def stagingAnalyze(allHoles: List[scala.Int]): List[scala.Int] = Nil
 
   //TODO (NEW) (TOASK) - where should we provide implementation for methods of VectorOps
   trait VectorOps[T] {

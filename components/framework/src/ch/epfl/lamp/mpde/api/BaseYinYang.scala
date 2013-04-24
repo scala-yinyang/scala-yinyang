@@ -2,7 +2,7 @@ package ch.epfl.lamp.yinyang.api
 
 trait BaseYinYang {
 
-  def stagingAnalyze(): List[Int]
+  def stagingAnalyze(allHoles: List[scala.Int]): List[Int]
 
   abstract class LiftEvidence[T: Manifest, Ret] {
     def hole(tpe: Manifest[Any], symbolId: Int): Ret
