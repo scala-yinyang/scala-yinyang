@@ -421,6 +421,9 @@ final class YYTransformer[C <: Context, T](
           List()), Literal(Constant())))) if label == sym => // DoWhile
           lifted += DSLFeature(None, "__doWhile", Nil, List(List(cond.tpe, body.tpe)))
           method("__doWhile", List(transform(body), transform(cond)))
+        case Apply(Select(qualifier, name), List(arg)) if name.toString equals "$eq$eq" =>
+          lifted += DSLFeature(None, "__equals", Nil, List(List(qualifier.tpe, arg.tpe)))
+          method("__equals", List(transform(qualifier), transform(arg)))
         case _ =>
           super.transform(tree)
       }
