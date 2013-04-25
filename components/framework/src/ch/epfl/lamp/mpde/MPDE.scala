@@ -15,8 +15,9 @@ object YYTransformer {
                              shallow: Boolean = true,
                              debug: Boolean = false,
                              rep: Boolean = false,
-                             refCheck: Boolean = false) =
-    new YYTransformer(c, dslName, shallow, debug, rep)
+                             refCheck: Boolean = false,
+                             slickHack: Boolean = false) =
+    new YYTransformer(c, dslName, shallow, debug, rep, slickHack)
 
   protected[yinyang] val uID = new AtomicLong(0)
 }
@@ -28,6 +29,7 @@ final class YYTransformer[C <: Context, T](
   val shallow: Boolean = false,
   val debug: Boolean = false,
   val rep: Boolean = false,
+  val slickHack: Boolean = false,
   val mainMethod: String = "main") {
   import c.universe._
 
@@ -501,7 +503,11 @@ final class YYTransformer[C <: Context, T](
             val liftedTargs = targs map { x: Tree => constructPolyTree(x.tpe) }
             TypeApply(transform(mth), liftedTargs)
           } else {
-            val liftedTargs = targs map (transform(_))
+            val liftedTargs =
+              if (slickHack)
+                targs
+              else
+                targs map (transform(_))
             TypeApply(transform(mth), liftedTargs)
           }
 
@@ -581,9 +587,15 @@ final class YYTransformer[C <: Context, T](
       AppliedTypeTree(Select(Ident(newTermName("scala")), toType(sym)),
         args map { x => constructPolyTree(x) })
 
-    case TypeRef(pre, sym, args) =>
+    case TypeRef(pre, sym, args) => {
+      val liftedArgs =
+        if (slickHack)
+          args map { x => TypeTree(x) }
+        else
+          args map { x => constructPolyTree(x) }
       AppliedTypeTree(Select(This(newTypeName(className)), toType(sym)),
-        args map { x => constructPolyTree(x) })
+        liftedArgs)
+    }
 
     case ConstantType(t) =>
       Select(This(newTypeName(className)), toType(inType.typeSymbol))
