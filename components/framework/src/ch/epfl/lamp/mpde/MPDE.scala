@@ -138,12 +138,11 @@ final class YYTransformer[C <: Context, T](
 
   object FeatureAnalyzer extends ((Tree, Seq[DSLFeature]) => Boolean) {
     def apply(tree: Tree, lifted: Seq[DSLFeature] = Seq()): Boolean = {
-      /*val (virtualized, lifted) = VirtualizationTransformer(tree)
+      val (virtualized, lifted) = VirtualizationTransformer(tree)
       val st = System.currentTimeMillis()
       val res = new FeatureAnalyzer(lifted).analyze(virtualized)
       log(s"Feature checking time: ${(System.currentTimeMillis() - st)}")
-      res*/
-      true
+      res
     }
 
   }
@@ -315,7 +314,7 @@ final class YYTransformer[C <: Context, T](
   }
 
   object AscriptionTransformer extends (Tree => Tree) {
-    def apply(tree: Tree) = tree //new AscriptionTransformer().transform(tree)
+    def apply(tree: Tree) = new AscriptionTransformer().transform(tree)
   }
 
   private final class AscriptionTransformer extends Transformer {
