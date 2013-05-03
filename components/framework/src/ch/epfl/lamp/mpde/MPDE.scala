@@ -61,15 +61,18 @@ final class YYTransformer[C <: Context, T](
 
       val dslPre = transform(allCaptured map symbolId, Nil)(block.tree)
 
-      log(s"Pre Eval: ${show(dslPre)}")
       // if the DSL inherits the StaticallyChecked trait reflectively do the static analysis
-      if (reflInstance(dslPre).isInstanceOf[StaticallyChecked])
-        reflInstance(dslPre).asInstanceOf[StaticallyChecked].staticallyCheck(c)
+      if (dslType <:< typeOf[StaticallyChecked])
+        reflInstance[StaticallyChecked](dslPre).staticallyCheck(new Reporter(c))
 
       // DSL returns what holes it needs
-      val reqVars =
-        reflInstance(dslPre).asInstanceOf[BaseYinYang].stagingAnalyze(allCaptured map symbolId)
-          .map(symbolById)
+      val reqVars = dslType match {
+        case tpe if tpe <:< typeOf[FullyStaged] =>
+          allCaptured
+        case tpe =>
+          reflInstance[BaseYinYang](dslPre).requiredHoles.map(symbolById)
+      }
+
       val holes = allCaptured diff reqVars
 
       // re-transform the tree with new holes if there are required vars
@@ -79,17 +82,17 @@ final class YYTransformer[C <: Context, T](
       def args(holes: List[Symbol]): String =
         holes.map({ y: Symbol => y.name.decoded }).mkString("", ",", "")
 
-      val dslTree = reflInstance(dsl) match {
-        case dslInst: CodeGenerator if reqVars.isEmpty =>
+      val dslTree = dslType match {
+        case tpe if tpe <:< typeOf[CodeGenerator] && reqVars.isEmpty =>
           /*
            * If DSL does not require run-time data it can be completely
            * generated at compile time and wired for execution.
            */
           c parse s"""
-            ${dslInst generateCode className}
+            ${reflInstance[CodeGenerator](dsl) generateCode className}
             new $className().apply(${args(allCaptured)})
           """
-        case dslInst =>
+        case _ =>
           /*
            * If DSL need run-time info send it to run-time and install recompilation guard.
            */
@@ -103,15 +106,15 @@ final class YYTransformer[C <: Context, T](
             val refs: Seq[Any] = Seq(${refs map (_.name.decoded) mkString ", "})
           """
 
-          val guardedExecute = c parse dslInit + (dslInst match {
-            case _: CodeGenerator => s"""
+          val guardedExecute = c parse dslInit + (dslType match {
+            case t if t <:< typeOf[CodeGenerator] => s"""
               def recompile(): () => Any = dslInstance.compile[$retType, $functionType]
               val program = ch.epfl.lamp.yinyang.runtime.YYStorage.$guardType[$functionType](
                 ${programId}L, values, refs, recompile
               )
               program.apply(${args(holes)})
             """
-            case _: Interpreted => s"""
+            case t if t <:< typeOf[Interpreted] => s"""
               def invalidate(): () => Any = () => dslInstance.reset
               ch.epfl.lamp.yinyang.runtime.YYStorage.$guardType[Any](
                 ${programId}L, values, refs, invalidate
@@ -441,7 +444,10 @@ final class YYTransformer[C <: Context, T](
         Apply(
           Select(This(newTypeName(className)), newTermName(holeMethod)),
           List(
-            TypeApply(Ident(newTermName("manifest")), List(TypeTree(i.tpe))),
+            TypeApply(
+              Select(Select(Select(Select(Select(Ident(newTermName("scala")), newTermName("reflect")),
+                newTermName("runtime")), nme.PACKAGE), newTermName("universe")),
+                newTermName("typeTag")), List(TypeTree(i.tpe))),
             Literal(Constant(symbolId(i.symbol)))))
       case _ =>
         super.transform(tree)
@@ -528,6 +534,7 @@ final class YYTransformer[C <: Context, T](
   val holeMethod = "hole"
   val className =
     s"generated$$${dslName.filter(_ != '.') + YYTransformer.uID.incrementAndGet}"
+  val dslType = c.mirror.staticClass(dslName).toType
   def constructTypeTree(inType: Type) = if (rep)
     constructRepTree(inType)
   else
@@ -680,14 +687,14 @@ final class YYTransformer[C <: Context, T](
   /**
    * Reflectively instantiate and memoize a DSL instance.
    */
-  private def reflInstance(dslDef: Tree) = {
+  private def reflInstance[T](dslDef: Tree): T = {
     if (_reflInstance == None) {
       val st = System.currentTimeMillis()
       _reflInstance = Some(c.eval(
         c.Expr(c.resetAllAttrs(Block(dslDef, constructor(className, List()))))))
       log(s"Eval time: ${(System.currentTimeMillis() - st)}")
     }
-    _reflInstance.get
+    _reflInstance.get.asInstanceOf[T]
   }
 
   private def constructor = Apply(Select(New(Ident(newTypeName(className))),

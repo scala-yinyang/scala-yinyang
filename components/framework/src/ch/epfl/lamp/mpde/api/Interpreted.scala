@@ -1,7 +1,20 @@
 package ch.epfl.lamp.yinyang
 package api
 
-trait Interpreted {
+import reflect.runtime.universe.TypeTag
+
+/**
+ * Base trait for interpreted DSLs.
+ */
+trait Interpreted { this: BaseYinYang =>
+
+  /**
+   * Resets the internal state of the DSL.
+   */
   def reset(): Unit
-  def interpret[T: Manifest](params: Any*): T
+
+  /**
+   * Accepts the captured values and returns the result.
+   */
+  def interpret[T: TypeTag](params: Any*): T
 }

@@ -3,7 +3,7 @@ package dsl.print
 import ch.epfl.lamp.yinyang.api._
 import base._
 import scala.collection._
-
+import reflect.runtime.universe._
 /** The int printing DSL */
 abstract class PrintDSL
   extends ScalaCompile with CodeGenerator with MiniIntDSL
@@ -36,7 +36,7 @@ abstract class PrintDSL
     holes.clear
   }
 
-  def stagingAnalyze(allHoles: List[scala.Int]): List[scala.Int] = {
+  def requiredHoles: List[scala.Int] = {
     reset()
     main()
 
@@ -49,7 +49,7 @@ abstract class PrintDSL
     val distinctHoles = holes.distinct
     s"""
       class $className extends Function${distinctHoles.size}[${"Int, " * distinctHoles.size} Int] {
-        def apply(${distinctHoles.map(y => y.toString + ": " + y.tpe.toString).mkString("", ",", "")}) = {
+        def apply(${distinctHoles.map(y => y.toString + ": " + y.tpe.tpe.toString).mkString("", ",", "")}) = {
           ${sb.toString}
           ${res.toString}
         }
@@ -57,7 +57,7 @@ abstract class PrintDSL
     """
   }
 
-  override def interpret[T: Manifest](params: Any*): T = {
+  override def interpret[T: TypeTag](params: Any*): T = {
     if (compiledCode == null) {
       compiledCode = compile[T, () => T]
     }
@@ -71,7 +71,7 @@ trait MiniIntDSL extends BaseYinYang { self: CodeGenerator =>
 
   type Int = IntOps
 
-  val holes: mutable.ArrayBuffer[Hole] = new mutable.ArrayBuffer()
+  val holes: mutable.ArrayBuffer[Hole[_]] = new mutable.ArrayBuffer()
 
   trait IntOps {
     def +(that: Int): Int = IntPlus(IntOps.this, that)
@@ -91,14 +91,14 @@ trait MiniIntDSL extends BaseYinYang { self: CodeGenerator =>
 
   implicit object LiftInt extends LiftEvidence[scala.Int, Int] {
     def lift(v: scala.Int): Int = IntConst(v)
-    def hole(tpe: Manifest[Any], symbolId: scala.Int): Int = {
+    def hole(tpe: TypeTag[scala.Int], symbolId: scala.Int): Int = {
       val h = Hole(tpe, symbolId)
       holes += h
       h
     }
   }
 
-  case class Hole(tpe: Manifest[Any], symbolId: scala.Int) extends IntOps {
+  case class Hole[T](tpe: TypeTag[T], symbolId: scala.Int) extends IntOps {
     override def toString = "x" + symbolId
     def value = -1
   }
@@ -108,7 +108,7 @@ trait MiniIntDSL extends BaseYinYang { self: CodeGenerator =>
 trait MiniUnitDSL extends BaseYinYang {
   implicit object LiftUnit extends LiftEvidence[scala.Unit, Unit] {
     def lift(v: scala.Unit): Unit = ()
-    def hole(tpe: Manifest[Any], symbolId: scala.Int): Unit = {
+    def hole(tpe: TypeTag[scala.Unit], symbolId: scala.Int): Unit = {
       ()
     }
   }

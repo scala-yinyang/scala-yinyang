@@ -10,7 +10,7 @@ object YYStorage {
   // DSL instances
   final private val programs = new ConcurrentHashMap[Long, Any]
 
-  // @inline
+  @inline
   final def lookup[Ret](id: Long, dsl: => Ret): Ret = {
     var program: Any = programs.get(id)
     if (program == null) {
@@ -24,7 +24,7 @@ object YYStorage {
   // Guards
   final private val guards = new ConcurrentHashMap[Long, GuardState]()
 
-  // @inline
+  @inline
   private final def fetchGuard(id: Long, values: Seq[Any], refs: Seq[Any], recompile: () => Any): GuardState = {
     val anyRefs = refs.asInstanceOf[Seq[AnyRef]]
     var guard = guards.get(id)
@@ -36,11 +36,11 @@ object YYStorage {
   }
 
   // avoids instantiation of the arguments
-  // @inline
+  @inline
   final private def createGuard(values: Seq[Any], refs: Seq[AnyRef], recompile: () => Any) =
     new GuardState(values, refs.map(x => new WeakReference(x)), recompile())
 
-  // @inline
+  @inline
   final def checkRef[Ret](id: Long, values: Seq[Any], refs: Seq[Any], recompile: () => Any): Ret = {
     val guard = fetchGuard(id, values, refs, recompile)
 
@@ -50,7 +50,7 @@ object YYStorage {
     guard.function.asInstanceOf[Ret]
   }
 
-  // @inline
+  @inline
   final def checkEq[Ret](id: Long, values: Seq[Any], refs: Seq[Any], recompile: () => Any): Ret = {
     val anyRefs = refs.asInstanceOf[Seq[AnyRef]]
     val guard = fetchGuard(id, values, refs, recompile)

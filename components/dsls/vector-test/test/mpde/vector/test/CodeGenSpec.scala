@@ -4,6 +4,7 @@ import org.scalatest._
 import dsl.print._
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
+import reflect.runtime.universe._
 
 @RunWith(classOf[JUnitRunner])
 class CodeGenSpec extends FlatSpec with ShouldMatchers {
@@ -65,7 +66,7 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
   "Runtime code generating" should "recompile" in {
     for (i ← 0 to 2) {
       assert(
-        liftPrintDebug {
+        liftPrint {
           val b = 0
           println(b)
           break(i)

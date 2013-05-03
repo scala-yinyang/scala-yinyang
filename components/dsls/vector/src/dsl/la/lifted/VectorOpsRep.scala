@@ -3,6 +3,7 @@ package dsl.la.rep
 import ch.epfl.lamp.yinyang.api._
 import base._
 import scala.reflect.ClassTag
+import reflect.runtime.universe._
 
 /*
  * This is a prototype implementation of the embedded DSL with Rep[T] types. The Rep[T] marks that the value
@@ -145,12 +146,12 @@ trait IntDSL extends Base {
 
   implicit object LiftInt extends LiftEvidence[Int, Rep[Int]] {
     def lift(v: Int): Rep[Int] = ???
-    def hole(tpe: Manifest[Any], symbolId: Int): Rep[Int] = ???
+    def hole(tpe: TypeTag[Int], symbolId: Int): Rep[Int] = ???
   }
 
   implicit object LiftUnit extends LiftEvidence[scala.Unit, Unit] {
     def lift(v: Unit): Unit = ()
-    def hole(tpe: Manifest[Any], symbolId: Int): Unit = ???
+    def hole(tpe: TypeTag[Unit], symbolId: Int): Unit = ???
   }
 
   //TODO (TOASK) do we need such object
@@ -188,7 +189,7 @@ trait DoubleDSL extends Base {
 
   implicit object LiftDouble extends LiftEvidence[Double, Rep[Double]] {
     def lift(v: Double): Rep[Double] = ???
-    def hole(tpe: Manifest[Any], symbolId: Int): Rep[Double] = ???
+    def hole(tpe: TypeTag[Double], symbolId: Int): Rep[Double] = ???
   }
 
   //TODO (TOASK) do we need such object
@@ -251,7 +252,7 @@ trait ArrayDSL extends Base {
 trait BooleanDSL extends Base {
   implicit object LiftBoolean extends LiftEvidence[Boolean, Rep[Boolean]] {
     def lift(v: Boolean): Rep[Boolean] = ???
-    def hole(tpe: Manifest[Any], symbolId: Int): Rep[Boolean] = ???
+    def hole(tpe: TypeTag[Boolean], symbolId: Int): Rep[Boolean] = ???
   }
 }
 
@@ -264,7 +265,7 @@ trait VectorDSL
   with NumericOps with Base with IfThenElseDSL with Interpreted
   with BaseYinYang {
 
-  def interpret[T](params: Any*) = ???
+  def interpret[T: TypeTag](params: Any*) = ???
 
   type Vector[T] = dsl.la.Vector[T]
 

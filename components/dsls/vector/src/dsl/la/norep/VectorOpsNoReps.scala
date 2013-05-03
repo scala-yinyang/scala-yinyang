@@ -3,6 +3,7 @@ package dsl.la.norep
 import scala.reflect.ClassTag
 import base._
 import ch.epfl.lamp.yinyang.api._
+import reflect.runtime.universe._
 
 trait Base extends BaseYinYang {
   def main(): Any
@@ -33,12 +34,12 @@ trait IntDSL extends Base {
   // v: Else Scala won't let you declare the object with abstract methods
   implicit object LiftInt extends LiftEvidence[scala.Int, Int] {
     def lift(v: scala.Int): Int = null // TODO: Wouldn't this better be a ???
-    def hole(tpe: Manifest[Any], symbolId: scala.Int): Int = null
+    def hole(tpe: TypeTag[scala.Int], symbolId: scala.Int): Int = null
   }
 
   implicit object LiftUnit extends LiftEvidence[scala.Unit, Unit] {
     def lift(v: Unit): Unit = ()
-    def hole(tpe: Manifest[Any], symbolId: scala.Int): Unit = ()
+    def hole(tpe: TypeTag[scala.Unit], symbolId: scala.Int): Unit = ()
   }
 
   implicit object IntOrdering extends Ordering[Int] {
@@ -76,7 +77,7 @@ trait DoubleDSL extends Base {
   //TODO (TOASK) maybe extends LiftEvidence[scala.Double, DoubleDSL#Double]
   implicit object LiftDouble extends LiftEvidence[scala.Double, Double] {
     def lift(v: scala.Double): Double = ???
-    def hole(tpe: Manifest[Any], symbolId: scala.Int): Double = ???
+    def hole(tpe: TypeTag[scala.Double], symbolId: scala.Int): Double = ???
   }
 
   implicit object DoubleOrdering extends Ordering[Double] {
@@ -191,7 +192,7 @@ trait BooleanDSL extends Base {
 
   implicit object LiftBoolean extends LiftEvidence[scala.Boolean, Boolean] {
     def lift(v: scala.Boolean): Boolean = ???
-    def hole(tpe: Manifest[Any], symbolId: Int): Boolean = ???
+    def hole(tpe: TypeTag[scala.Boolean], symbolId: Int): Boolean = ???
   }
 }
 
@@ -227,7 +228,7 @@ trait VectorDSL
   with Interpreted {
   type Vector[T] = VectorOps[T]
 
-  def stagingAnalyze(allHoles: List[scala.Int]): List[scala.Int] = Nil
+  def requiredHoles: List[scala.Int] = Nil
 
   //TODO (NEW) (TOASK) - where should we provide implementation for methods of VectorOps
   trait VectorOps[T] {
@@ -268,7 +269,7 @@ trait VectorDSL
     //    def apply[T <: AnyVal: Numeric: ClassTag](a: Map[Int, T]): Vector[T] = ???
   }
 
-  def interpret[T: Manifest](params: Any*): T = ???
+  def interpret[T: TypeTag](params: Any*): T = ???
 
   /**
    * TODO how are we going to translate to objects and yet remain modular and reusable.

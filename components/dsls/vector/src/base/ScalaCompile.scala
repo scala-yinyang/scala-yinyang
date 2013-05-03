@@ -6,10 +6,11 @@ import scala.tools.nsc.util._
 import scala.tools.nsc.reporters._
 import scala.tools.nsc.io._
 import scala.tools.nsc.interpreter.AbstractFileClassLoader
+import reflect.runtime.universe.TypeTag
 
 import java.io._
 
-trait ScalaCompile extends CodeGenerator {
+trait ScalaCompile { this: CodeGenerator =>
 
   var compiler: Global = _
   var reporter: ConsoleReporter = _
@@ -39,7 +40,7 @@ trait ScalaCompile extends CodeGenerator {
 
   var dumpGeneratedCode = false
 
-  def compile[T: Manifest, Ret]: Ret = {
+  def compile[T: TypeTag, Ret]: Ret = {
     if (this.compiler eq null)
       setupCompiler()
 

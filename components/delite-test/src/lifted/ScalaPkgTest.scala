@@ -20,7 +20,7 @@ trait LMSYinYang extends BaseYinYang with BaseExp { self =>
       def hole(m: Manifest[Any], symId: Int): Rep[T] = toAtom(Hole(symId))
     }
 
-  def stagingAnalyze(allHoles: List[scala.Int]) = Nil
+  def requiredHoles = Nil
 }
 
 trait ScalaDSL extends ScalaOpsPkg with ScalaOpsPkgExp with LMSYinYang with CodeGenerator
@@ -57,7 +57,7 @@ trait ScalaDSL extends ScalaOpsPkg with ScalaOpsPkgExp with LMSYinYang with Code
   /*
    * Ret must be Nothing* => T. If I was only smarter to make this work without a convention :/
    */
-  def compile[T: Manifest, Ret] = {
+  def compile[T: TypeTag, Ret] = {
 
     if (this.compiler eq null)
       setupCompiler()
@@ -85,7 +85,7 @@ trait ScalaDSL extends ScalaOpsPkg with ScalaOpsPkgExp with LMSYinYang with Code
     cls.getConstructor().newInstance().asInstanceOf[Ret]
   }
 
-  def interpret[T: Manifest](params: Nothing*): T = {
+  def interpret[T: TypeTag](params: Nothing*): T = {
     params.length match {
       case 0 =>
         compile[T, () => T].apply
