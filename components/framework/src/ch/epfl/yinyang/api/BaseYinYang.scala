@@ -1,4 +1,4 @@
-package ch.epfl.lamp.yinyang.api
+package ch.epfl.yinyang.api
 
 import reflect.runtime.universe._
 

@@ -1,4 +1,4 @@
-package ch.epfl.lamp.yinyang
+package ch.epfl.yinyang
 package api
 import scala.reflect.macros.Context
 

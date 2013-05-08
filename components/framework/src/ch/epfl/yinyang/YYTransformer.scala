@@ -1,6 +1,6 @@
-package ch.epfl.lamp.yinyang
+package ch.epfl.yinyang
 
-import ch.epfl.lamp.yinyang.api._
+import ch.epfl.yinyang.api._
 import scala.collection.mutable
 import mutable.{ ListBuffer, HashMap }
 import scala.collection.immutable.Map
@@ -9,27 +9,165 @@ import language.experimental.macros
 import scala.reflect.runtime.universe.definitions.FunctionClass
 import java.util.concurrent.atomic.AtomicLong
 
-object YYTransformer {
+class YYConfig(val t: Map[String, Any]) {
+  val shallow: Boolean = t("shallow").asInstanceOf[Boolean]
+  val debug: Boolean = t("debug").asInstanceOf[Boolean]
+  val mainMethod: String = t("mainMethod").asInstanceOf[String]
+}
 
-  def apply[C <: Context, T](c: C, dslName: String,
-                             shallow: Boolean = true,
-                             debug: Boolean = false,
-                             rep: Boolean = false,
-                             refCheck: Boolean = false) =
-    new YYTransformer(c, dslName, shallow, debug, rep)
+abstract class TypeTransformer[C <: Context](val c: C) {
+  trait TypeContext
+  case object TypeApplyCtx extends TypeContext
+  case object OtherCtx extends TypeContext
+
+  def transform(ctx: TypeContext, t: c.universe.Type): c.universe.Tree
+
+  def rewiredToThis(s: String) = s == "package" || s == "Predef"
+  var className: String = _
+}
+
+class LMSTransformer[C <: Context](ctx: C) extends TypeTransformer[C](ctx) with PolyTransformerLike[C] {
+  import c.universe._
+
+  /*
+   * transform Type1[Type2[...]] => Rep[Type1[Type2[...]]] for non-function types
+   */
+  def constructRepTree(ctx: TypeContext, inType: Type): Tree = {
+    val universe = c.universe.asInstanceOf[scala.reflect.internal.Types]
+
+    def rep(inType: Type): Tree = {
+      AppliedTypeTree(Select(This(newTypeName(className)), newTypeName("Rep")),
+        List(constructPolyTree(ctx, inType))) // TypeTree(inType)
+    }
+
+    inType match {
+      case inType if isFunctionType(inType) =>
+        val TypeRef(pre, sym, args) = inType
+        val retTyperees = args map { x => rep(x) }
+        //we can't construnct baseTree using TypeTree(pre) - pre is only scala.type not FunctionN
+        //val baseTree = TypeTree(pre) //pre = scala.type
+        //using such baseTree we get val a: scala.type[Rep[Int], Rep[Int]] = ...
+        val baseTree = Select(Ident(newTermName("scala")), sym.name)
+        AppliedTypeTree(baseTree, retTyperees)
+
+      case SingleType(pre, name) if inType.typeSymbol.isClass && (!inType.typeSymbol.isModuleClass) =>
+        rep(inType)
+
+      case inType if universe.isSingleType(inType.asInstanceOf[universe.Type]) =>
+        constructPolyTree(ctx, inType)
+
+      case _ =>
+        rep(inType)
+    }
+  }
+
+  def transform(ctx: TypeContext, t: c.universe.Type): c.universe.Tree =
+    constructRepTree(ctx, t)
+}
+
+trait PolyTransformerLike[C <: Context] { this: TypeTransformer[C] =>
+  import c.universe._
+
+  val MaxFunctionArity = 22
+  def toType(s: Symbol) = s.name
+
+  protected def isFunctionType(tp: Type): Boolean = tp.normalize match {
+    case TypeRef(pre, sym, args) if args.nonEmpty =>
+      val arity = args.length - 1
+
+      arity <= MaxFunctionArity &&
+        arity >= 0 &&
+        sym.fullName == FunctionClass(arity).fullName
+    case _ =>
+      false
+  }
+
+  def constructPolyTree(typeCtx: TypeContext, inType: Type): Tree = inType match {
+
+    case TypeRef(pre, sym, Nil) if rewiredToThis(inType.typeSymbol.name.toString) =>
+      SingletonTypeTree(This(tpnme.EMPTY))
+
+    case TypeRef(pre, sym, Nil) =>
+      Select(This(newTypeName(className)), toType(inType.typeSymbol))
+
+    case TypeRef(pre, sym, args) if isFunctionType(inType) =>
+      AppliedTypeTree(Select(Ident(newTermName("scala")), toType(sym)),
+        args map { x => constructPolyTree(OtherCtx, x) })
+
+    case TypeRef(pre, sym, args) =>
+      AppliedTypeTree(Select(This(newTypeName(className)), toType(sym)),
+        args map { x => constructPolyTree(OtherCtx, x) })
+
+    case ConstantType(t) =>
+      Select(This(newTypeName(className)), toType(inType.typeSymbol))
+
+    case SingleType(pre, name) if rewiredToThis(inType.typeSymbol.name.toString) =>
+      SingletonTypeTree(This(tpnme.EMPTY))
+
+    case SingleType(pre, name) if inType.typeSymbol.isModuleClass =>
+      SingletonTypeTree(Select(This(newTypeName(className)),
+        newTermName(inType.typeSymbol.name.toString)))
+
+    case s @ SingleType(pre, name) if inType.typeSymbol.isClass =>
+      constructPolyTree(OtherCtx,
+        s.asInstanceOf[scala.reflect.internal.Types#SingleType]
+          .underlying.asInstanceOf[c.universe.Type])
+
+    case another @ _ =>
+      println(("!" * 10) + s"""Missed: $inType = ${
+        showRaw(another)
+      } name = ${inType.typeSymbol.name}""")
+      TypeTree(another)
+  }
+
+}
+
+class PolyTransformer[C <: Context](ctx: C) extends TypeTransformer[C](ctx) with PolyTransformerLike[C] {
+  def transform(ctx: TypeContext, t: c.universe.Type): c.universe.Tree =
+    constructPolyTree(ctx, t)
+}
+
+object YYTransformer {
+  val defaults = Map[String, Any](
+    ("shallow" -> true),
+    ("debug" -> false),
+    ("mainMethod" -> "main"))
+
+  // TODO complete virtualization
+  // TODO What about type apply in Ascription
+  // TODO configurable rewireing for objects
+  // TODO no real symbol Ids
+  // TODO collections DSL
+  // TODO publish online on 14th
+  def apply[C <: Context, T](c: C)(
+    dslName: String,
+    tpeTransformer: TypeTransformer[c.type],
+    config: Map[String, Any] = Map()) =
+    new YYTransformer[c.type, T](c, dslName, new YYConfig(config withDefault (defaults))) {
+      val typeTransformer = tpeTransformer
+      typeTransformer.className = className
+    }
 
   protected[yinyang] val uID = new AtomicLong(0)
 }
 
 // for now configuration goes as a named parameter list
-final class YYTransformer[C <: Context, T](
-  val c: C,
-  dslName: String,
-  val shallow: Boolean = false,
-  val debug: Boolean = false,
-  val rep: Boolean = false,
-  val mainMethod: String = "main") {
+abstract class YYTransformer[C <: Context, T](val c: C,
+                                              dslName: String,
+                                              config: YYConfig) {
   import c.universe._
+  import config._
+  val typeTransformer: TypeTransformer[c.type]
+  import typeTransformer._
+
+  /*
+  * Configuration parameters.
+  */
+  def interpretMethod = "interpret"
+  val holeMethod = "hole"
+  val className =
+    s"generated$$${dslName.filter(_ != '.') + YYTransformer.uID.incrementAndGet}"
+  val dslType = c.mirror.staticClass(dslName).toType
 
   val symbolIds: mutable.HashMap[Int, Symbol] = new mutable.HashMap()
   def symbolById(id: Int) = symbolIds(id)
@@ -101,7 +239,7 @@ final class YYTransformer[C <: Context, T](
           val functionType = s"""${(0 until args(holes).length).map(y => "scala.Any").mkString("(", ", ", ")")} => ${retType}"""
           val refs = reqVars filterNot (isPrimitive)
           val dslInit = s"""
-            val dslInstance = ch.epfl.lamp.yinyang.runtime.YYStorage.lookup(${programId}L, new $className())
+            val dslInstance = ch.epfl.yinyang.runtime.YYStorage.lookup(${programId}L, new $className())
             val values: Seq[Any] = Seq(${(reqVars diff refs) map (_.name.decoded) mkString ", "})
             val refs: Seq[Any] = Seq(${refs map (_.name.decoded) mkString ", "})
           """
@@ -109,14 +247,14 @@ final class YYTransformer[C <: Context, T](
           val guardedExecute = c parse dslInit + (dslType match {
             case t if t <:< typeOf[CodeGenerator] => s"""
               def recompile(): () => Any = dslInstance.compile[$retType, $functionType]
-              val program = ch.epfl.lamp.yinyang.runtime.YYStorage.$guardType[$functionType](
+              val program = ch.epfl.yinyang.runtime.YYStorage.$guardType[$functionType](
                 ${programId}L, values, refs, recompile
               )
               program.apply(${args(holes)})
             """
             case t if t <:< typeOf[Interpreted] => s"""
               def invalidate(): () => Any = () => dslInstance.reset
-              ch.epfl.lamp.yinyang.runtime.YYStorage.$guardType[Any](
+              ch.epfl.yinyang.runtime.YYStorage.$guardType[Any](
                 ${programId}L, values, refs, invalidate
               )
               dslInstance.interpret[${retType}](${args(holes)})
@@ -132,7 +270,6 @@ final class YYTransformer[C <: Context, T](
     }
   }
 
-  def rewiredToThis(s: String) = s == "package" || s == "Predef"
   def freeVariables(tree: Tree): List[Symbol] =
     new FreeVariableCollector().collect(tree)
 
@@ -162,7 +299,7 @@ final class YYTransformer[C <: Context, T](
     def getObjType(obj: Tree): Type = obj.tpe
 
     override def traverse(tree: Tree) = tree match {
-      case Apply(ap @ Apply(_, _), args) => // TODO What about type apply?
+      case Apply(ap @ Apply(_, _), args) =>
         val argTypes = args.map(_.tpe)
         parameterLists = argTypes :: parameterLists
         traverse(ap)
@@ -215,15 +352,16 @@ final class YYTransformer[C <: Context, T](
       def dummyTree(tpe: Type) = tpe match {
         case typeTag @ ThisType(_) => This(newTypeName(className))
         case _ =>
-          log(s"tpe = $tpe typeTree = ${constructTypeTree(tpe)}")
+          log(s"tpe = $tpe typeTree = ${constructTypeTree(typeTransformer.OtherCtx, tpe)}")
           TypeApply(Select(Literal(Constant(())),
-            newTermName("asInstanceOf")), List(constructTypeTree(tpe)))
+            newTermName("asInstanceOf")),
+            List(constructTypeTree(typeTransformer.OtherCtx, tpe)))
       }
 
       def app(tree: Tree) = meth.targs match {
         case Nil => tree
         case tparams: List[Tree] =>
-          TypeApply(tree, meth.targs map { x => constructPolyTree(x.tpe) })
+          TypeApply(tree, meth.targs map { x => constructTypeTree(typeTransformer.TypeApplyCtx, x.tpe) })
       }
       log(s"Args ${meth.args}")
       val res = meth.tpe.map(dummyTree(_)).orElse(Some(This(className)))
@@ -421,6 +559,39 @@ final class YYTransformer[C <: Context, T](
           List()), Literal(Constant())))) if label == sym => // DoWhile
           lifted += DSLFeature(None, "__doWhile", Nil, List(List(cond.tpe, body.tpe)))
           method("__doWhile", List(transform(body), transform(cond)))
+
+        case Apply(Select(qualifier, name), List(arg)) if name.toString equals "$eq$eq" =>
+          lifted += DSLFeature(Some(qualifier.tpe), "__==", Nil, List(List(qualifier.tpe, arg.tpe)))
+          method("__==", List(transform(qualifier), transform(arg)))
+
+        case Apply(Select(qualifier, name), List(arg)) if name.toString equals "$bang$eq" =>
+          lifted += DSLFeature(Some(qualifier.tpe), "__!=", Nil, List(List(qualifier.tpe, arg.tpe)))
+          method("__!=", List(transform(qualifier), transform(arg)))
+
+        case Apply(lhs @ Select(qualifier, name), List(arg)) if name.toString equals "eq" =>
+          lifted += DSLFeature(Some(qualifier.tpe), "__eq", Nil, List(List(qualifier.tpe, arg.tpe)))
+          method("__eq", List(transform(qualifier), transform(arg)))
+
+        case Apply(lhs @ Select(qualifier, name), List(arg)) if name.toString equals "ne" =>
+          lifted += DSLFeature(Some(qualifier.tpe), "__ne", Nil, List(List(qualifier.tpe, arg.tpe)))
+          method("__ne", List(transform(qualifier), transform(arg)))
+
+        case Apply(lhs @ Select(qualifier, name), List()) if name.toString equals "hashCode" =>
+          lifted += DSLFeature(Some(qualifier.tpe), "__hashCode", Nil, List(List(qualifier.tpe)))
+          method("__hashCode", List(transform(qualifier)))
+
+        case Apply(lhs @ Select(qualifier, name), List()) if name.toString equals "$hash$hash" =>
+          lifted += DSLFeature(Some(qualifier.tpe), "__##", Nil, List(List(qualifier.tpe)))
+          method("__##", List(transform(qualifier)))
+
+        case TypeApply(Select(qualifier, "asInstanceOf"), targs) =>
+          lifted += DSLFeature(Some(qualifier.tpe), "__asInstanceOf", targs, List(List(qualifier.tpe)))
+          method("__asInstanceOf", List(transform(qualifier)))
+
+        case TypeApply(Select(qualifier, "isInstanceOf"), targs) =>
+          lifted += DSLFeature(Some(qualifier.tpe), "__isInstanceOf", targs, List(List(qualifier.tpe)))
+          method("__isInstanceOf", List(transform(qualifier)))
+
         case _ =>
           super.transform(tree)
       }
@@ -468,6 +639,10 @@ final class YYTransformer[C <: Context, T](
       }
 
     var ident = 0
+    var typeApply = false
+
+    def typeContext: typeTransformer.TypeContext =
+      if (typeApply) typeTransformer.TypeApplyCtx else typeTransformer.OtherCtx
 
     override def transform(tree: Tree): Tree = {
       log(" " * ident + " ==> " + tree)
@@ -482,7 +657,7 @@ final class YYTransformer[C <: Context, T](
         }
 
         case typTree: TypTree if typTree.tpe != null =>
-          constructTypeTree(typTree.tpe)
+          constructTypeTree(typeContext, typTree.tpe)
 
         // re-wire objects
         case s @ Select(Select(inn, t: TermName), name) // package object goes to this
@@ -496,19 +671,16 @@ final class YYTransformer[C <: Context, T](
         case s @ Select(inn, name) =>
           Ident(name)
 
-        //Added to rewire inherited methods to this class
+        // Added to rewire inherited methods to this class
         case th @ This(_) =>
           This(newTypeName(className))
 
         case TypeApply(mth, targs) =>
-          if (rep) { // this check needs to go to the signatures of the method
-            //Added because we need to rewire type parameters in TypeApply
-            val liftedTargs = targs map { x: Tree => constructPolyTree(x.tpe) }
-            TypeApply(transform(mth), liftedTargs)
-          } else {
-            val liftedTargs = targs map (transform(_))
-            TypeApply(transform(mth), liftedTargs)
-          }
+          // TypeApply params need special treatment
+          typeApply = true
+          val liftedArgs = targs map (transform(_))
+          typeApply = false
+          TypeApply(transform(mth), liftedArgs)
 
         // Removes all import statements (for now).
         case Import(_, _) =>
@@ -525,126 +697,11 @@ final class YYTransformer[C <: Context, T](
     }
   }
 
-  /*
-  * Configuration parameters.
-  */
-  val MaxFunctionArity = 22
-  def interpretMethod = "interpret"
-  val holeMethod = "hole"
-  val className =
-    s"generated$$${dslName.filter(_ != '.') + YYTransformer.uID.incrementAndGet}"
-  val dslType = c.mirror.staticClass(dslName).toType
-  def constructTypeTree(inType: Type) = if (rep)
-    constructRepTree(inType)
-  else
-    constructPolyTree(inType)
+  def constructTypeTree(tctx: TypeContext, inType: Type): Tree =
+    typeTransformer transform (tctx, inType)
+
   def isPrimitive(s: Symbol): Boolean = false
   val guardType = "checkRef"
-
-  private def isFunctionType(tp: Type): Boolean = tp.normalize match {
-    case TypeRef(pre, sym, args) if args.nonEmpty =>
-      val arity = args.length - 1
-
-      arity <= MaxFunctionArity &&
-        arity >= 0 &&
-        sym.fullName == FunctionClass(arity).fullName
-    case _ =>
-      false
-  }
-
-  /* Do we really need this */
-  def constructNotLiftedTree(inType: Type): Tree = inType match {
-    case TypeRef(pre, sym, Nil) =>
-      Select(This(newTypeName(className)), inType.typeSymbol.name)
-
-    case TypeRef(pre, sym, args) if isFunctionType(inType) =>
-      AppliedTypeTree(
-        Select(Ident(newTermName("scala")), sym.name),
-        args map { x => TypeTree(x) })
-
-    case TypeRef(pre, sym, args) =>
-      AppliedTypeTree(
-        Select(This(newTypeName(className)), sym.name),
-        args map { x => TypeTree(x) })
-
-    case q @ SingleType(pre, sym) =>
-      Select(This(newTypeName(className)), sym.name)
-
-    case another @ _ =>
-      TypeTree(another)
-  }
-
-  def toType(s: Symbol) = s.name
-  def constructPolyTree(inType: Type): Tree = inType match {
-
-    case TypeRef(pre, sym, Nil) if rewiredToThis(inType.typeSymbol.name.toString) =>
-      SingletonTypeTree(This(tpnme.EMPTY))
-
-    case TypeRef(pre, sym, Nil) =>
-      Select(This(newTypeName(className)), toType(inType.typeSymbol))
-
-    case TypeRef(pre, sym, args) if isFunctionType(inType) =>
-      AppliedTypeTree(Select(Ident(newTermName("scala")), toType(sym)),
-        args map { x => constructPolyTree(x) })
-
-    case TypeRef(pre, sym, args) =>
-      AppliedTypeTree(Select(This(newTypeName(className)), toType(sym)),
-        args map { x => constructPolyTree(x) })
-
-    case ConstantType(t) =>
-      Select(This(newTypeName(className)), toType(inType.typeSymbol))
-
-    case SingleType(pre, name) if rewiredToThis(inType.typeSymbol.name.toString) =>
-      SingletonTypeTree(This(tpnme.EMPTY))
-
-    case SingleType(pre, name) if inType.typeSymbol.isModuleClass =>
-      SingletonTypeTree(Select(This(newTypeName(className)),
-        newTermName(inType.typeSymbol.name.toString)))
-
-    case s @ SingleType(pre, name) if inType.typeSymbol.isClass =>
-      constructPolyTree(
-        s.asInstanceOf[scala.reflect.internal.Types#SingleType]
-          .underlying.asInstanceOf[YYTransformer.this.c.universe.Type])
-
-    case another @ _ =>
-      println(("!" * 10) + s"""Missed: $inType = ${
-        showRaw(another)
-      } name = ${inType.typeSymbol.name}""")
-      TypeTree(another)
-  }
-
-  /*
-   * transform Type1[Type2[...]] => Rep[Type1[Type2[...]]] for non-function types
-   */
-  def constructRepTree(inType: Type): Tree = {
-    val universe = c.universe.asInstanceOf[scala.reflect.internal.Types]
-
-    def rep(inType: Type): Tree = {
-      log(s"${"!" * 10} Rep ${showRaw(inType)}")
-      AppliedTypeTree(Select(This(newTypeName(className)), newTypeName("Rep")),
-        List(constructPolyTree(inType))) // TypeTree(inType)
-    }
-
-    inType match {
-      case inType if isFunctionType(inType) =>
-        val TypeRef(pre, sym, args) = inType
-        val retTyperees = args map { x => rep(x) }
-        //we can't construnct baseTree using TypeTree(pre) - pre is only scala.type not FunctionN
-        //val baseTree = TypeTree(pre) //pre = scala.type
-        //using such baseTree we get val a: scala.type[Rep[Int], Rep[Int]] = ...
-        val baseTree = Select(Ident(newTermName("scala")), sym.name)
-        AppliedTypeTree(baseTree, retTyperees)
-
-      case SingleType(pre, name) if inType.typeSymbol.isClass && (!inType.typeSymbol.isModuleClass) =>
-        rep(inType)
-
-      case inType if universe.isSingleType(inType.asInstanceOf[universe.Type]) =>
-        constructPolyTree(inType)
-
-      case _ =>
-        rep(inType)
-    }
-  }
 
   /*
    * Utilities.
@@ -715,14 +772,4 @@ final class YYTransformer[C <: Context, T](
 
   def log(s: => String) = if (debug) println(s)
 
-}
-
-object Debug {
-
-  def show[T](x: => T): T = macro showImpl[T]
-  def showImpl[T](c: Context)(x: c.Expr[T]): c.Expr[T] = {
-    import c.universe._
-    println(s"Tree ${showRaw(x)}")
-    x
-  }
 }

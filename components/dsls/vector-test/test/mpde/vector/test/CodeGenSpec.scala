@@ -10,7 +10,7 @@ import reflect.runtime.universe._
 class CodeGenSpec extends FlatSpec with ShouldMatchers {
 
   "Eval test" should "work" in {
-    val y = liftPrint {
+    val y = liftPrintDebug {
       1
     }
   }

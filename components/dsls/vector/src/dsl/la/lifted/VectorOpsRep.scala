@@ -1,6 +1,6 @@
 package dsl.la.rep
 
-import ch.epfl.lamp.yinyang.api._
+import ch.epfl.yinyang.api._
 import base._
 import scala.reflect.ClassTag
 import reflect.runtime.universe._

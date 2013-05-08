@@ -1,4 +1,4 @@
-package ch.epfl.lamp.yinyang.runtime
+package ch.epfl.yinyang.runtime
 
 import java.util.concurrent.ConcurrentHashMap
 import scala.ref.WeakReference

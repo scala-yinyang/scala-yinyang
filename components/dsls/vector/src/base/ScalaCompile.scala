@@ -1,6 +1,6 @@
 package base
 
-import ch.epfl.lamp.yinyang.api._
+import ch.epfl.yinyang.api._
 import scala.tools.nsc._
 import scala.tools.nsc.util._
 import scala.tools.nsc.reporters._

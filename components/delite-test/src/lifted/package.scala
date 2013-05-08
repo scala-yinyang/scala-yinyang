@@ -1,4 +1,4 @@
-import ch.epfl.lamp.yinyang._
+import ch.epfl.yinyang._
 import scala.language.experimental.macros
 import scala.reflect.macros.Context
 

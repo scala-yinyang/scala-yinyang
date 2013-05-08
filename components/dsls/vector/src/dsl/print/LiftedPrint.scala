@@ -1,6 +1,6 @@
 package dsl.print
 
-import ch.epfl.lamp.yinyang.api._
+import ch.epfl.yinyang.api._
 import base._
 import scala.collection._
 import reflect.runtime.universe._

@@ -2,7 +2,7 @@ package dsl.la.norep
 
 import scala.reflect.ClassTag
 import base._
-import ch.epfl.lamp.yinyang.api._
+import ch.epfl.yinyang.api._
 import reflect.runtime.universe._
 
 trait Base extends BaseYinYang {
