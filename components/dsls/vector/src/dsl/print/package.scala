@@ -1,6 +1,7 @@
 package dsl.print
 
 import ch.epfl.yinyang._
+import ch.epfl.yinyang.typetransformers._
 import scala.collection.mutable.WeakHashMap
 import scala.language.experimental.macros
 import scala.reflect.macros.Context

@@ -196,34 +196,34 @@ trait BooleanDSL extends Base {
   }
 }
 
-trait IfThenElseDSL extends BooleanDSL with Base {
+trait VirtualizationDSL extends BooleanDSL with Base {
 
   def __ifThenElse[T](c: => Boolean, t: T, e: T) = ???
+
+  def __newVar[T](init: T) = ???
+  def __assign[U, V](lhs: U, rhs: V) = ???
+  def __return[T](expr: T) = ???
+
+  def __whileDo[T](cond: ⇒ Boolean, body: T) = ???
+  def __doWhile[T](body: T, cond: ⇒ Boolean) = ???
+
+  def __==(lhs: AnyRef, rhs: AnyRef): Boolean = ???
+  def __!=(lhs: AnyRef, rhs: AnyRef): Boolean = ???
+  def __eq(lhs: AnyRef, rhs: AnyRef): Boolean = ???
+  def __ne(lhs: AnyRef, rhs: AnyRef): Boolean = ???
+
+  def __##(lhs: AnyRef): Boolean = ???
+  def __hashCode(lhs: AnyRef): Boolean = ???
+  def __isInstanceOf[T](lhs: AnyRef): Boolean
+  def __asInstanceOf[T](lhs: AnyRef): T
+
+  def __getClass(lhs: AnyRef) = ???
+
+  // TODO Java Synchronization
 }
 
-//TODO try to remove it and test without TupleDSL
-//trait TupleDSL extends Base {
-//  type Tuple2[T1, T2] = Tuple2Ops[T1, T2]
-//
-//  trait Tuple2Ops[T1, T2] extends AnyRef {
-//    def _1: T1
-//    def _2: T2
-//    def swap: Tuple2[T2, T1]
-//
-//    // !!!! TODO (TOASK) find place for code lifting (do we need this lifting)
-//    implicit object LiftTuple2 extends LiftEvidence[scala.Tuple2[T1, T2], Tuple2[T1, T2]] {
-//      def lift(v: scala.Tuple2[T1, T2]): Tuple2[T1, T2] = ???
-//    }
-//  }
-//
-//  object Tuple2 {
-//    def apply[T1, T2](x1: T1, x2: T2): Tuple2[T1, T2] = ???
-//
-//  }
-//}
-
 trait VectorDSL
-  extends ClassTagOps with IfThenElseDSL with ArrayDSL
+  extends ClassTagOps with ArrayDSL
   with IntDSL with DoubleDSL with NumericOps with Base
   with Interpreted {
   type Vector[T] = VectorOps[T]
