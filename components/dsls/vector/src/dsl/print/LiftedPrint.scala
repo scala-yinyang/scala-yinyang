@@ -6,8 +6,8 @@ import scala.collection._
 import reflect.runtime.universe._
 /** The int printing DSL */
 abstract class PrintDSL
-  extends ScalaCompile with CodeGenerator with MiniIntDSL
-  with Interpreted with BaseYinYang with Base {
+  extends ScalaCompile with PrintCodeGenerator with CodeGenerator with MiniIntDSL
+  with BooleanOps with Interpreted with BaseYinYang with Base {
 
   var sb: StringBuffer = new StringBuffer()
 
@@ -67,18 +67,28 @@ abstract class PrintDSL
   var compiledCode: () => Any = _
 }
 
-trait MiniIntDSL extends BaseYinYang { self: CodeGenerator =>
+trait PrintCodeGenerator { self: CodeGenerator =>
+  trait BaseHole[T] {
+    def tpe: TypeTag[T]
+  }
+  val holes: mutable.ArrayBuffer[BaseHole[_]] = new mutable.ArrayBuffer()
+}
+
+trait MiniIntDSL extends BaseYinYang { self: BooleanOps with PrintCodeGenerator =>
 
   type Int = IntOps
 
-  val holes: mutable.ArrayBuffer[Hole[_]] = new mutable.ArrayBuffer()
-
   trait IntOps {
     def +(that: Int): Int = IntPlus(IntOps.this, that)
+    def -(that: Int): Int = IntPlus(IntOps.this, that)
     def value: scala.Int
+    def __==(that: Int): Boolean = IntEq(IntOps.this, that)
+    def __!=(that: Int): Boolean = IntEq(IntOps.this, that)
+    def __hashCode(): Int = IntConst(1)
+    def __##(): Int = IntConst(1)
   }
 
-  // actual classes that provide lifting
+  // classes that provide lifting
   case class IntConst(i: scala.Int) extends IntOps {
     override def toString = s"$i"
     def value = i
@@ -87,6 +97,11 @@ trait MiniIntDSL extends BaseYinYang { self: CodeGenerator =>
   case class IntPlus(l: IntOps, r: IntOps) extends IntOps {
     override def toString = s"($l + $r)"
     def value = 5
+  }
+
+  case class IntEq(l: IntOps, r: IntOps) extends BooleanOps {
+    override def toString = s"$l == $r"
+    def value = true
   }
 
   implicit object LiftInt extends LiftEvidence[scala.Int, Int] {
@@ -98,9 +113,45 @@ trait MiniIntDSL extends BaseYinYang { self: CodeGenerator =>
     }
   }
 
-  case class Hole[T](tpe: TypeTag[T], symbolId: scala.Int) extends IntOps {
+  case class Hole[T](tpe: TypeTag[T], symbolId: scala.Int) extends IntOps with BaseHole[T] {
     override def toString = "x" + symbolId
     def value = -1
+  }
+
+}
+
+trait BooleanOps extends BaseYinYang { self: PrintCodeGenerator =>
+
+  type Boolean = BooleanOps
+
+  trait BooleanOps {
+    def <(that: Boolean): Boolean = BooleanLess(BooleanOps.this, that)
+    def value: scala.Boolean
+  }
+
+  // actual classes that provide lifting
+  case class BooleanConst(i: scala.Boolean) extends BooleanOps {
+    override def toString = s"$i"
+    def value = i
+  }
+
+  case class BooleanLess(l: BooleanOps, r: BooleanOps) extends BooleanOps {
+    override def toString = s"($l < $r)"
+    def value = true
+  }
+
+  implicit object LiftBoolean extends LiftEvidence[scala.Boolean, Boolean] {
+    def lift(v: scala.Boolean): Boolean = BooleanConst(v)
+    def hole(tpe: TypeTag[scala.Boolean], symbolId: scala.Int): Boolean = {
+      val h = BooleanHole(tpe, symbolId)
+      holes += h
+      h
+    }
+  }
+
+  case class BooleanHole[T](tpe: TypeTag[T], symbolId: scala.Int) extends BaseHole[T] with BooleanOps {
+    override def toString = "x" + symbolId
+    def value = true
   }
 
 }

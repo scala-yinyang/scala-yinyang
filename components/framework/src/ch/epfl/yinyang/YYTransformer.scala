@@ -86,7 +86,7 @@ abstract class YYTransformer[C <: Context, T](val c: C,
       // if the DSL inherits the StaticallyChecked trait reflectively do the static analysis
       if (dslType <:< typeOf[StaticallyChecked])
         reflInstance[StaticallyChecked](dslPre).staticallyCheck(new Reporter(c))
-
+      log(show(dslPre))
       // DSL returns what holes it needs
       val reqVars = dslType match {
         case tpe if tpe <:< typeOf[FullyStaged] =>
@@ -213,7 +213,7 @@ abstract class YYTransformer[C <: Context, T](val c: C,
       //Finds the first element of the sequence satisfying a predicate, if any.
       (methods ++ lifted).toSeq.find(!methodsExist(_)) match {
         case Some(methodError) if lifted.contains(methodError) =>
-          c.error(tree.pos, s"Language feature not supported.")
+          c.error(tree.pos, s"Language feature $methodError not supported.")
           false
         case Some(methodError) =>
           // missing method
@@ -234,23 +234,18 @@ abstract class YYTransformer[C <: Context, T](val c: C,
     def application(meth: DSLFeature): Tree = {
 
       def dummyTree(tpe: Type) = tpe match {
-        case typeTag @ ThisType(_) => This(newTypeName(className))
+        case typeTag @ ThisType(_) =>
+          This(newTypeName(className))
         case _ =>
-          log(s"tpe = $tpe typeTree = ${constructTypeTree(typeTransformer.OtherCtx, tpe)}")
-          TypeApply(Select(Literal(Constant(())),
-            newTermName("asInstanceOf")),
+          TypeApply(
+            Select(Literal(Constant(())), newTermName("asInstanceOf")),
             List(constructTypeTree(typeTransformer.OtherCtx, tpe)))
       }
 
-      def app(tree: Tree) = meth.targs match {
-        case Nil => tree
-        case tparams: List[Tree] =>
-          TypeApply(tree, meth.targs map { x => constructTypeTree(typeTransformer.TypeApplyCtx, x.tpe) })
-      }
       log(s"Args ${meth.args}")
-      val res = meth.tpe.map(dummyTree(_)).orElse(Some(This(className)))
-        .map(x => app(Select(x, newTermName(meth.name))))
-        .map(f => meth.args.foldLeft(f)((x, y) => Apply(x, y.map(dummyTree)))).get
+      val lhs: Tree = typeApply(meth.targs map { x => constructTypeTree(typeTransformer.TypeApplyCtx, x.tpe) })(
+        Select(meth.tpe.map(dummyTree(_)).getOrElse(This(className)), newTermName(meth.name)))
+      val res = meth.args.foldLeft(lhs)((x, y) => Apply(x, y.map(dummyTree)))
       log(s"${showRaw(res)}")
       res
     }
@@ -394,8 +389,9 @@ abstract class YYTransformer[C <: Context, T](val c: C,
   private final class LiftLiteralTransformer(val idents: List[Symbol])
     extends Transformer {
 
-    def lift(t: Tree) =
+    def lift(t: Tree) = {
       Apply(Select(This(newTypeName(className)), newTermName("lift")), List(t))
+    }
 
     override def transform(tree: Tree): Tree = {
       tree match {
@@ -414,68 +410,79 @@ abstract class YYTransformer[C <: Context, T](val c: C,
   }
 
   private final class VirtualizationTransformer extends Transformer {
+    object TermName { // TODO remove with 2.11
+      def unapply(t: TermName): Option[String] = Some(t.toString)
+    }
 
     val lifted = mutable.ArrayBuffer[DSLFeature]()
+
+    def liftFeature(receiver: Option[Tree], nme: String, args: List[List[Tree]], targs: List[Tree] = Nil): Tree = {
+      lifted += DSLFeature(receiver.map(_.tpe), nme, targs, args.map(_.map(_.tpe)))
+      method(receiver.map(transform), nme, args.map(_.map(transform)), targs)
+    }
+
     override def transform(tree: Tree): Tree = {
       tree match {
-        case t @ If(cond, then, elze) =>
-          lifted += DSLFeature(None, "__ifThenElse", Nil, List(List(cond.tpe, then.tpe, elze.tpe)))
-          method("__ifThenElse", List(transform(cond), transform(then), transform(elze)))
-
         case ValDef(mods, sym, tpt, rhs) if mods.hasFlag(Flag.MUTABLE) =>
-          lifted += DSLFeature(None, "__newVar", Nil, List(List(rhs.tpe)))
-          ValDef(mods, sym, transform(tpt), method("__newVar", List(transform(rhs))))
+          ValDef(mods, sym, tpt, liftFeature(None, "__newVar", List(List(rhs))))
+
+        case t @ If(cond, then, elze) =>
+          liftFeature(None, "__ifThenElse", List(List(transform(cond), transform(then), transform(elze))))
 
         case Return(e) =>
-          lifted += DSLFeature(None, "__return", Nil, List(List(e.tpe)))
-          method("__return", List(transform(e)))
+          liftFeature(None, "__return", List(List(transform(e))))
 
         case Assign(lhs, rhs) =>
-          lifted += DSLFeature(None, "__assign", Nil, List(List(lhs.tpe, rhs.tpe)))
-          method("__assign", List(transform(lhs), transform(rhs)))
+          liftFeature(None, "__assign", List(List(transform(lhs), transform(rhs))))
 
         case LabelDef(sym, List(), If(cond, Block(body :: Nil, Apply(Ident(label),
           List())), Literal(Constant()))) if label == sym => // While
-          lifted += DSLFeature(None, "__whileDo", Nil, List(List(cond.tpe, body.tpe)))
-          method("__whileDo", List(transform(cond), transform(body)))
+          liftFeature(None, "__whileDo", List(List(transform(cond), transform(body))))
 
         case LabelDef(sym, List(), Block(body :: Nil, If(cond, Apply(Ident(label),
           List()), Literal(Constant())))) if label == sym => // DoWhile
-          lifted += DSLFeature(None, "__doWhile", Nil, List(List(cond.tpe, body.tpe)))
-          method("__doWhile", List(transform(body), transform(cond)))
+          liftFeature(None, "__doWhile", List(List(transform(cond), transform(body))))
 
-        case Apply(Select(qualifier, name), List(arg)) if name.toString equals "$eq$eq" =>
-          lifted += DSLFeature(Some(qualifier.tpe), "__==", Nil, List(List(qualifier.tpe, arg.tpe)))
-          method("__==", List(transform(qualifier), transform(arg)))
+        case Apply(Select(qualifier, TermName("$eq$eq")), List(arg)) =>
+          liftFeature(Some(transform(qualifier)), "__$eq$eq", List(List(transform(arg))))
 
-        case Apply(Select(qualifier, name), List(arg)) if name.toString equals "$bang$eq" =>
-          lifted += DSLFeature(Some(qualifier.tpe), "__!=", Nil, List(List(qualifier.tpe, arg.tpe)))
-          method("__!=", List(transform(qualifier), transform(arg)))
+        case Apply(Select(qualifier, TermName("$bang$eq")), List(arg)) =>
+          liftFeature(Some(transform(qualifier)), "__$bang$eq", List(List(transform(arg))))
 
-        case Apply(lhs @ Select(qualifier, name), List(arg)) if name.toString equals "eq" =>
-          lifted += DSLFeature(Some(qualifier.tpe), "__eq", Nil, List(List(qualifier.tpe, arg.tpe)))
-          method("__eq", List(transform(qualifier), transform(arg)))
+        case Apply(lhs @ Select(qualifier, TermName("eq")), List(arg)) =>
+          liftFeature(Some(transform(qualifier)), "__eq", List(List(transform(arg))))
 
-        case Apply(lhs @ Select(qualifier, name), List(arg)) if name.toString equals "ne" =>
-          lifted += DSLFeature(Some(qualifier.tpe), "__ne", Nil, List(List(qualifier.tpe, arg.tpe)))
-          method("__ne", List(transform(qualifier), transform(arg)))
+        case Apply(lhs @ Select(qualifier, TermName("ne")), List(arg)) =>
+          liftFeature(Some(transform(qualifier)), "__ne", List(List(transform(arg))))
 
-        case Apply(lhs @ Select(qualifier, name), List()) if name.toString equals "hashCode" =>
-          lifted += DSLFeature(Some(qualifier.tpe), "__hashCode", Nil, List(List(qualifier.tpe)))
-          method("__hashCode", List(transform(qualifier)))
+        case Apply(lhs @ Select(qualifier, TermName("hashCode")), List()) =>
+          liftFeature(Some(transform(qualifier)), "__hashCode", List(List()))
 
-        case Apply(lhs @ Select(qualifier, name), List()) if name.toString equals "$hash$hash" =>
-          lifted += DSLFeature(Some(qualifier.tpe), "__##", Nil, List(List(qualifier.tpe)))
-          method("__##", List(transform(qualifier)))
+        case Apply(lhs @ Select(qualifier, TermName("$hash$hash")), List()) =>
+          liftFeature(Some(transform(qualifier)), "__$hash$hash", List(List()))
 
-        case TypeApply(Select(qualifier, "asInstanceOf"), targs) =>
-          lifted += DSLFeature(Some(qualifier.tpe), "__asInstanceOf", targs, List(List(qualifier.tpe)))
-          method("__asInstanceOf", List(transform(qualifier)), targs)
+        case TypeApply(Select(qualifier, TermName("asInstanceOf")), targs) =>
+          liftFeature(Some(transform(qualifier)), "__asInstanceOf", List(List()), targs)
 
-        case TypeApply(Select(qualifier, "isInstanceOf"), targs) =>
-          lifted += DSLFeature(Some(qualifier.tpe), "__isInstanceOf", targs, List(List(qualifier.tpe)))
-          method("__isInstanceOf", List(transform(qualifier)), targs)
-        // TODO Synchronization stuff
+        case TypeApply(Select(qualifier, TermName("isInstanceOf")), targs) =>
+          liftFeature(Some(transform(qualifier)), "__isInstanceOf", List(List()), targs)
+
+        case Apply(Select(qualifier, TermName("notify")), List()) =>
+          liftFeature(Some(transform(qualifier)), "__notify", List(List()))
+
+        case Apply(Select(qualifier, TermName("notifyAll")), List()) =>
+          liftFeature(Some(transform(qualifier)), "__notifyAll", List())
+
+        case Apply(Select(qualifier, TermName("wait")), List()) =>
+          liftFeature(Some(transform(qualifier)), "__wait", List())
+
+        case Apply(Select(qualifier, TermName("wait")), List(arg)
+          ) if arg.tpe =:= typeOf[Long] =>
+          liftFeature(Some(transform(qualifier)), "__wait", List(List(arg)))
+
+        case Apply(Select(qualifier, TermName("wait")), List(arg0, arg1)
+          ) if arg0.tpe =:= typeOf[Long] && arg1.tpe =:= typeOf[Int] =>
+          liftFeature(Some(transform(qualifier)), "__wait", List(List(arg0, arg1)))
 
         case _ =>
           super.transform(tree)
@@ -510,8 +517,11 @@ abstract class YYTransformer[C <: Context, T](val c: C,
   }
 
   object ScopeInjectionTransformer extends (Tree => Tree) {
-    def apply(tree: Tree) =
+    def apply(tree: Tree) = {
+      log(s"!!!!!!!!!!!!!!!!!! >>>>>>>>>>>>>>>>>>>>> ${showRaw(VirtualizationTransformer(tree)._1)}")
+      log(s"!!!!!!!!!!!!!!!!!! >>>>>>>>>>>>>>>>>>>>> ${showRaw(new ScopeInjectionTransformer().transform(VirtualizationTransformer(tree)._1))}")
       new ScopeInjectionTransformer().transform(VirtualizationTransformer(tree)._1)
+    }
   }
 
   private final class ScopeInjectionTransformer extends Transformer {
@@ -534,7 +544,7 @@ abstract class YYTransformer[C <: Context, T](val c: C,
       ident += 1
 
       val result = tree match {
-        //provide Def trees with NoSymbol (for correct show(tree)
+        //provide Def trees with NoSymbol (for correct show(tree))
         case vdDef: ValOrDefDef => {
           val retDef = super.transform(tree)
           retDef.setSymbol(NoSymbol)
@@ -553,7 +563,7 @@ abstract class YYTransformer[C <: Context, T](val c: C,
           Select(transform(inn), name)
 
         // replaces objects with their cake counterparts
-        case s @ Select(inn, name) =>
+        case s @ Select(inn, name) if s.symbol.isModule =>
           Ident(name)
 
         // Added to rewire inherited methods to this class
@@ -596,11 +606,15 @@ abstract class YYTransformer[C <: Context, T](val c: C,
 
   private def symbolId(tree: Tree): Int = symbolId(tree.symbol)
 
-  def method(methName: String, args: List[Tree], targs: List[Tree] = Nil) =
-    (targs, Apply(Select(This(newTypeName(className)), newTermName(methName)), args)) match {
-      case (Nil, app) => app
-      case (l, app)   => TypeApply(app, l)
-    }
+  def typeApply(targs: List[Tree])(select: Tree) = if (targs.nonEmpty)
+    TypeApply(select, targs)
+  else
+    select
+
+  def method(recOpt: Option[Tree], methName: String, args: List[List[Tree]], targs: List[Tree] = Nil): Tree = {
+    val receiver: Tree = typeApply(targs)(Select(recOpt.getOrElse(This(newTypeName(className))), newTermName(methName)))
+    args.foldLeft(receiver) { Apply(_, _) }
+  }
 
   def makeConstructor(classname: String, arguments: List[Tree]): Tree =
     invoke(newClass(classname), nme.CONSTRUCTOR, arguments)
