@@ -22,7 +22,7 @@ object `package` {
     YYTransformer[c.type, T](c)(
       "dsl.print.PrintDSL",
       new PolyTransformer[c.type](c),
-      Map("shallow" -> false, "debug" -> true))(block)
+      Map("shallow" -> false, "debug" -> 1))(block)
 
   // The only thing we declare here
   def println(x: Any): Int = ???

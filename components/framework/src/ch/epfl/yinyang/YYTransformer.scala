@@ -2,6 +2,7 @@ package ch.epfl
 package yinyang
 
 import ch.epfl.yinyang.api._
+import ch.epfl.yinyang.transformers._
 import scala.collection.mutable
 import mutable.{ ListBuffer, HashMap }
 import scala.collection.immutable.Map
@@ -10,24 +11,17 @@ import language.experimental.macros
 import java.util.concurrent.atomic.AtomicLong
 import yinyang.typetransformers.TypeTransformer
 
-class YYConfig(val t: Map[String, Any]) {
-  val shallow: Boolean = t("shallow").asInstanceOf[Boolean]
-  val debug: Boolean = t("debug").asInstanceOf[Boolean]
-  val mainMethod: String = t("mainMethod").asInstanceOf[String]
-}
-
 object YYTransformer {
   val defaults = Map[String, Any](
     ("shallow" -> true),
-    ("debug" -> false),
+    ("debug" -> 0),
     ("mainMethod" -> "main"))
 
-  // TODO configurable rewireing for objects
   def apply[C <: Context, T](c: C)(
     dslName: String,
     tpeTransformer: TypeTransformer[c.type],
     config: Map[String, Any] = Map()) =
-    new YYTransformer[c.type, T](c, dslName, new YYConfig(config withDefault (defaults))) {
+    new YYTransformer[c.type, T](c, dslName, config withDefault (defaults)) {
       val typeTransformer = tpeTransformer
       typeTransformer.className = className
     }
@@ -36,9 +30,10 @@ object YYTransformer {
 }
 
 // for now configuration goes as a named parameter list
-abstract class YYTransformer[C <: Context, T](val c: C,
-                                              dslName: String,
-                                              config: YYConfig) {
+abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val config: Map[String, Any])
+  extends LanguageVirtualization with DataDefs with TransformationUtils with YYConfig
+  with ScopeInjection {
+  type Ctx = C
   import c.universe._
   import config._
   val typeTransformer: TypeTransformer[c.type]
@@ -53,9 +48,10 @@ abstract class YYTransformer[C <: Context, T](val c: C,
     s"generated$$${dslName.filter(_ != '.') + YYTransformer.uID.incrementAndGet}"
   val dslType = c.mirror.staticClass(dslName).toType
 
+  // Internal symbol tracking.
   val symbolIds: mutable.HashMap[Int, Symbol] = new mutable.HashMap()
   def symbolById(id: Int) = symbolIds(id)
-
+  def debugLevel: Int = debug
   /**
    * Main YinYang method. Transforms the body of the DSL, makes the DSL cake out
    * of the body and then executes the DSL code. If the DSL supports static
@@ -78,6 +74,7 @@ abstract class YYTransformer[C <: Context, T](val c: C,
         (AscriptionTransformer andThen
           LiftLiteralTransformer(idents) andThen
           ScopeInjectionTransformer andThen
+          TypeTreeTransformer andThen
           HoleTransformer(holes) andThen
           composeDSL)(block)
 
@@ -159,7 +156,7 @@ abstract class YYTransformer[C <: Context, T](val c: C,
 
   object FeatureAnalyzer extends ((Tree, Seq[DSLFeature]) => Boolean) {
     def apply(tree: Tree, lifted: Seq[DSLFeature] = Seq()): Boolean = {
-      val (virtualized, lifted) = VirtualizationTransformer(tree)
+      val (virtualized, lifted) = virtualize(tree)
       val st = System.currentTimeMillis()
       val res = new FeatureAnalyzer(lifted).analyze(virtualized)
       log(s"Feature checking time: ${(System.currentTimeMillis() - st)}")
@@ -225,9 +222,6 @@ abstract class YYTransformer[C <: Context, T](val c: C,
     }
 
   }
-
-  case class DSLFeature(
-    tpe: Option[Type], name: String, targs: List[Tree], args: List[List[Type]])
 
   def methodsExist(methods: DSLFeature*): Boolean = {
     val methodSet = methods.toSet
@@ -321,15 +315,6 @@ abstract class YYTransformer[C <: Context, T](val c: C,
 
   }
 
-  def constructor(classname: String, arguments: List[Tree]): Tree =
-    invoke(newClass(classname), nme.CONSTRUCTOR, arguments)
-
-  def copy(orig: Tree)(nev: Tree): Tree = {
-    nev.setSymbol(orig.symbol)
-    nev.setPos(orig.pos)
-    nev
-  }
-
   object AscriptionTransformer extends (Tree => Tree) {
     def apply(tree: Tree) = new AscriptionTransformer().transform(tree)
   }
@@ -381,6 +366,34 @@ abstract class YYTransformer[C <: Context, T](val c: C,
     }
   }
 
+  object TypeTreeTransformer extends (Tree => Tree) {
+    def apply(tree: Tree) = new TypeTreeTransformer().transform(tree)
+  }
+
+  private final class TypeTreeTransformer extends Transformer {
+
+    var typeCtx: TypeContext = OtherCtx
+
+    override def transform(tree: Tree): Tree = {
+      val result = tree match {
+        case typTree: TypTree if typTree.tpe != null =>
+          constructTypeTree(typeCtx, typTree.tpe)
+
+        case TypeApply(mth, targs) =>
+          // TypeApply params need special treatment
+          typeCtx = TypeApplyCtx
+          val liftedArgs = targs map (transform(_))
+          typeCtx = OtherCtx
+          TypeApply(transform(mth), liftedArgs)
+
+        case _ =>
+          super.transform(tree)
+      }
+
+      result
+    }
+  }
+
   private object LiftLiteralTransformer {
     def apply(idents: List[Symbol] = Nil)(tree: Tree) =
       new LiftLiteralTransformer(idents).transform(tree)
@@ -403,93 +416,6 @@ abstract class YYTransformer[C <: Context, T](val c: C,
           super.transform(tree)
       }
     }
-  }
-
-  private object VirtualizationTransformer {
-    def apply(tree: Tree) = new VirtualizationTransformer()(tree)
-  }
-
-  private final class VirtualizationTransformer extends Transformer {
-    object TermName { // TODO remove with 2.11
-      def unapply(t: TermName): Option[String] = Some(t.toString)
-    }
-
-    val lifted = mutable.ArrayBuffer[DSLFeature]()
-
-    def liftFeature(receiver: Option[Tree], nme: String, args: List[List[Tree]], targs: List[Tree] = Nil): Tree = {
-      lifted += DSLFeature(receiver.map(_.tpe), nme, targs, args.map(_.map(_.tpe)))
-      method(receiver.map(transform), nme, args.map(_.map(transform)), targs)
-    }
-
-    override def transform(tree: Tree): Tree = {
-      tree match {
-        case ValDef(mods, sym, tpt, rhs) if mods.hasFlag(Flag.MUTABLE) =>
-          ValDef(mods, sym, tpt, liftFeature(None, "__newVar", List(List(rhs))))
-
-        case t @ If(cond, then, elze) =>
-          liftFeature(None, "__ifThenElse", List(List(transform(cond), transform(then), transform(elze))))
-
-        case Return(e) =>
-          liftFeature(None, "__return", List(List(transform(e))))
-
-        case Assign(lhs, rhs) =>
-          liftFeature(None, "__assign", List(List(transform(lhs), transform(rhs))))
-
-        case LabelDef(sym, List(), If(cond, Block(body :: Nil, Apply(Ident(label),
-          List())), Literal(Constant()))) if label == sym => // While
-          liftFeature(None, "__whileDo", List(List(transform(cond), transform(body))))
-
-        case LabelDef(sym, List(), Block(body :: Nil, If(cond, Apply(Ident(label),
-          List()), Literal(Constant())))) if label == sym => // DoWhile
-          liftFeature(None, "__doWhile", List(List(transform(cond), transform(body))))
-
-        case Apply(Select(qualifier, TermName("$eq$eq")), List(arg)) =>
-          liftFeature(Some(transform(qualifier)), "__$eq$eq", List(List(transform(arg))))
-
-        case Apply(Select(qualifier, TermName("$bang$eq")), List(arg)) =>
-          liftFeature(Some(transform(qualifier)), "__$bang$eq", List(List(transform(arg))))
-
-        case Apply(lhs @ Select(qualifier, TermName("eq")), List(arg)) =>
-          liftFeature(Some(transform(qualifier)), "__eq", List(List(transform(arg))))
-
-        case Apply(lhs @ Select(qualifier, TermName("ne")), List(arg)) =>
-          liftFeature(Some(transform(qualifier)), "__ne", List(List(transform(arg))))
-
-        case Apply(lhs @ Select(qualifier, TermName("hashCode")), List()) =>
-          liftFeature(Some(transform(qualifier)), "__hashCode", List(List()))
-
-        case Apply(lhs @ Select(qualifier, TermName("$hash$hash")), List()) =>
-          liftFeature(Some(transform(qualifier)), "__$hash$hash", List(List()))
-
-        case TypeApply(Select(qualifier, TermName("asInstanceOf")), targs) =>
-          liftFeature(Some(transform(qualifier)), "__asInstanceOf", List(List()), targs)
-
-        case TypeApply(Select(qualifier, TermName("isInstanceOf")), targs) =>
-          liftFeature(Some(transform(qualifier)), "__isInstanceOf", List(List()), targs)
-
-        case Apply(Select(qualifier, TermName("notify")), List()) =>
-          liftFeature(Some(transform(qualifier)), "__notify", List(List()))
-
-        case Apply(Select(qualifier, TermName("notifyAll")), List()) =>
-          liftFeature(Some(transform(qualifier)), "__notifyAll", List())
-
-        case Apply(Select(qualifier, TermName("wait")), List()) =>
-          liftFeature(Some(transform(qualifier)), "__wait", List())
-
-        case Apply(Select(qualifier, TermName("wait")), List(arg)
-          ) if arg.tpe =:= typeOf[Long] =>
-          liftFeature(Some(transform(qualifier)), "__wait", List(List(arg)))
-
-        case Apply(Select(qualifier, TermName("wait")), List(arg0, arg1)
-          ) if arg0.tpe =:= typeOf[Long] && arg1.tpe =:= typeOf[Int] =>
-          liftFeature(Some(transform(qualifier)), "__wait", List(List(arg0, arg1)))
-
-        case _ =>
-          super.transform(tree)
-      }
-    }
-
-    def apply(tree: Tree) = (transform(tree), lifted.toSeq)
   }
 
   object HoleTransformer {
@@ -516,114 +442,11 @@ abstract class YYTransformer[C <: Context, T](val c: C,
     }
   }
 
-  object ScopeInjectionTransformer extends (Tree => Tree) {
-    def apply(tree: Tree) = {
-      log(s"!!!!!!!!!!!!!!!!!! >>>>>>>>>>>>>>>>>>>>> ${showRaw(VirtualizationTransformer(tree)._1)}")
-      log(s"!!!!!!!!!!!!!!!!!! >>>>>>>>>>>>>>>>>>>>> ${showRaw(new ScopeInjectionTransformer().transform(VirtualizationTransformer(tree)._1))}")
-      new ScopeInjectionTransformer().transform(VirtualizationTransformer(tree)._1)
-    }
-  }
-
-  private final class ScopeInjectionTransformer extends Transformer {
-
-    private[this] final def isHole(tree: Tree): Boolean =
-      tree match {
-        case Apply(TypeApply(Select(This(_), methodName), List(TypeTree())),
-          List(Literal(Constant(_: Int)))) if methodName.decoded == holeMethod => true
-        case _ => false
-      }
-
-    var ident = 0
-    var typeApply = false
-
-    def typeContext: typeTransformer.TypeContext =
-      if (typeApply) typeTransformer.TypeApplyCtx else typeTransformer.OtherCtx
-
-    override def transform(tree: Tree): Tree = {
-      log(" " * ident + " ==> " + tree)
-      ident += 1
-
-      val result = tree match {
-        //provide Def trees with NoSymbol (for correct show(tree))
-        case vdDef: ValOrDefDef => {
-          val retDef = super.transform(tree)
-          retDef.setSymbol(NoSymbol)
-          retDef
-        }
-
-        case typTree: TypTree if typTree.tpe != null =>
-          constructTypeTree(typeContext, typTree.tpe)
-
-        // re-wire objects
-        case s @ Select(Select(inn, t: TermName), name) // package object goes to this
-        if s.symbol.isMethod && (rewiredToThis(t.toString) || t.toString == "this") =>
-          Ident(name)
-
-        case s @ Select(inn, name) if s.symbol.isMethod =>
-          Select(transform(inn), name)
-
-        // replaces objects with their cake counterparts
-        case s @ Select(inn, name) if s.symbol.isModule =>
-          Ident(name)
-
-        // Added to rewire inherited methods to this class
-        case th @ This(_) =>
-          This(newTypeName(className))
-
-        case TypeApply(mth, targs) =>
-          // TypeApply params need special treatment
-          typeApply = true
-          val liftedArgs = targs map (transform(_))
-          typeApply = false
-          TypeApply(transform(mth), liftedArgs)
-
-        // Removes all import statements (for now).
-        case Import(_, _) =>
-          EmptyTree
-
-        case _ =>
-          super.transform(tree)
-      }
-
-      ident -= 1
-      log(" " * ident + " <== " + result)
-
-      result
-    }
-  }
-
   def constructTypeTree(tctx: TypeContext, inType: Type): Tree =
     typeTransformer transform (tctx, inType)
 
   def isPrimitive(s: Symbol): Boolean = false
   val guardType = "checkRef"
-
-  /*
-   * Utilities.
-   */
-  private def symbolId(symbol: Symbol): Int =
-    symbol.asInstanceOf[scala.reflect.internal.Symbols#Symbol].id
-
-  private def symbolId(tree: Tree): Int = symbolId(tree.symbol)
-
-  def typeApply(targs: List[Tree])(select: Tree) = if (targs.nonEmpty)
-    TypeApply(select, targs)
-  else
-    select
-
-  def method(recOpt: Option[Tree], methName: String, args: List[List[Tree]], targs: List[Tree] = Nil): Tree = {
-    val receiver: Tree = typeApply(targs)(Select(recOpt.getOrElse(This(newTypeName(className))), newTermName(methName)))
-    args.foldLeft(receiver) { Apply(_, _) }
-  }
-
-  def makeConstructor(classname: String, arguments: List[Tree]): Tree =
-    invoke(newClass(classname), nme.CONSTRUCTOR, arguments)
-
-  def invoke(qualifier: Tree, method: TermName, arguments: List[Tree]): Tree =
-    Apply(Select(qualifier, method), arguments)
-
-  def newClass(classname: String) =
-    New(Ident(newTypeName(classname)))
 
   private lazy val dslTrait = {
     val names = dslName.split("\\.").toList.reverse
@@ -649,7 +472,7 @@ abstract class YYTransformer[C <: Context, T](val c: C,
     if (_reflInstance == None) {
       val st = System.currentTimeMillis()
       _reflInstance = Some(c.eval(
-        c.Expr(c.resetAllAttrs(Block(dslDef, constructor(className, List()))))))
+        c.Expr(c.resetAllAttrs(Block(dslDef, constructor)))))
       log(s"Eval time: ${(System.currentTimeMillis() - st)}")
     }
     _reflInstance.get.asInstanceOf[T]
@@ -671,7 +494,5 @@ abstract class YYTransformer[C <: Context, T](val c: C,
             Ident(newTypeName("Any")), transformedBody))))
   //     }
   // }
-
-  def log(s: => String) = if (debug) println(s)
 
 }
