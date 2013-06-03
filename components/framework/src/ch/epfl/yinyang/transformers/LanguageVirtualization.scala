@@ -48,6 +48,7 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
     val lifted = mutable.ArrayBuffer[DSLFeature]()
     def liftFeature(receiver: Option[Tree], nme: String, args: List[List[Tree]], targs: List[Tree] = Nil): Tree = {
       lifted += DSLFeature(receiver.map(_.tpe), nme, targs, args.map(_.map(_.tpe)))
+      log(show(method(receiver.map(transform), nme, args.map(_.map(transform)), targs)))
       method(receiver.map(transform), nme, args.map(_.map(transform)), targs)
     }
     override def transform(tree: Tree): Tree = {
@@ -65,11 +66,11 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
           liftFeature(None, "__assign", List(List(transform(lhs), transform(rhs))))
 
         case LabelDef(sym, List(), If(cond, Block(body :: Nil, Apply(Ident(label),
-          List())), Literal(Constant()))) if label == sym => // While
+          List())), Literal(Constant()))) if label == sym => // while(){}
           liftFeature(None, "__whileDo", List(List(transform(cond), transform(body))))
 
         case LabelDef(sym, List(), Block(body :: Nil, If(cond, Apply(Ident(label),
-          List()), Literal(Constant())))) if label == sym => // DoWhile
+          List()), Literal(Constant())))) if label == sym => // do while(){}
           liftFeature(None, "__doWhile", List(List(transform(cond), transform(body))))
 
         case Apply(Select(qualifier, TermName("$eq$eq")), List(arg)) =>

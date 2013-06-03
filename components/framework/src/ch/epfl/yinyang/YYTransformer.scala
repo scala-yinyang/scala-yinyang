@@ -73,6 +73,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
       def transform(holes: List[Int], idents: List[Symbol])(block: Tree): Tree =
         (AscriptionTransformer andThen
           LiftLiteralTransformer(idents) andThen
+          (x => VirtualizationTransformer(x)._1) andThen
           ScopeInjectionTransformer andThen
           TypeTreeTransformer andThen
           HoleTransformer(holes) andThen
@@ -83,7 +84,9 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
       // if the DSL inherits the StaticallyChecked trait reflectively do the static analysis
       if (dslType <:< typeOf[StaticallyChecked])
         reflInstance[StaticallyChecked](dslPre).staticallyCheck(new Reporter(c))
-      log(show(dslPre))
+
+      log(showRaw(dslPre, printTypes = true))
+      // c.typeCheck()
       // DSL returns what holes it needs
       val reqVars = dslType match {
         case tpe if tpe <:< typeOf[FullyStaged] =>
@@ -145,7 +148,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
           Block(dsl, guardedExecute)
       }
 
-      log(s"""Final untyped: ${show(c.resetAllAttrs(dslTree))}
+      log(s"""Final untyped: ${show(c.resetAllAttrs(dslTree), printTypes = true)}
         Final typed: ${show(c.typeCheck(c.resetAllAttrs(dslTree)))}""")
       c.Expr[T](c.resetAllAttrs(dslTree))
     }

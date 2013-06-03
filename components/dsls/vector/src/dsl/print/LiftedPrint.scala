@@ -7,7 +7,7 @@ import reflect.runtime.universe._
 /** The int printing DSL */
 abstract class PrintDSL
   extends ScalaCompile with PrintCodeGenerator with CodeGenerator with MiniIntDSL
-  with BooleanOps with Interpreted with BaseYinYang with Base {
+  with BooleanOps with Interpreted with BaseYinYang with Base with FullyStaged {
 
   var sb: StringBuffer = new StringBuffer()
 
@@ -36,12 +36,12 @@ abstract class PrintDSL
     holes.clear
   }
 
-  def requiredHoles: List[scala.Int] = {
+  /*def requiredHoles: List[scala.Int] = {
     reset()
     main()
 
     recompileHoles.toList
-  }
+  }*/
 
   def generateCode(className: String): String = {
     reset()
@@ -84,8 +84,8 @@ trait MiniIntDSL extends BaseYinYang { self: BooleanOps with PrintCodeGenerator 
     def value: scala.Int
     def __==(that: Int): Boolean = IntEq(IntOps.this, that)
     def __!=(that: Int): Boolean = IntEq(IntOps.this, that)
-    def __hashCode(): Int = IntConst(1)
-    def __##(): Int = IntConst(1)
+    def __hashCode(): Int = IntConst(value)
+    def __##(): Int = IntConst(value)
   }
 
   // classes that provide lifting
@@ -135,7 +135,7 @@ trait BooleanOps extends BaseYinYang { self: PrintCodeGenerator =>
     def value = i
   }
 
-  case class BooleanLess(l: BooleanOps, r: BooleanOps) extends BooleanOps {
+  case class BooleanLess(l: Boolean, r: Boolean) extends BooleanOps {
     override def toString = s"($l < $r)"
     def value = true
   }

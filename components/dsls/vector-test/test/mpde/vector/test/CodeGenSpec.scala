@@ -75,21 +75,17 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
     }
   }
 
-  /*"Virtualization" should "work" in {
-    for (i ← 0 to 2) {
-      assert(
-        liftPrintDebug {
-          val b = 0
-          val c = 1
-          c == 1
-          c != 1
-          c.##
-          c.hashCode
-          println(b)
-          break(i)
-          1 + b
-        } == 1)
-    }
-  }*/
-
+  "Virtualization" should "work" in {
+    val x = 1
+    assert(
+      liftPrint {
+        val b = x
+        val c = 1;
+        b.hashCode();
+        c != 1
+        b.##
+        c.hashCode
+        b
+      } == 1)
+  }
 }

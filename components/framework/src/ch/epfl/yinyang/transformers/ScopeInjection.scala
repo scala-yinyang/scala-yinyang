@@ -12,9 +12,7 @@ trait ScopeInjection extends MacroModule with TransformationUtils {
   // TODO DRY
   def rewiredToThis(s: String) = s == "package" || s == "Predef"
   object ScopeInjectionTransformer extends (Tree => Tree) {
-    def apply(tree: Tree) = {
-      new ScopeInjectionTransformer().transform(tree)
-    }
+    def apply(tree: Tree) = new ScopeInjectionTransformer().transform(tree)
   }
 
   class ScopeInjectionTransformer extends Transformer {
