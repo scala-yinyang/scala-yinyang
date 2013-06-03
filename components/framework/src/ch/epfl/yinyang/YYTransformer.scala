@@ -3,10 +3,11 @@ package yinyang
 
 import ch.epfl.yinyang.api._
 import ch.epfl.yinyang.transformers._
-import scala.collection.mutable
-import mutable.{ ListBuffer, HashMap }
+import ch.epfl.yinyang.analysis._
 import scala.collection.immutable.Map
 import scala.reflect.macros.Context
+import scala.collection.mutable
+import mutable.{ ListBuffer, HashMap }
 import language.experimental.macros
 import java.util.concurrent.atomic.AtomicLong
 import yinyang.typetransformers.TypeTransformer
@@ -31,27 +32,22 @@ object YYTransformer {
 
 // for now configuration goes as a named parameter list
 abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val config: Map[String, Any])
-  extends LanguageVirtualization with DataDefs with TransformationUtils with YYConfig
-  with ScopeInjection {
+  extends LanguageVirtualization
+  with ScopeInjection
+  with HoleTransformation
+  with FreeIdentAnalysis
+  with AscriptionTransformation
+  with LiftLiteralTransformation
+  with DataDefs
+  with TransformationUtils
+  with YYConfig {
+
   type Ctx = C
   import c.universe._
   import config._
   val typeTransformer: TypeTransformer[c.type]
   import typeTransformer._
 
-  /*
-  * Configuration parameters.
-  */
-  def interpretMethod = "interpret"
-  val holeMethod = "hole"
-  val className =
-    s"generated$$${dslName.filter(_ != '.') + YYTransformer.uID.incrementAndGet}"
-  val dslType = c.mirror.staticClass(dslName).toType
-
-  // Internal symbol tracking.
-  val symbolIds: mutable.HashMap[Int, Symbol] = new mutable.HashMap()
-  def symbolById(id: Int) = symbolIds(id)
-  def debugLevel: Int = debug
   /**
    * Main YinYang method. Transforms the body of the DSL, makes the DSL cake out
    * of the body and then executes the DSL code. If the DSL supports static
@@ -154,9 +150,19 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
     }
   }
 
-  def freeVariables(tree: Tree): List[Symbol] =
-    new FreeVariableCollector().collect(tree)
+  /*
+  * Configuration parameters.
+  */
+  def interpretMethod = "interpret"
+  val holeMethod = "hole"
+  val className =
+    s"generated$$${dslName.filter(_ != '.') + YYTransformer.uID.incrementAndGet}"
+  val dslType = c.mirror.staticClass(dslName).toType
+  def debugLevel: Int = debug
 
+  /*
+   * Checking if the all functionality from the shallow embedding exists.
+   */
   object FeatureAnalyzer extends ((Tree, Seq[DSLFeature]) => Boolean) {
     def apply(tree: Tree, lifted: Seq[DSLFeature] = Seq()): Boolean = {
       val (virtualized, lifted) = virtualize(tree)
@@ -168,7 +174,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
 
   }
 
-  private final class FeatureAnalyzer(val lifted: Seq[DSLFeature]) extends Traverser {
+  private class FeatureAnalyzer(val lifted: Seq[DSLFeature]) extends Traverser {
 
     var methods = mutable.LinkedHashSet[DSLFeature]()
 
@@ -264,111 +270,6 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
     res
   }
 
-  private final class FreeVariableCollector extends Traverser {
-
-    private[this] val collected = ListBuffer[Symbol]()
-    private[this] var defined = List[Symbol]()
-
-    private[this] final def isFree(id: Symbol) = !defined.contains(id)
-
-    override def traverse(tree: Tree) = tree match {
-      case i @ Ident(s) => {
-        val sym = i.symbol
-        //store info about idents
-        symbolIds.put(symbolId(sym), sym)
-        if (sym.isTerm &&
-          !(sym.isMethod || sym.isPackage || sym.isModule) &&
-          isFree(sym)) collected append sym
-      }
-      case _ => super.traverse(tree)
-    }
-
-    def collect(tree: Tree): List[Symbol] = {
-      collected.clear()
-      defined = new LocalDefCollector().definedSymbols(tree)
-      log(s"Defined: $defined")
-      traverse(tree)
-      collected.toList.distinct
-    }
-
-  }
-
-  private final class LocalDefCollector extends Traverser {
-
-    private[this] val definedValues, definedMethods = ListBuffer[Symbol]()
-
-    override def traverse(tree: Tree) = tree match {
-      case vd @ ValDef(mods, name, tpt, rhs) =>
-        definedValues += vd.symbol
-        traverse(rhs)
-      case dd @ DefDef(mods, name, tparams, vparamss, tpt, rhs) =>
-        definedMethods += dd.symbol
-        vparamss.flatten.foreach(traverse)
-        traverse(rhs)
-      case _ =>
-        super.traverse(tree)
-    }
-
-    def definedSymbols(tree: Tree): List[Symbol] = {
-      definedValues.clear()
-      definedMethods.clear()
-      traverse(tree)
-      (definedValues ++ definedMethods).toList
-    }
-
-  }
-
-  object AscriptionTransformer extends (Tree => Tree) {
-    def apply(tree: Tree) = new AscriptionTransformer().transform(tree)
-  }
-
-  private final class AscriptionTransformer extends Transformer {
-    var ident = 0
-    var externalApplyFound = false
-
-    override def transform(tree: Tree): Tree = {
-      log(" " * ident + " ==> " + tree)
-      ident += 1
-
-      val result = tree match {
-        case vd @ ValDef(m, n, t, rhs) =>
-          copy(vd)(ValDef(m, n, t, Typed(transform(rhs), TypeTree(t.tpe))))
-
-        case dd @ DefDef(m, n, tp, p, rt, rhs) =>
-          copy(dd)(DefDef(m, n, tp, p, rt, Typed(transform(rhs), TypeTree(rt.tpe))))
-
-        case ap @ Apply(fun, args) =>
-          val ascrArgs = args map {
-            x => // TODO cleanup. This can be done easier.
-              val auniverse = c.universe.asInstanceOf[scala.reflect.internal.Types]
-              log(s"isConstantType(x.tpe) = " +
-                auniverse.isConstantType(tree.tpe.asInstanceOf[auniverse.Type]))
-              Typed(transform(x), TypeTree(
-                if (x.tpe != null &&
-                  auniverse.isConstantType(x.tpe.asInstanceOf[auniverse.Type]))
-                  x.tpe.erasure
-                else
-                  x.tpe))
-          }
-          if (externalApplyFound) {
-            Apply(transform(fun), ascrArgs)
-          } else {
-            externalApplyFound = true
-            val baseTree = Apply(transform(fun), ascrArgs)
-            externalApplyFound = false
-            Typed(baseTree, TypeTree(ap.tpe))
-          }
-        case _ =>
-          super.transform(tree)
-      }
-
-      ident -= 1
-      log(" " * ident + " <== " + result)
-
-      result
-    }
-  }
-
   object TypeTreeTransformer extends (Tree => Tree) {
     def apply(tree: Tree) = new TypeTreeTransformer().transform(tree)
   }
@@ -394,54 +295,6 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
       }
 
       result
-    }
-  }
-
-  private object LiftLiteralTransformer {
-    def apply(idents: List[Symbol] = Nil)(tree: Tree) =
-      new LiftLiteralTransformer(idents).transform(tree)
-  }
-
-  private final class LiftLiteralTransformer(val idents: List[Symbol])
-    extends Transformer {
-
-    def lift(t: Tree) = {
-      Apply(Select(This(newTypeName(className)), newTermName("lift")), List(t))
-    }
-
-    override def transform(tree: Tree): Tree = {
-      tree match {
-        case t @ Literal(Constant(_)) =>
-          lift(t)
-        case t @ Ident(_) if idents.contains(t.symbol) =>
-          lift(t)
-        case _ =>
-          super.transform(tree)
-      }
-    }
-  }
-
-  object HoleTransformer {
-    def apply(toMark: List[Int] = Nil)(tree: Tree) =
-      new HoleTransformer(toMark).transform(tree)
-  }
-  /**
-   * Replace all variables in `toMark` with `hole[T](classTag[T], symbolId)`
-   */
-  private final class HoleTransformer(toMark: List[Int]) extends Transformer {
-
-    override def transform(tree: Tree): Tree = tree match {
-      case i @ Ident(s) if toMark contains symbolId(i.symbol) =>
-        Apply(
-          Select(This(newTypeName(className)), newTermName(holeMethod)),
-          List(
-            TypeApply(
-              Select(Select(Select(Select(Select(Ident(newTermName("scala")), newTermName("reflect")),
-                newTermName("runtime")), nme.PACKAGE), newTermName("universe")),
-                newTermName("typeTag")), List(TypeTree(i.tpe))),
-            Literal(Constant(symbolId(i.symbol)))))
-      case _ =>
-        super.transform(tree)
     }
   }
 
