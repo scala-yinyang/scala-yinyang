@@ -16,7 +16,9 @@ object YYTransformer {
   val defaults = Map[String, Any](
     ("shallow" -> true),
     ("debug" -> 0),
-    ("mainMethod" -> "main"))
+    ("mainMethod" -> "main"),
+    ("featureAnalysing" -> true),
+    ("ascriptionTransforming" -> true))
 
   def apply[C <: Context, T](c: C)(
     dslName: String,
@@ -44,7 +46,6 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
 
   type Ctx = C
   import c.universe._
-  import config._
   val typeTransformer: TypeTransformer[c.type]
   import typeTransformer._
 
@@ -61,7 +62,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
   def apply[T](block: c.Expr[T]): c.Expr[T] = {
     log("Body: " + showRaw(block.tree))
     // shallow or detect a non-existing feature => return the original block.
-    if (!FeatureAnalyzer(block.tree) || shallow)
+    if (featureAnalysing && (!FeatureAnalyzer(block.tree) || shallow))
       block
     else {
       // mark captured variables as holes

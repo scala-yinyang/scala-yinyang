@@ -13,10 +13,14 @@ import scala.collection.mutable
  *   - idents
  *   - lambda parameters
  */
-trait AscriptionTransformation extends MacroModule with TransformationUtils with DataDefs {
+trait AscriptionTransformation extends MacroModule with TransformationUtils with DataDefs with YYConfig {
   import c.universe._
   object AscriptionTransformer extends (Tree => Tree) {
-    def apply(tree: Tree) = new AscriptionTransformer().transform(tree)
+    def apply(tree: Tree) =
+      if (ascriptionTransforming)
+        new AscriptionTransformer().transform(tree)
+      else
+        tree
   }
 
   private final class AscriptionTransformer extends Transformer {
