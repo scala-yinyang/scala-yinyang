@@ -31,6 +31,14 @@ trait ScopeInjection extends MacroModule with TransformationUtils {
           retDef
         }
 
+        case CaseDef(pat: Tree, guard: Tree, body: Tree) => {
+          val newPat = pat match {
+            case Apply(fun: TypeTree, args) => transform(Apply(fun.original, args))
+            case _                          => transform(pat)
+          }
+          CaseDef(newPat, transform(guard), transform(body))
+        }
+
         // re-wire objects
         case s @ Select(Select(inn, t: TermName), name) // package object goes to this
         if s.symbol.isMethod && (rewiredToThis(t.toString) || t.toString == "this") =>

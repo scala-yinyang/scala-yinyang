@@ -16,15 +16,19 @@ object YYTransformer {
   val defaults = Map[String, Any](
     ("shallow" -> true),
     ("debug" -> 0),
-    ("mainMethod" -> "main"))
+    ("mainMethod" -> "main"),
+    ("featureAnalysing" -> true),
+    ("ascriptionTransforming" -> true))
 
   def apply[C <: Context, T](c: C)(
     dslName: String,
     tpeTransformer: TypeTransformer[c.type],
+    postProcessing: Option[PostProcessing[c.type]],
     config: Map[String, Any] = Map()) =
     new YYTransformer[c.type, T](c, dslName, config withDefault (defaults)) {
       val typeTransformer = tpeTransformer
       typeTransformer.className = className
+      val postProcessor = postProcessing.getOrElse(new NullPostProcessing[c.type](c))
     }
 
   protected[yinyang] val uID = new AtomicLong(0)
@@ -44,9 +48,10 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
 
   type Ctx = C
   import c.universe._
-  import config._
   val typeTransformer: TypeTransformer[c.type]
+  val postProcessor: PostProcessing[c.type]
   import typeTransformer._
+  import postProcessor._
 
   /**
    * Main YinYang method. Transforms the body of the DSL, makes the DSL cake out
@@ -61,7 +66,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
   def apply[T](block: c.Expr[T]): c.Expr[T] = {
     log("Body: " + showRaw(block.tree))
     // shallow or detect a non-existing feature => return the original block.
-    if (!FeatureAnalyzer(block.tree) || shallow)
+    if (featureAnalysing && (!FeatureAnalyzer(block.tree) || shallow))
       block
     else {
       // mark captured variables as holes
@@ -73,7 +78,8 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
           ScopeInjectionTransformer andThen
           TypeTreeTransformer andThen
           HoleTransformer(holes) andThen
-          composeDSL)(block)
+          composeDSL andThen
+          PostProcess)(block)
 
       val dslPre = transform(allCaptured map symbolId, Nil)(block.tree)
 

@@ -17,24 +17,28 @@ package object la {
       YYTransformer[c.type, T](c)(
         "dsl.la.rep.VectorDSL",
         new RepTransformer[c.type](c),
+        None,
         Map("shallow" -> false, "debug" -> false))(block)
 
     def liftDebugRep[T](c: Context)(block: c.Expr[T]): c.Expr[T] =
       YYTransformer[c.type, T](c)(
         "dsl.la.rep.VectorDSL",
         new RepTransformer[c.type](c),
+        None,
         Map("shallow" -> false, "debug" -> true))(block)
 
     def liftNoRep[T](c: Context)(block: c.Expr[T]): c.Expr[T] =
       YYTransformer[c.type, T](c)(
         "dsl.la.norep.VectorDSL",
         new PolyTransformer[c.type](c),
+        None,
         Map("shallow" -> false, "debug" -> false))(block)
 
     def liftDebugNoRep[T](c: Context)(block: c.Expr[T]): c.Expr[T] =
       YYTransformer[c.type, T](c)(
         "dsl.la.norep.VectorDSL",
         new PolyTransformer[c.type](c),
+        None,
         Map("shallow" -> false, "debug" -> true))(block)
   }
 }
