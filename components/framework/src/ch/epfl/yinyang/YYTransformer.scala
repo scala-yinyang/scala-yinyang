@@ -23,10 +23,14 @@ object YYTransformer {
   def apply[C <: Context, T](c: C)(
     dslName: String,
     tpeTransformer: TypeTransformer[c.type],
+    postProcessing: Option[PostProcessing[c.type]],
     config: Map[String, Any] = Map()) =
     new YYTransformer[c.type, T](c, dslName, config withDefault (defaults)) {
       val typeTransformer = tpeTransformer
       typeTransformer.className = className
+      // val postProcessor = postProcessing
+      // val postProcessor = postProcessing.get
+      val postProcessor = postProcessing.getOrElse(new NullPostProcessing[c.type](c))
     }
 
   protected[yinyang] val uID = new AtomicLong(0)
@@ -47,7 +51,9 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
   type Ctx = C
   import c.universe._
   val typeTransformer: TypeTransformer[c.type]
+  val postProcessor: PostProcessing[c.type]
   import typeTransformer._
+  import postProcessor._
 
   /**
    * Main YinYang method. Transforms the body of the DSL, makes the DSL cake out
@@ -74,7 +80,8 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
           ScopeInjectionTransformer andThen
           TypeTreeTransformer andThen
           HoleTransformer(holes) andThen
-          composeDSL)(block)
+          composeDSL andThen
+          PostProcess)(block)
 
       val dslPre = transform(allCaptured map symbolId, Nil)(block.tree)
 

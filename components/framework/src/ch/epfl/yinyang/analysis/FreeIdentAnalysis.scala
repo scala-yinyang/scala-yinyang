@@ -65,6 +65,9 @@ trait FreeIdentAnalysis extends MacroModule with TransformationUtils with YYConf
         definedMethods += dd.symbol
         vparamss.flatten.foreach(traverse)
         traverse(rhs)
+      case bind @ Bind(name, body) =>
+        definedValues += bind.symbol
+        traverse(body)
       case _ =>
         super.traverse(tree)
     }

@@ -30,11 +30,11 @@ trait PolyTransformerLike[C <: Context] { this: TypeTransformer[C] =>
 
     case TypeRef(pre, sym, args) if isFunctionType(inType) =>
       AppliedTypeTree(Select(Ident(newTermName("scala")), toType(sym)),
-        args map { x => constructPolyTree(OtherCtx, x) })
+        args map { x => constructPolyTree(typeCtx, x) })
 
     case TypeRef(pre, sym, args) =>
       AppliedTypeTree(Select(This(newTypeName(className)), toType(sym)),
-        args map { x => constructPolyTree(OtherCtx, x) })
+        args map { x => constructPolyTree(typeCtx, x) })
 
     case ConstantType(t) =>
       Select(This(newTypeName(className)), toType(inType.typeSymbol))
@@ -47,10 +47,11 @@ trait PolyTransformerLike[C <: Context] { this: TypeTransformer[C] =>
         newTermName(inType.typeSymbol.name.toString)))
 
     case s @ SingleType(pre, name) if inType.typeSymbol.isClass =>
-      constructPolyTree(OtherCtx,
+      constructPolyTree(typeCtx,
         s.asInstanceOf[scala.reflect.internal.Types#SingleType]
           .underlying.asInstanceOf[c.universe.Type])
-
+    case annTpe @ AnnotatedType(annotations, underlying, selfsym) =>
+      constructPolyTree(typeCtx, underlying)
     case another @ _ =>
       println(("!" * 10) + s"""Missed: $inType = ${
         showRaw(another)
