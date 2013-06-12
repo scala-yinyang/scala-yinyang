@@ -16,12 +16,14 @@ object `package` {
     YYTransformer[c.type, T](c)(
       "dsl.print.PrintDSL",
       new PolyTransformer[c.type](c),
+      None,
       Map("shallow" -> false))(block)
 
   def _liftPrintDebug[T](c: Context)(block: c.Expr[T]): c.Expr[T] =
     YYTransformer[c.type, T](c)(
       "dsl.print.PrintDSL",
       new PolyTransformer[c.type](c),
+      None,
       Map("shallow" -> false, "debug" -> 1))(block)
 
   // The only thing we declare here
