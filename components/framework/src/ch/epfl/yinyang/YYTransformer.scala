@@ -28,8 +28,6 @@ object YYTransformer {
     new YYTransformer[c.type, T](c, dslName, config withDefault (defaults)) {
       val typeTransformer = tpeTransformer
       typeTransformer.className = className
-      // val postProcessor = postProcessing
-      // val postProcessor = postProcessing.get
       val postProcessor = postProcessing.getOrElse(new NullPostProcessing[c.type](c))
     }
 
