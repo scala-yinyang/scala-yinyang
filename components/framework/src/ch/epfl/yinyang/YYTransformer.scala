@@ -150,8 +150,8 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
           Block(dsl, guardedExecute)
       }
 
-      log(s"""Final untyped: ${show(c.resetAllAttrs(dslTree), printTypes = true)}
-        Final typed: ${show(c.typeCheck(c.resetAllAttrs(dslTree)))}""")
+      log(s"Final untyped: ${show(c.resetAllAttrs(dslTree), printTypes = true)}")
+      log(s"Final typed: ${show(c.typeCheck(c.resetAllAttrs(dslTree)))}")
       c.Expr[T](c.resetAllAttrs(dslTree))
     }
   }
@@ -283,10 +283,14 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
   private final class TypeTreeTransformer extends Transformer {
 
     var typeCtx: TypeContext = OtherCtx
+    var ident = 0
 
     override def transform(tree: Tree): Tree = {
+      log(" " * ident + " ::> " + tree)
+      ident += 1
       val result = tree match {
         case typTree: TypTree if typTree.tpe != null =>
+          log(s"TypeTree for ${showRaw(typTree)}")
           constructTypeTree(typeCtx, typTree.tpe)
 
         case TypeApply(mth, targs) =>
@@ -300,6 +304,8 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
           super.transform(tree)
       }
 
+      ident -= 1
+      log(" " * ident + " <:: " + result)
       result
     }
   }

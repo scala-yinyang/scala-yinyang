@@ -22,7 +22,7 @@ object YinYangBuild extends Build {
   lazy val scalaOrg = "org.scala-lang"
   lazy val scalaSettings = Defaults.defaultSettings ++ Seq(
     scalaOrganization := scalaOrg,
-    scalaVersion := "2.10.2-SNAPSHOT"
+    scalaVersion := "2.10.2"
   )
 
   lazy val defaults = scalaSettings ++ formatSettings ++ Seq(
