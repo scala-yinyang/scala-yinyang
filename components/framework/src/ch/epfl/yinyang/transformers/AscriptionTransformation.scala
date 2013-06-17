@@ -32,12 +32,13 @@ trait AscriptionTransformation extends MacroModule with TransformationUtils with
       ident += 1
 
       val result = tree match {
-        case vd @ ValDef(m, n, t, rhs) =>
+        case vd @ ValDef(m, n, t, rhs) if rhs != EmptyTree =>
           copy(vd)(ValDef(m, n, t, Typed(transform(rhs), TypeTree(t.tpe))))
 
         case dd @ DefDef(m, n, tp, p, rt, rhs) =>
           copy(dd)(DefDef(m, n, tp, p, rt, Typed(transform(rhs), TypeTree(rt.tpe))))
-
+        case CaseDef(pat: Tree, guard: Tree, body: Tree) =>
+          CaseDef(pat, guard, transform(body))
         case ap @ Apply(fun, args) =>
           val ascrArgs = args map {
             x => // TODO cleanup. This can be done easier.
