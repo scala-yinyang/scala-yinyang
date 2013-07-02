@@ -18,7 +18,8 @@ object YYTransformer {
     ("debug" -> 0),
     ("mainMethod" -> "main"),
     ("featureAnalysing" -> true),
-    ("ascriptionTransforming" -> true))
+    ("ascriptionTransforming" -> true),
+    ("liftTypes" -> Nil))
 
   def apply[C <: Context, T](c: C)(
     dslName: String,
@@ -93,15 +94,29 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
       val reqVars = dslType match {
         case tpe if tpe <:< typeOf[FullyStaged] =>
           allCaptured
+        case tpe if tpe <:< typeOf[FullyUnstaged] =>
+          Nil
+        case tpe if tpe <:< typeOf[HoleTypeAnalyser] => {
+          allCaptured foreach { x =>
+            log(x.typeSignature.typeConstructor.toString)
+          }
+          allCaptured filter { x =>
+            liftTypes.exists(l => x.typeSignature <:< l.asInstanceOf[Type])
+          }
+        }
         case tpe =>
-          reflInstance[BaseYinYang](dslPre).requiredHoles.map(symbolById)
+          reflInstance[BaseYinYang](dslPre).requiredHoles(allCaptured.asInstanceOf[List[reflect.runtime.universe.Symbol]]).map(symbolById)
       }
 
       val holes = allCaptured diff reqVars
 
       // re-transform the tree with new holes if there are required vars
       val dsl = if (reqVars.isEmpty) dslPre
-      else transform(holes map symbolId, reqVars)(block.tree)
+      else {
+        holeTable.clear()
+        transform(holes map symbolId, reqVars)(block.tree)
+      }
+      val sortedHoles = holes.sortBy(h => holeTable.indexOf(symbolId(h)))
 
       def args(holes: List[Symbol]): String =
         holes.map({ y: Symbol => y.name.decoded }).mkString("", ",", "")
@@ -122,7 +137,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
            */
           val programId = new scala.util.Random().nextLong
           val retType = block.tree.tpe.toString
-          val functionType = s"""${(0 until args(holes).length).map(y => "scala.Any").mkString("(", ", ", ")")} => ${retType}"""
+          val functionType = s"""${(0 until args(sortedHoles).length).map(y => "scala.Any").mkString("(", ", ", ")")} => ${retType}"""
           val refs = reqVars filterNot (isPrimitive)
           val dslInit = s"""
             val dslInstance = ch.epfl.yinyang.runtime.YYStorage.lookup(${programId}L, new $className())
@@ -136,20 +151,21 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
               val program = ch.epfl.yinyang.runtime.YYStorage.$guardType[$functionType](
                 ${programId}L, values, refs, recompile
               )
-              program.apply(${args(holes)})
+              program.apply(${args(sortedHoles)})
             """
             case t if t <:< typeOf[Interpreted] => s"""
               def invalidate(): () => Any = () => dslInstance.reset
               ch.epfl.yinyang.runtime.YYStorage.$guardType[Any](
                 ${programId}L, values, refs, invalidate
               )
-              dslInstance.interpret[${retType}](${args(holes)})
+              dslInstance.interpret[${retType}](${args(sortedHoles)})
             """
           })
 
           Block(dsl, guardedExecute)
       }
 
+      log(s"Final tree: ${showRaw(c.resetAllAttrs(dslTree))}")
       log(s"Final untyped: ${show(c.resetAllAttrs(dslTree), printTypes = true)}")
       log(s"Final typed: ${show(c.typeCheck(c.resetAllAttrs(dslTree)))}")
       c.Expr[T](c.resetAllAttrs(dslTree))

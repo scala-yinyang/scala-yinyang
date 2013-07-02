@@ -6,6 +6,7 @@ import ch.epfl.yinyang.transformers._
 import scala.reflect.macros.Context
 import language.experimental.macros
 import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 
 /**
  * Converts captured variables to holes.
@@ -22,6 +23,8 @@ trait HoleTransformation extends MacroModule with TransformationUtils with YYCon
 
   import c.universe._
 
+  val holeTable = new ArrayBuffer[Int]
+
   object HoleTransformer {
     def apply(toMark: List[Int] = Nil)(tree: Tree) =
       new HoleTransformer(toMark).transform(tree)
@@ -32,15 +35,25 @@ trait HoleTransformation extends MacroModule with TransformationUtils with YYCon
   class HoleTransformer(toMark: List[Int]) extends Transformer {
 
     override def transform(tree: Tree): Tree = tree match {
-      case i @ Ident(s) if toMark contains symbolId(i.symbol) =>
+      case i @ Ident(s) if toMark contains symbolId(i.symbol) => {
+        val index = {
+          val sId = symbolId(i.symbol)
+          if (holeTable.contains(sId))
+            holeTable.indexOf(sId)
+          else {
+            holeTable += symbolId(i.symbol)
+            holeTable.size - 1
+          }
+        }
         Apply(
           Select(This(tpnme.EMPTY), newTermName(holeMethod)),
           List(
             TypeApply(
               Select(Select(Select(Select(Select(Ident(newTermName("scala")), newTermName("reflect")),
                 newTermName("runtime")), nme.PACKAGE), newTermName("universe")),
-                newTermName("typeTag")), List(TypeTree(i.tpe))),
-            Literal(Constant(symbolId(i.symbol)))))
+                newTermName("typeTag")), List(TypeTree(i.tpe.widen))),
+            Literal(Constant(index))))
+      }
       case _ =>
         super.transform(tree)
     }
