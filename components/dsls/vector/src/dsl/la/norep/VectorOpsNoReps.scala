@@ -228,7 +228,7 @@ trait VectorDSL
   with Interpreted {
   type Vector[T] = VectorOps[T]
 
-  def requiredHoles: List[scala.Int] = Nil
+  def requiredHoles(symbols: List[Symbol]): List[scala.Int] = Nil
 
   //TODO (NEW) (TOASK) - where should we provide implementation for methods of VectorOps
   trait VectorOps[T] {

@@ -10,7 +10,7 @@ trait BaseYinYang {
    *   @return list of holes required for run-time optimizations. Holes will be promoted
    *           into constants in the next stage of compilation (at runtime).
    */
-  def requiredHoles: List[Int]
+  def requiredHoles(symbols: List[Symbol]): List[Int]
 
   /**
    * Abstract super class for implicit lifters that the DSL author needs to provide.
