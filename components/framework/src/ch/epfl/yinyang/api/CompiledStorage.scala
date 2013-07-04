@@ -44,7 +44,7 @@ object YYStorage {
   final def checkRef[Ret](id: Long, values: Seq[Any], refs: Seq[Any], recompile: () => Any): Ret = {
     val guard = fetchGuard(id, values, refs, recompile)
 
-    if (guard.values != values && guard.refs.map(_.apply()) != refs)
+    if (guard.values != values || guard.refs.map(_.apply()) != refs)
       guard.function = recompile()
 
     guard.function.asInstanceOf[Ret]
@@ -56,7 +56,7 @@ object YYStorage {
     val guard = fetchGuard(id, values, refs, recompile)
 
     // TODO optimize
-    if (guard.values != values && (guard.refs.map(_.apply()).zip(anyRefs).exists { x => !(x._1 eq x._2) }))
+    if (guard.values != values || (guard.refs.map(_.apply()).zip(anyRefs).exists { x => !(x._1 eq x._2) }))
       guard.function = recompile()
 
     guard.function.asInstanceOf[Ret]
