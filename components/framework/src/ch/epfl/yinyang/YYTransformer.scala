@@ -16,6 +16,7 @@ object YYTransformer {
   val defaults = Map[String, Any](
     ("shallow" -> true),
     ("debug" -> 0),
+    ("shortenDSLNames" -> true),
     ("mainMethod" -> "main"),
     ("featureAnalysing" -> true),
     ("ascriptionTransforming" -> true),
@@ -65,30 +66,36 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
    * or at runtime.
    */
   def apply[T](block: c.Expr[T]): c.Expr[T] = {
-    log("Body: " + showRaw(block.tree))
+    log("YYTransformer started for block: " + showRaw(block.tree), 2)
     // shallow or detect a non-existing feature => return the original block.
     if (featureAnalysing && (!FeatureAnalyzer(block.tree) || shallow))
       block
     else {
       // mark captured variables as holes
       val allCaptured = freeVariables(block.tree)
+      log("Free variables (allCaptured): " + allCaptured, 2)
+      log("original: " + block, 2)
+
       def transform(holes: List[Int], idents: List[Symbol])(block: Tree): Tree =
         (AscriptionTransformer andThen
           LiftLiteralTransformer(idents) andThen
           (x => VirtualizationTransformer(x)._1) andThen
           ScopeInjectionTransformer andThen
           TypeTreeTransformer andThen
-          HoleTransformer(holes) andThen
+          HoleTransformer(holes, shortenNames) andThen
           composeDSL andThen
           PostProcess)(block)
 
       val dslPre = transform(allCaptured map symbolId, Nil)(block.tree)
+      log("FIRST TRANSFORM DONE (prettyPrinting in Caps):\n" + shortenNames(dslPre) + "\n", 2)
 
       // if the DSL inherits the StaticallyChecked trait reflectively do the static analysis
-      if (dslType <:< typeOf[StaticallyChecked])
+      if (dslType <:< typeOf[StaticallyChecked]) {
+        log("statically checking", 2)
         reflInstance[StaticallyChecked](dslPre).staticallyCheck(new Reporter(c))
+      }
 
-      log(showRaw(dslPre, printTypes = true))
+      log(showRaw(dslPre, printTypes = true), 3)
       // c.typeCheck()
       // DSL returns what holes it needs
       val reqVars = dslType match {
@@ -109,6 +116,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
       }
 
       val holes = allCaptured diff reqVars
+      log(s"captured: $allCaptured, reqVars: $reqVars, holes: $holes", 2)
 
       // re-transform the tree with new holes if there are required vars
       val dsl = if (reqVars.isEmpty) dslPre
@@ -123,6 +131,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
 
       val dslTree = dslType match {
         case tpe if tpe <:< typeOf[CodeGenerator] && reqVars.isEmpty =>
+          log("COMPILE TIME COMPILED", 2)
           /*
            * If DSL does not require run-time data it can be completely
            * generated at compile time and wired for execution.
@@ -135,6 +144,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
           /*
            * If DSL need run-time info send it to run-time and install recompilation guard.
            */
+          log("RUNTIME COMPILED with guards", 2)
           val programId = new scala.util.Random().nextLong
           val retType = block.tree.tpe.toString
           val functionType = s"""${(0 until args(sortedHoles).length).map(y => "scala.Any").mkString("(", ", ", ")")} => ${retType}"""
@@ -165,9 +175,9 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
           Block(dsl, guardedExecute)
       }
 
-      log(s"Final tree: ${showRaw(c.resetAllAttrs(dslTree))}")
-      log(s"Final untyped: ${show(c.resetAllAttrs(dslTree), printTypes = true)}")
-      log(s"Final typed: ${show(c.typeCheck(c.resetAllAttrs(dslTree)))}")
+      log(s"Final tree: ${showRaw(c.resetAllAttrs(dslTree))}", 3)
+      log(s"Final untyped: ${show(c.resetAllAttrs(dslTree), printTypes = true)}", 3)
+      log(s"Final typed: ${shortenNames(c.typeCheck(c.resetAllAttrs(dslTree)))}", 2)
       c.Expr[T](c.resetAllAttrs(dslTree))
     }
   }
@@ -187,10 +197,11 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
    */
   object FeatureAnalyzer extends ((Tree, Seq[DSLFeature]) => Boolean) {
     def apply(tree: Tree, lifted: Seq[DSLFeature] = Seq()): Boolean = {
+      log("Feature analysis", 2)
       val (virtualized, lifted) = virtualize(tree)
       val st = System.currentTimeMillis()
       val res = new FeatureAnalyzer(lifted).analyze(virtualized)
-      log(s"Feature checking time: ${(System.currentTimeMillis() - st)}")
+      log(s"Feature checking time: ${(System.currentTimeMillis() - st)}\n", 3)
       res
     }
 
@@ -204,7 +215,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
 
     def addIfNotLifted(m: DSLFeature) =
       if (!lifted.exists(x => x.name == m.name)) {
-        log(s"adding ${m}")
+        log(s"adding ${m}", 3)
         methods += m
       }
 
@@ -228,16 +239,16 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
         parameterLists = Nil
         for (x <- args) traverse(x)
       case tr @ Select(obj, name) =>
-        log(s"Select obj.tpe = ${obj.tpe}")
+        log(s"Select obj.tpe = ${obj.tpe}", 3)
         addIfNotLifted(DSLFeature(Some(getObjType(obj)), name.toString, Nil, Nil))
       case tr =>
-        log(s"Not Checking: ${showRaw(tr)}")
+        log(s"Not Checking: ${showRaw(tr)}", 3)
         super.traverse(tree)
     }
 
     def analyze(tree: Tree): Boolean = {
       traverse(tree)
-      log(s"To analyze: " + (methods ++ lifted))
+      log(s"To analyze: " + (methods ++ lifted), 2)
       //Finds the first element of the sequence satisfying a predicate, if any.
       (methods ++ lifted).toSeq.find(!methodsExist(_)) match {
         case Some(methodError) if lifted.contains(methodError) =>
@@ -266,12 +277,11 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
             Select(Literal(Constant(())), newTermName("asInstanceOf")),
             List(constructTypeTree(typeTransformer.OtherCtx, tpe)))
       }
-
-      log(s"Args ${meth.args}")
+      log(s"Args: ${meth.args}", 3)
       val lhs: Tree = typeApply(meth.targs map { x => constructTypeTree(typeTransformer.TypeApplyCtx, x.tpe) })(
         Select(meth.tpe.map(dummyTree(_)).getOrElse(This(className)), newTermName(meth.name)))
       val res = meth.args.foldLeft(lhs)((x, y) => Apply(x, y.map(dummyTree)))
-      log(s"${showRaw(res)}")
+      log(s"${showRaw(res)}", 3)
       res
     }
 
@@ -279,13 +289,13 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
       // block containing only dummy methods that were applied.
       val block = Block(composeDSL(Block(
         methodSet.map(x => application(x)).toSeq: _*)), Literal(Constant(())))
-      log(s"Block: ${show(block)})")
-      log(s"Block raw: ${showRaw(block)})")
+      log(s"Block: ${show(block)})", 3)
+      log(s"Block raw: ${showRaw(block)})", 3)
       c.typeCheck(block)
       true
     } catch {
       case e: Throwable =>
-        log("Feature not working!!!" + e)
+        log("Feature not working!!!" + e, 2)
         false
     }
 
@@ -293,7 +303,11 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
   }
 
   object TypeTreeTransformer extends (Tree => Tree) {
-    def apply(tree: Tree) = new TypeTreeTransformer().transform(tree)
+    def apply(tree: Tree) = {
+      val t = new TypeTreeTransformer().transform(tree)
+      log("typeTreeTransformed: " + shortenNames(t), 2)
+      t
+    }
   }
 
   private final class TypeTreeTransformer extends Transformer {
@@ -302,11 +316,11 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
     var ident = 0
 
     override def transform(tree: Tree): Tree = {
-      log(" " * ident + " ::> " + tree)
+      log(" " * ident + " ::> " + tree, 3)
       ident += 1
       val result = tree match {
         case typTree: TypTree if typTree.tpe != null =>
-          log(s"TypeTree for ${showRaw(typTree)}")
+          log(s"TypeTree for ${showRaw(typTree)}", 3)
           constructTypeTree(typeCtx, typTree.tpe)
 
         case TypeApply(mth, targs) =>
@@ -321,7 +335,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
       }
 
       ident -= 1
-      log(" " * ident + " <:: " + result)
+      log(" " * ident + " <:: " + result, 3)
       result
     }
   }
@@ -354,10 +368,13 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
    */
   private def reflInstance[T](dslDef: Tree): T = {
     if (_reflInstance == None) {
+      log("Reflectively instantiating and memoizing DSL.", 2)
       val st = System.currentTimeMillis()
       _reflInstance = Some(c.eval(
         c.Expr(c.resetAllAttrs(Block(dslDef, constructor)))))
-      log(s"Eval time: ${(System.currentTimeMillis() - st)}")
+      log(s"Eval time: ${(System.currentTimeMillis() - st)}", 2)
+    } else {
+      log("Retrieving memoized reflective DSL instance.", 2)
     }
     _reflInstance.get.asInstanceOf[T]
   }
@@ -379,4 +396,14 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
   //     }
   // }
 
+  val typeRegex = new scala.util.matching.Regex("(" + className.replace("$", "\\$") + """\.this\.)(\w*)""")
+  val typetagRegex = new scala.util.matching.Regex("""(scala\.reflect\.runtime\.[a-zA-Z`]*\.universe\.typeTag\[)(\w*)\]""")
+  def shortenNames(tree: Tree): String = {
+    var short = tree.toString
+    if (shortenDSLNames) {
+      typeRegex findAllIn short foreach { m => val typeRegex(start, typ) = m; short = short.replace(start + typ, typ.toUpperCase()) }
+      typetagRegex findAllIn short foreach { m => val typetagRegex(start, typ) = m; short = short.replace(start + typ + "]", "TYPETAG[" + typ.toUpperCase() + "]") }
+    }
+    short
+  }
 }

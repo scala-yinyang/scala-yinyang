@@ -37,7 +37,11 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
   def virtualize(t: Tree): (Tree, Seq[DSLFeature]) = VirtualizationTransformer(t)
 
   object VirtualizationTransformer {
-    def apply(tree: Tree) = new VirtualizationTransformer().apply(tree)
+    def apply(tree: Tree) = {
+      val t = new VirtualizationTransformer().apply(tree)
+      log("(virtualized, Seq[Features]): " + t, 2)
+      t
+    }
   }
 
   object TermName { // TODO remove with 2.11
@@ -48,7 +52,7 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
     val lifted = mutable.ArrayBuffer[DSLFeature]()
     def liftFeature(receiver: Option[Tree], nme: String, args: List[List[Tree]], targs: List[Tree] = Nil): Tree = {
       lifted += DSLFeature(receiver.map(_.tpe), nme, targs, args.map(_.map(_.tpe)))
-      log(show(method(receiver.map(transform), nme, args.map(_.map(transform)), targs)))
+      log(show(method(receiver.map(transform), nme, args.map(_.map(transform)), targs)), 3)
       method(receiver.map(transform), nme, args.map(_.map(transform)), targs)
     }
     override def transform(tree: Tree): Tree = {

@@ -17,9 +17,11 @@ trait AscriptionTransformation extends MacroModule with TransformationUtils with
   import c.universe._
   object AscriptionTransformer extends (Tree => Tree) {
     def apply(tree: Tree) =
-      if (ascriptionTransforming)
-        new AscriptionTransformer().transform(tree)
-      else
+      if (ascriptionTransforming) {
+        val t = new AscriptionTransformer().transform(tree)
+        log("ascription transformed: " + t, 2)
+        t
+      } else
         tree
   }
 
@@ -28,7 +30,7 @@ trait AscriptionTransformation extends MacroModule with TransformationUtils with
     var externalApplyFound = false
 
     override def transform(tree: Tree): Tree = {
-      log(" " * ident + " ==> " + tree)
+      log(" " * ident + " ==> " + tree, 3)
       ident += 1
 
       val result = tree match {
@@ -44,7 +46,7 @@ trait AscriptionTransformation extends MacroModule with TransformationUtils with
             x => // TODO cleanup. This can be done easier.
               val auniverse = c.universe.asInstanceOf[scala.reflect.internal.Types]
               log(s"isConstantType(x.tpe) = " +
-                auniverse.isConstantType(tree.tpe.asInstanceOf[auniverse.Type]))
+                auniverse.isConstantType(tree.tpe.asInstanceOf[auniverse.Type]), 3)
               Typed(transform(x), TypeTree(
                 if (x.tpe != null &&
                   auniverse.isConstantType(x.tpe.asInstanceOf[auniverse.Type]))
@@ -65,7 +67,7 @@ trait AscriptionTransformation extends MacroModule with TransformationUtils with
       }
 
       ident -= 1
-      log(" " * ident + " <== " + result)
+      log(" " * ident + " <== " + result, 3)
 
       result
     }
