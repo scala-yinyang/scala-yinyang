@@ -26,8 +26,11 @@ trait HoleTransformation extends MacroModule with TransformationUtils with YYCon
   val holeTable = new ArrayBuffer[Int]
 
   object HoleTransformer {
-    def apply(toMark: List[Int] = Nil)(tree: Tree) =
-      new HoleTransformer(toMark).transform(tree)
+    def apply(toMark: List[Int] = Nil, shortenNames: Tree => String)(tree: Tree) = {
+      val t = new HoleTransformer(toMark).transform(tree)
+      log("holeTransformed (marking " + toMark + "): " + shortenNames(t), 2)
+      t
+    }
   }
   /**
    * Replace all variables in `toMark` with `hole[T](classTag[T], symbolId)`

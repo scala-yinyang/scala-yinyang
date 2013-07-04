@@ -12,7 +12,11 @@ trait ScopeInjection extends MacroModule with TransformationUtils {
   // TODO DRY
   def rewiredToThis(s: String) = s == "package" || s == "Predef"
   object ScopeInjectionTransformer extends (Tree => Tree) {
-    def apply(tree: Tree) = new ScopeInjectionTransformer().transform(tree)
+    def apply(tree: Tree) = {
+      val t = new ScopeInjectionTransformer().transform(tree)
+      log("scopeInjected: " + t, 2)
+      t
+    }
   }
 
   class ScopeInjectionTransformer extends Transformer {
@@ -20,7 +24,7 @@ trait ScopeInjection extends MacroModule with TransformationUtils {
     var ident = 0
 
     override def transform(tree: Tree): Tree = {
-      log(" " * ident + " ==> " + tree)
+      log(" " * ident + " --> " + tree, 3)
       ident += 1
 
       val result = tree match {
@@ -64,7 +68,7 @@ trait ScopeInjection extends MacroModule with TransformationUtils {
       }
 
       ident -= 1
-      log(" " * ident + " <== " + result)
+      log(" " * ident + " <-- " + result, 3)
 
       result
     }

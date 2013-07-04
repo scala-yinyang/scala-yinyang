@@ -7,6 +7,7 @@ trait YYConfig {
 
   val shallow: Boolean = config("shallow").asInstanceOf[Boolean]
   val debug: Int = config("debug").asInstanceOf[Int]
+  val shortenDSLNames: Boolean = config("shortenDSLNames").asInstanceOf[Boolean]
   val mainMethod: String = config("mainMethod").asInstanceOf[String]
   val featureAnalysing: Boolean = config("featureAnalysing").asInstanceOf[Boolean]
   val ascriptionTransforming: Boolean = config("ascriptionTransforming").asInstanceOf[Boolean]
