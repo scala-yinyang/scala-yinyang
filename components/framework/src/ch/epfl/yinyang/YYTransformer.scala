@@ -66,7 +66,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
    * or at runtime.
    */
   def apply[T](block: c.Expr[T]): c.Expr[T] = {
-    log("YYTransformer started for block: " + showRaw(block.tree), 2)
+    log("-------- YYTransformer STARTED for block: " + showRaw(block.tree), 2)
     // shallow or detect a non-existing feature => return the original block.
     if (featureAnalysing && (!FeatureAnalyzer(block.tree) || shallow))
       block
@@ -86,17 +86,14 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
           composeDSL andThen
           PostProcess)(block)
 
-      val dslPre = transform(allCaptured map symbolId, Nil)(block.tree)
-      log("FIRST TRANSFORM DONE (prettyPrinting in Caps):\n" + shortenNames(dslPre) + "\n", 2)
-
-      // if the DSL inherits the StaticallyChecked trait reflectively do the static analysis
-      if (dslType <:< typeOf[StaticallyChecked]) {
-        log("statically checking", 2)
-        reflInstance[StaticallyChecked](dslPre).staticallyCheck(new Reporter(c))
+      lazy val unboundDSL = {
+        val t = transform(allCaptured map symbolId, Nil)(block.tree)
+        log("FIRST TRANSFORM DONE (prettyPrinting in Caps):\n" + shortenNames(t) + "\n", 2)
+        log(showRaw(t, printTypes = true), 3)
+        // c.typeCheck()
+        t
       }
 
-      log(showRaw(dslPre, printTypes = true), 3)
-      // c.typeCheck()
       // DSL returns what holes it needs
       val reqVars = dslType match {
         case tpe if tpe <:< typeOf[FullyStaged] =>
@@ -112,18 +109,25 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
           }
         }
         case tpe =>
-          reflInstance[BaseYinYang](dslPre).requiredHoles(allCaptured.asInstanceOf[List[reflect.runtime.universe.Symbol]]).map(symbolById)
+          reflInstance[BaseYinYang](unboundDSL).requiredHoles(allCaptured.asInstanceOf[List[reflect.runtime.universe.Symbol]]).map(symbolById)
       }
 
       val holes = allCaptured diff reqVars
       log(s"captured: $allCaptured, reqVars: $reqVars, holes: $holes", 2)
 
       // re-transform the tree with new holes if there are required vars
-      val dsl = if (reqVars.isEmpty) dslPre
+      val dsl = if (reqVars.isEmpty) unboundDSL
       else {
         holeTable.clear()
         transform(holes map symbolId, reqVars)(block.tree)
       }
+
+      // if the DSL inherits the StaticallyChecked trait reflectively do the static analysis
+      if (dslType <:< typeOf[StaticallyChecked]) {
+        log("statically checking", 2)
+        reflInstance[StaticallyChecked](dsl).staticallyCheck(new Reporter(c))
+      }
+
       val sortedHoles = holes.sortBy(h => holeTable.indexOf(symbolId(h)))
 
       def args(holes: List[Symbol]): String =
@@ -177,7 +181,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
 
       log(s"Final tree: ${showRaw(c.resetAllAttrs(dslTree))}", 3)
       log(s"Final untyped: ${show(c.resetAllAttrs(dslTree), printTypes = true)}", 3)
-      log(s"Final typed: ${shortenNames(c.typeCheck(c.resetAllAttrs(dslTree)))}", 2)
+      log(s"Final typed: ${shortenNames(c.typeCheck(c.resetAllAttrs(dslTree)))}\n-------- YYTransformer DONE ----------\n\n", 2)
       c.Expr[T](c.resetAllAttrs(dslTree))
     }
   }
