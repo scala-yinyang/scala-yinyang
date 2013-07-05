@@ -16,8 +16,11 @@ import scala.collection.mutable
 trait LiftLiteralTransformation extends MacroModule with TransformationUtils with DataDefs {
   import c.universe._
   object LiftLiteralTransformer {
-    def apply(idents: List[Symbol] = Nil)(tree: Tree) =
-      new LiftLiteralTransformer(idents).transform(tree)
+    def apply(idents: List[Symbol] = Nil)(tree: Tree) = {
+      val t = new LiftLiteralTransformer(idents).transform(tree)
+      log("lifted: " + t, 2)
+      t
+    }
   }
 
   class LiftLiteralTransformer(val idents: List[Symbol])

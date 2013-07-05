@@ -46,7 +46,7 @@ trait FreeIdentAnalysis extends MacroModule with TransformationUtils with YYConf
     def collect(tree: Tree): List[Symbol] = {
       collected.clear()
       defined = new LocalDefCollector().definedSymbols(tree)
-      log(s"Defined: $defined")
+      log(s"FreeIdentAnalysis: Defined (not-free variables): $defined", 2)
       traverse(tree)
       collected.toList.distinct
     }
