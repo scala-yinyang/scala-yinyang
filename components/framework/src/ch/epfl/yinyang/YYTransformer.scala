@@ -198,18 +198,16 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
   def debugLevel: Int = debug
 
   /*
-   * Checking if the all functionality from the shallow embedding exists.
+   * Aborts compilation with a compilation error if any features used are missing in the deep embedding.
    */
-  object FeatureAnalyzer extends ((Tree, Seq[DSLFeature]) => Boolean) {
-    def apply(tree: Tree, lifted: Seq[DSLFeature] = Seq()): Boolean = {
+  object FeatureAnalyzer extends ((Tree, Seq[DSLFeature]) => Unit) {
+    def apply(tree: Tree, lifted: Seq[DSLFeature] = Seq()): Unit = {
       log("Feature analysis", 2)
       val (virtualized, lifted) = virtualize(tree)
       val st = System.currentTimeMillis()
-      val res = new FeatureAnalyzer(lifted).analyze(virtualized)
+      new FeatureAnalyzer(lifted).analyze(virtualized)
       log(s"Feature checking time: ${(System.currentTimeMillis() - st)}\n", 3)
-      res
     }
-
   }
 
   private class FeatureAnalyzer(val lifted: Seq[DSLFeature]) extends Traverser {
@@ -251,23 +249,20 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
         super.traverse(tree)
     }
 
-    def analyze(tree: Tree): Boolean = {
+    // Aborts compilation with a compilation error if any features are missing.
+    def analyze(tree: Tree): Unit = {
       traverse(tree)
       log(s"To analyze: " + (methods ++ lifted), 2)
       //Finds the first element of the sequence satisfying a predicate, if any.
       (methods ++ lifted).toSeq.find(!methodsExist(_)) match {
         case Some(methodError) if lifted.contains(methodError) =>
           c.error(tree.pos, s"Language feature $methodError not supported.")
-          false
         case Some(methodError) =>
           // missing method
           c.error(tree.pos, s"Method $methodError not found.")
-          false
         case None =>
-          true
       }
     }
-
   }
 
   def methodsExist(methods: DSLFeature*): Boolean = {
