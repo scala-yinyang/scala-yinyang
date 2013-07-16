@@ -3,14 +3,14 @@ package ch.epfl.yinyang.api
 import reflect.runtime.universe._
 
 trait BaseYinYang {
-
   /**
-   * Returns a list of holes required for run-time optimizations.
+   * Returns the holes required for run-time optimizations.
    * Compile-time optimized DSLs should return `Nil`.
-   *   @return list of holes required for run-time optimizations. Holes will be promoted
-   *           into constants in the next stage of compilation (at runtime).
+   *   @param symbols Maps from hole ids to symbols.
+   *   @return list of hole symbols required for run-time optimizations. Holes will be promoted
+   *           to constants in the next stage of compilation (at runtime).
    */
-  def requiredHoles(symbols: List[Symbol]): List[Int]
+  def requiredHoles(symbols: List[Symbol]): List[Symbol]
 
   /**
    * Abstract super class for implicit lifters that the DSL author needs to provide.
