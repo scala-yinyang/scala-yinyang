@@ -109,7 +109,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
           }
         }
         case tpe =>
-          reflInstance[BaseYinYang](unboundDSL).requiredHoles(allCaptured.asInstanceOf[List[reflect.runtime.universe.Symbol]]).map(symbolById)
+          reflInstance[BaseYinYang](unboundDSL).requiredHoles(allCaptured.asInstanceOf[List[reflect.runtime.universe.Symbol]]).asInstanceOf[List[Symbol]]
       }
 
       val holes = allCaptured diff reqVars
