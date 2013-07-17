@@ -48,15 +48,17 @@ abstract class BasePrintDSL
 }
 
 /**
- * The int printing DSL is FullyStaged, so no information is required for compile
- * time optimizations.
+ * The unstaged version of the int printing DSL declares that it doesn't
+ * require any variables for optimizations, so it will be generated at
+ * compile time.
  */
-abstract class PrintDSL extends BasePrintDSL with FullyStaged {}
+abstract class UnstagedPrintDSL extends BasePrintDSL with FullyUnstaged {}
 
 /**
- * The int printing DSL extended with the <code>optimizingPrintln</code>
- * method to show how requiredHoles is used to signal that data is needed
- * for compile time optimizations.
+ * The optimizing version of the int printing DSL uses requiredHoles to signal
+ * which holes are needed for optimizations, e.g. those that appear as
+ * arguments to the <code>optimizingPrintln</code> method. If there are no such
+ * holes in the DSL program, it will be generated at compile time.
  */
 abstract class OptimizedPrintDSL extends BasePrintDSL {
   val recompileHoles = mutable.Set[scala.Int]()
@@ -86,6 +88,14 @@ abstract class OptimizedPrintDSL extends BasePrintDSL {
     recompileHoles.toList.map(symbols(_))
   }
 }
+
+/**
+ * The fully staged version of the int printing DSL declares that it requires
+ * all variables for optimizations (even if we don't use them in this example),
+ * so if the DSL program has at least one hole, it cannot be generated at
+ * compile time.
+ */
+abstract class StagedPrintDSL extends BasePrintDSL with FullyStaged {}
 
 trait PrintCodeGenerator { self: CodeGenerator =>
   trait BaseHole[T] {

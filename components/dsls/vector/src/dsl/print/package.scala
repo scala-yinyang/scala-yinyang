@@ -9,27 +9,27 @@ import scala.tools.reflect.ToolBoxFactory
 
 object `package` {
 
-  def liftPrint[T](block: => T): T = macro _liftPrint[T]
-  def liftPrintDebug[T](block: => T): T = macro _liftPrintDebug[T]
+  def liftUnstagedPrint[T](block: => T): T = macro _liftUnstagedPrint[T]
   def liftOptimizedPrint[T](block: => T): T = macro _liftOptimizedPrint[T]
+  def liftStagedPrint[T](block: => T): T = macro _liftStagedPrint[T]
 
-  def _liftPrint[T](c: Context)(block: c.Expr[T]): c.Expr[T] =
+  def _liftUnstagedPrint[T](c: Context)(block: c.Expr[T]): c.Expr[T] =
     YYTransformer[c.type, T](c)(
-      "dsl.print.PrintDSL",
+      "dsl.print.UnstagedPrintDSL",
       new PolyTransformer[c.type](c),
       None,
       Map("shallow" -> false))(block)
 
-  def _liftPrintDebug[T](c: Context)(block: c.Expr[T]): c.Expr[T] =
-    YYTransformer[c.type, T](c)(
-      "dsl.print.PrintDSL",
-      new PolyTransformer[c.type](c),
-      None,
-      Map("shallow" -> false, "debug" -> 1))(block)
-
   def _liftOptimizedPrint[T](c: Context)(block: c.Expr[T]): c.Expr[T] =
     YYTransformer[c.type, T](c)(
       "dsl.print.OptimizedPrintDSL",
+      new PolyTransformer[c.type](c),
+      None,
+      Map("shallow" -> false))(block)
+
+  def _liftStagedPrint[T](c: Context)(block: c.Expr[T]): c.Expr[T] =
+    YYTransformer[c.type, T](c)(
+      "dsl.print.StagedPrintDSL",
       new PolyTransformer[c.type](c),
       None,
       Map("shallow" -> false))(block)
