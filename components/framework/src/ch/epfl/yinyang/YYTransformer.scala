@@ -142,6 +142,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
            * generated at compile time and wired for execution.
            */
           c parse s"""
+            YYStorage.incrementCompileTimeCompileCount($classUID)
             ${reflInstance[CodeGenerator](dsl) generateCode className}
             new $className().apply(${args(allCaptured)})
           """
@@ -192,8 +193,9 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
   */
   def interpretMethod = "interpret"
   val holeMethod = "hole"
+  val classUID = YYTransformer.uID.incrementAndGet
   val className =
-    s"generated$$${dslName.filter(_ != '.') + YYTransformer.uID.incrementAndGet}"
+    s"generated$$${dslName.filter(_ != '.') + classUID}"
   val dslType = c.mirror.staticClass(dslName).toType
   def debugLevel: Int = debug
 

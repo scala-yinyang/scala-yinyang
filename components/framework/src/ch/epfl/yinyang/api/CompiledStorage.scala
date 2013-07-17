@@ -6,6 +6,20 @@ import scala.ref.WeakReference
 final class GuardState(val values: Seq[Any], val refs: Seq[WeakReference[AnyRef]], var function: Any)
 
 object YYStorage {
+  private var runtimeCompileCount = 0
+  private var compileTimeCompileCount = 0
+  private var alreadyCountedCompileTimeUIDs: List[Long] = Nil
+  @inline
+  final def getRuntimeCompileCount() = runtimeCompileCount
+  @inline
+  final def getCompileTimeCompileCount() = compileTimeCompileCount
+  @inline
+  final def incrementCompileTimeCompileCount(uID: Long) = {
+    if (!alreadyCountedCompileTimeUIDs.contains(uID)) {
+      compileTimeCompileCount += 1
+      alreadyCountedCompileTimeUIDs ::= uID
+    }
+  }
 
   // DSL instances
   final private val programs = new ConcurrentHashMap[Long, Any]
@@ -37,15 +51,19 @@ object YYStorage {
 
   // avoids instantiation of the arguments
   @inline
-  final private def createGuard(values: Seq[Any], refs: Seq[AnyRef], recompile: () => Any) =
+  final private def createGuard(values: Seq[Any], refs: Seq[AnyRef], recompile: () => Any) = {
+    runtimeCompileCount += 1
     new GuardState(values, refs.map(x => new WeakReference(x)), recompile())
+  }
 
   @inline
   final def checkRef[Ret](id: Long, values: Seq[Any], refs: Seq[Any], recompile: () => Any): Ret = {
     val guard = fetchGuard(id, values, refs, recompile)
 
-    if (guard.values != values || guard.refs.map(_.apply()) != refs)
+    if (guard.values != values || guard.refs.map(_.apply()) != refs) {
+      runtimeCompileCount += 1
       guard.function = recompile()
+    }
 
     guard.function.asInstanceOf[Ret]
   }
@@ -56,8 +74,10 @@ object YYStorage {
     val guard = fetchGuard(id, values, refs, recompile)
 
     // TODO optimize
-    if (guard.values != values || (guard.refs.map(_.apply()).zip(anyRefs).exists { x => !(x._1 eq x._2) }))
+    if (guard.values != values || (guard.refs.map(_.apply()).zip(anyRefs).exists { x => !(x._1 eq x._2) })) {
+      runtimeCompileCount += 1
       guard.function = recompile()
+    }
 
     guard.function.asInstanceOf[Ret]
   }
