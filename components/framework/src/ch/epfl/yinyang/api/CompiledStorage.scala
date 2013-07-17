@@ -3,7 +3,7 @@ package ch.epfl.yinyang.runtime
 import java.util.concurrent.ConcurrentHashMap
 import scala.ref.WeakReference
 
-final class GuardState(val values: Seq[Any], val refs: Seq[WeakReference[AnyRef]], var function: Any)
+final class GuardState(val values: Seq[Any], val refs: Seq[WeakReference[AnyRef]], val function: Any)
 
 object YYStorage {
   private var runtimeCompileCount = 0
@@ -40,32 +40,31 @@ object YYStorage {
 
   @inline
   private final def fetchGuard(id: Long, values: Seq[Any], refs: Seq[Any], recompile: () => Any): GuardState = {
-    val anyRefs = refs.asInstanceOf[Seq[AnyRef]]
-    var guard = guards.get(id)
-    if (guard == null) {
-      guard = createGuard(values, anyRefs, recompile)
-      guards.put(id, guard)
+    val guard = guards.get(id)
+    guard match {
+      case null => createAndStoreGuard(id, values, refs, recompile)
+      case _    => guard
     }
-    guard
   }
 
   // avoids instantiation of the arguments
   @inline
-  final private def createGuard(values: Seq[Any], refs: Seq[AnyRef], recompile: () => Any) = {
+  final private def createAndStoreGuard(id: Long, values: Seq[Any], refs: Seq[Any], recompile: () => Any) = {
     runtimeCompileCount += 1
-    new GuardState(values, refs.map(x => new WeakReference(x)), recompile())
+    val g = new GuardState(values, refs.asInstanceOf[Seq[AnyRef]].map(x => new WeakReference(x)), recompile())
+    guards.put(id, g)
+    g
   }
 
   @inline
   final def checkRef[Ret](id: Long, values: Seq[Any], refs: Seq[Any], recompile: () => Any): Ret = {
     val guard = fetchGuard(id, values, refs, recompile)
 
-    if (guard.values != values || guard.refs.map(_.apply()) != refs) {
-      runtimeCompileCount += 1
-      guard.function = recompile()
-    }
-
-    guard.function.asInstanceOf[Ret]
+    (if (guard.values != values || guard.refs.map(_.apply()) != refs) {
+      createAndStoreGuard(id, values, refs, recompile)
+    } else {
+      guard
+    }).function.asInstanceOf[Ret]
   }
 
   @inline
@@ -74,12 +73,10 @@ object YYStorage {
     val guard = fetchGuard(id, values, refs, recompile)
 
     // TODO optimize
-    if (guard.values != values || (guard.refs.map(_.apply()).zip(anyRefs).exists { x => !(x._1 eq x._2) })) {
-      runtimeCompileCount += 1
-      guard.function = recompile()
-    }
-
-    guard.function.asInstanceOf[Ret]
+    (if (guard.values != values || (guard.refs.map(_.apply()).zip(anyRefs).exists { x => !(x._1 eq x._2) })) {
+      createAndStoreGuard(id, values, refs, recompile)
+    } else {
+      guard
+    }).function.asInstanceOf[Ret]
   }
-
 }

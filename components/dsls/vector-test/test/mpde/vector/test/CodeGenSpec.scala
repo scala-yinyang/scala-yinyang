@@ -66,6 +66,16 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
     }, "staged")
   }
 
+  "Guarded values" should "be updated" in {
+    checkCounts(0, 2, () => {
+      for (i ← List(0, 1, 1)) {
+        val j = liftStagedPrint {
+          i
+        }
+      }
+    }, "staged")
+  }
+
   "Static code staging" should "compile at compile time" in {
     checkCounts(1, 0, () => {
       val v = liftUnstagedPrint {
