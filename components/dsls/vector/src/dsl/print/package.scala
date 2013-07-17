@@ -9,8 +9,9 @@ import scala.tools.reflect.ToolBoxFactory
 
 object `package` {
 
-  def liftPrintDebug[T](block: => T): T = macro _liftPrintDebug[T]
   def liftPrint[T](block: => T): T = macro _liftPrint[T]
+  def liftPrintDebug[T](block: => T): T = macro _liftPrintDebug[T]
+  def liftOptimizedPrint[T](block: => T): T = macro _liftOptimizedPrint[T]
 
   def _liftPrint[T](c: Context)(block: c.Expr[T]): c.Expr[T] =
     YYTransformer[c.type, T](c)(
@@ -26,9 +27,18 @@ object `package` {
       None,
       Map("shallow" -> false, "debug" -> 1))(block)
 
-  // The only thing we declare here
-  def println(x: Any): Int = ???
+  def _liftOptimizedPrint[T](c: Context)(block: c.Expr[T]): c.Expr[T] =
+    YYTransformer[c.type, T](c)(
+      "dsl.print.OptimizedPrintDSL",
+      new PolyTransformer[c.type](c),
+      None,
+      Map("shallow" -> false))(block)
 
-  def break(x: Int): Int = ???
+  // Shallow embedding:
+  def println(x: Int): Int = { scala.Predef.println("shallow: " + x); x }
+  def optimizingPrintln(x: Int): Int = { scala.Predef.println("shallow optimizing: " + x); x }
 
+  // No shallow embedding necessary
+  //  def println(x: Int): Int = ???
+  //  def optimizingPrintln(x: Int): Int = ???
 }

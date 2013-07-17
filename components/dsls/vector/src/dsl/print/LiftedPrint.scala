@@ -4,14 +4,13 @@ import ch.epfl.yinyang.api._
 import base._
 import scala.collection._
 import reflect.runtime.universe._
-/** The int printing DSL */
-abstract class PrintDSL
+
+/** The basic int printing DSL. */
+abstract class BasePrintDSL
   extends ScalaCompile with PrintCodeGenerator with CodeGenerator with MiniIntDSL
-  with BooleanOps with Interpreted with BaseYinYang with Base with FullyStaged {
+  with BooleanOps with Interpreted with BaseYinYang with Base {
 
   var sb: StringBuffer = new StringBuffer()
-
-  val recompileHoles = mutable.Set[scala.Int]()
 
   // hey, we can refine println -- but we don't need it right now
   def println(x: Int): Int = {
@@ -19,29 +18,10 @@ abstract class PrintDSL
     IntConst(1)
   }
 
-  def break(x: Int): Int = {
-    sb.append("scala.Predef.println(\"break called with " + x.toString + "\");\n")
-    x match {
-      case Hole(tpe, id) =>
-        recompileHoles += id
-        IntConst(1)
-      case _ =>
-        IntConst(1)
-    }
-  }
-
   override def reset(): Unit = {
     sb = new StringBuffer()
-    recompileHoles.clear
     holes.clear
   }
-
-  /*def requiredHoles: List[scala.Int] = {
-    reset()
-    main()
-
-    recompileHoles.toList
-  }*/
 
   def generateCode(className: String): String = {
     reset()
@@ -65,6 +45,46 @@ abstract class PrintDSL
   }
 
   var compiledCode: () => Any = _
+}
+
+/**
+ * The int printing DSL is FullyStaged, so no information is required for compile
+ * time optimizations.
+ */
+abstract class PrintDSL extends BasePrintDSL with FullyStaged {}
+
+/**
+ * The int printing DSL extended with the <code>optimizingPrintln</code>
+ * method to show how requiredHoles is used to signal that data is needed
+ * for compile time optimizations.
+ */
+abstract class OptimizedPrintDSL extends BasePrintDSL {
+  val recompileHoles = mutable.Set[scala.Int]()
+
+  // x is needed for optimizations, so it is a required hole.
+  def optimizingPrintln(x: Int): Int = {
+    // imagine that we create a fancy specialized print here
+    sb.append("scala.Predef.println(\"optimizing on: " + x.toString + "\");\n")
+    x match {
+      case Hole(tpe, id) =>
+        recompileHoles += id
+        IntConst(1)
+      case _ =>
+        IntConst(1)
+    }
+  }
+
+  override def reset(): Unit = {
+    recompileHoles.clear
+    super.reset()
+  }
+
+  override def requiredHoles(symbols: List[Symbol]): List[Symbol] = {
+    reset()
+    main()
+
+    recompileHoles.toList.map(symbols(_))
+  }
 }
 
 trait PrintCodeGenerator { self: CodeGenerator =>

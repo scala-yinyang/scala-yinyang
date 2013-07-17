@@ -41,10 +41,10 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
   "Compile time code generating" should "work" in {
     val y = 3
     assert(
-      liftPrint {
+      liftOptimizedPrint {
         val b = 0
         println(y)
-        break(b) // do not recompile
+        optimizingPrintln(b) // do not recompile
         1 + b
       } == 1)
 
@@ -54,10 +54,10 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
     val y = 3
     for (i ← 0 to 2) {
       assert(
-        liftPrint {
+        liftOptimizedPrint {
           val b = 0
           println(b)
-          break(y)
+          optimizingPrintln(y)
           1 + b
         } == 1)
     }
@@ -66,10 +66,10 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
   "Runtime code generating" should "recompile" in {
     for (i ← 0 to 2) {
       assert(
-        liftPrint {
+        liftOptimizedPrint {
           val b = 0
           println(b)
-          break(i)
+          optimizingPrintln(i)
           1 + b
         } == 1)
     }
