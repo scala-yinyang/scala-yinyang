@@ -4,14 +4,13 @@ import ch.epfl.yinyang.api._
 import base._
 import scala.collection._
 import reflect.runtime.universe._
-/** The int printing DSL */
-abstract class PrintDSL
+
+/** The basic int printing DSL. */
+abstract class BasePrintDSL
   extends ScalaCompile with PrintCodeGenerator with CodeGenerator with MiniIntDSL
-  with BooleanOps with Interpreted with BaseYinYang with Base with FullyStaged {
+  with BooleanOps with Interpreted with BaseYinYang with Base {
 
   var sb: StringBuffer = new StringBuffer()
-
-  val recompileHoles = mutable.Set[scala.Int]()
 
   // hey, we can refine println -- but we don't need it right now
   def println(x: Int): Int = {
@@ -19,29 +18,10 @@ abstract class PrintDSL
     IntConst(1)
   }
 
-  def break(x: Int): Int = {
-    sb.append("scala.Predef.println(\"break called with " + x.toString + "\");\n")
-    x match {
-      case Hole(tpe, id) =>
-        recompileHoles += id
-        IntConst(1)
-      case _ =>
-        IntConst(1)
-    }
-  }
-
   override def reset(): Unit = {
     sb = new StringBuffer()
-    recompileHoles.clear
     holes.clear
   }
-
-  /*def requiredHoles: List[scala.Int] = {
-    reset()
-    main()
-
-    recompileHoles.toList
-  }*/
 
   def generateCode(className: String): String = {
     reset()
@@ -66,6 +46,56 @@ abstract class PrintDSL
 
   var compiledCode: () => Any = _
 }
+
+/**
+ * The unstaged version of the int printing DSL declares that it doesn't
+ * require any variables for optimizations, so it will be generated at
+ * compile time.
+ */
+abstract class UnstagedPrintDSL extends BasePrintDSL with FullyUnstaged {}
+
+/**
+ * The optimizing version of the int printing DSL uses requiredHoles to signal
+ * which holes are needed for optimizations, e.g. those that appear as
+ * arguments to the <code>optimizingPrintln</code> method. If there are no such
+ * holes in the DSL program, it will be generated at compile time.
+ */
+abstract class OptimizedPrintDSL extends BasePrintDSL {
+  val recompileHoles = mutable.Set[scala.Int]()
+
+  // x is needed for optimizations, so it is a required hole.
+  def optimizingPrintln(x: Int): Int = {
+    // imagine that we create a fancy specialized print here
+    sb.append("scala.Predef.println(\"optimizing on: " + x.toString + "\");\n")
+    x match {
+      case Hole(tpe, id) =>
+        recompileHoles += id
+        IntConst(1)
+      case _ =>
+        IntConst(1)
+    }
+  }
+
+  override def reset(): Unit = {
+    recompileHoles.clear
+    super.reset()
+  }
+
+  override def requiredHoles(symbols: List[Symbol]): List[Symbol] = {
+    reset()
+    main()
+
+    recompileHoles.toList.map(symbols(_))
+  }
+}
+
+/**
+ * The fully staged version of the int printing DSL declares that it requires
+ * all variables for optimizations (even if we don't use them in this example),
+ * so if the DSL program has at least one hole, it cannot be generated at
+ * compile time.
+ */
+abstract class StagedPrintDSL extends BasePrintDSL with FullyStaged {}
 
 trait PrintCodeGenerator { self: CodeGenerator =>
   trait BaseHole[T] {
