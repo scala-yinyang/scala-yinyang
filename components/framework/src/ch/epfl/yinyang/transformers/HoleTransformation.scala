@@ -23,6 +23,7 @@ trait HoleTransformation extends MacroModule with TransformationUtils with YYCon
 
   import c.universe._
 
+  /** SymbolIds indexed by holeIds. */
   val holeTable = new ArrayBuffer[Int]
 
   object HoleTransformer {
@@ -32,8 +33,11 @@ trait HoleTransformation extends MacroModule with TransformationUtils with YYCon
       t
     }
   }
+
   /**
-   * Replace all variables in `toMark` with `hole[T](classTag[T], symbolId)`
+   * Transforms all identifiers with symbolIds in `toMark` to
+   * `hole[T](classTag[T], holeId)` and builds the holeTable mapping from
+   * holeIds to symbolIds.
    */
   class HoleTransformer(toMark: List[Int]) extends Transformer {
 

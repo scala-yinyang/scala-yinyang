@@ -41,7 +41,7 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
 
   "Changing values from outside of DSL scope" should "change" in {
     checkCounts(1, 0, () => {
-      for (i ← 0 to 2) {
+      for (i ← 0 to 1) {
         val j = liftUnstagedPrint {
           i
         }
@@ -49,15 +49,15 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
       }
     }, "unstaged")
     checkCounts(1, 0, () => {
-      for (i ← 0 to 2) {
+      for (i ← 0 to 1) {
         val j = liftOptimizedPrint {
           i
         }
         assert(j == i, s"Value $j didn't change to $i (optimized = unstaged)")
       }
     }, "optimized")
-    checkCounts(1, 0, () => {
-      for (i ← 0 to 2) {
+    checkCounts(0, 2, () => {
+      for (i ← 0 to 1) {
         val j = liftStagedPrint {
           i
         }

@@ -77,14 +77,22 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
       log("Free variables (allCaptured): " + allCaptured, 2)
       log("original: " + block, 2)
 
-      def transform(holes: List[Int], idents: List[Symbol])(block: Tree): Tree =
+      /**
+       * Transforms the given DSL program block.
+       *   @param toLift All contained symbolIds will be replaced with
+       *     `hole[T](classTag[T], holeId)` and the holeTable will map from
+       *     holeId to symbolId
+       *   @param toLift All contained symbols will be replaced with
+       *     `lift("captured$" + sym)`
+       */
+      def transform(toHoles: List[Int], toLift: List[Symbol])(block: Tree): Tree =
         (AscriptionTransformer andThen
-          LiftLiteralTransformer(idents) andThen
+          LiftLiteralTransformer(toLift) andThen
           (x => VirtualizationTransformer(x)._1) andThen
           ScopeInjectionTransformer andThen
           TypeTreeTransformer andThen
-          HoleTransformer(holes, shortenNames) andThen
-          composeDSL andThen
+          HoleTransformer(toHoles, shortenNames) andThen
+          composeDSL(toLift) andThen
           PostProcess)(block)
 
       lazy val unboundDSL = {
@@ -163,6 +171,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
 
           val guardedExecute = c parse dslInit + (dslType match {
             case t if t <:< typeOf[CodeGenerator] => s"""
+              ${reqVars.map({ k => "dslInstance.captured$" + k.name.decoded + " = " + k.name.decoded }) mkString "\n"}
               def recompile(): () => Any = dslInstance.compile[$retType, $functionType]
               val program = ch.epfl.yinyang.runtime.YYStorage.$guardType[$functionType](
                 ${programId}L, values, refs, recompile
@@ -170,6 +179,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
               program.apply(${args(sortedHoles)})
             """
             case t if t <:< typeOf[Interpreted] => s"""
+              ${reqVars.map({ k => "dslInstance.captured$" + k.name.decoded + " = " + k.name.decoded }) mkString "\n"}
               def invalidate(): () => Any = () => dslInstance.reset
               ch.epfl.yinyang.runtime.YYStorage.$guardType[Any](
                 ${programId}L, values, refs, invalidate
@@ -289,7 +299,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
 
     val res = try {
       // block containing only dummy methods that were applied.
-      val block = Block(composeDSL(Block(
+      val block = Block(composeDSL(Nil)(Block(
         methodSet.map(x => application(x)).toSeq: _*)), Literal(Constant(())))
       log(s"Block: ${show(block)})", 3)
       log(s"Block raw: ${showRaw(block)})", 3)
@@ -384,17 +394,18 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
   private def constructor = Apply(Select(New(Ident(newTypeName(className))),
     nme.CONSTRUCTOR), List())
 
-  def composeDSL(transformedBody: Tree) =
+  def composeDSL(reqVars: List[Symbol])(transformedBody: Tree) =
     // class MyDSL extends DSL {
     ClassDef(Modifiers(), newTypeName(className), List(),
       Template(List(dslTrait), emptyValDef,
-        List(
-          DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(List()), TypeTree(),
-            Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY),
-              nme.CONSTRUCTOR), List())), Literal(Constant(())))),
-          // def main = {
-          DefDef(Modifiers(), newTermName(mainMethod), List(), List(List()),
-            Ident(newTypeName("Any")), transformedBody))))
+        reqVars.map({ k => ValDef(Modifiers(Flag.MUTABLE), newTermName("captured$" + k.name.decoded), TypeTree(), Ident(k)) }) ++
+          List(
+            DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(List()), TypeTree(),
+              Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY),
+                nme.CONSTRUCTOR), List())), Literal(Constant(())))),
+            // def main = {
+            DefDef(Modifiers(), newTermName(mainMethod), List(), List(List()),
+              Ident(newTypeName("Any")), transformedBody))))
   //     }
   // }
 
