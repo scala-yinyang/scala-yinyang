@@ -8,10 +8,9 @@ import language.experimental.macros
 import scala.collection.mutable
 
 /**
- * Ascribes terms with their types from the original block. Terms that are ascribed are:
- *   - applications
- *   - idents
- *   - lambda parameters
+ * Lifts constants by wrapping them in a lift(<lit>) and renames and lifts the
+ * provided captured identifiers from outside the DSL scope by wrapping them in
+ * lift(captured$<id>).
  */
 trait LiftLiteralTransformation extends MacroModule with TransformationUtils with DataDefs {
   import c.universe._
@@ -35,7 +34,7 @@ trait LiftLiteralTransformation extends MacroModule with TransformationUtils wit
         case t @ Literal(Constant(_)) =>
           lift(t)
         case t @ Ident(_) if idents.contains(t.symbol) =>
-          lift(t)
+          lift(Ident(newTermName("captured$" + t.name.decoded)))
         case _ =>
           super.transform(tree)
       }
