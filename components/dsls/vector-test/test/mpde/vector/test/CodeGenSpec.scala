@@ -5,12 +5,13 @@ import dsl.print._
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import reflect.runtime.universe._
-import ch.epfl.yinyang.runtime.YYStorage
 
 @RunWith(classOf[JUnitRunner])
 class CodeGenSpec extends FlatSpec with ShouldMatchers {
 
   def checkCounts(compileTime: Int, runtime: Int, block: () => Unit, dlsType: String): Unit = {
+    import ch.epfl.yinyang.runtime.YYStorage
+
     val comp = YYStorage.getCompileTimeCompileCount()
     val run = YYStorage.getRuntimeCompileCount()
     block()

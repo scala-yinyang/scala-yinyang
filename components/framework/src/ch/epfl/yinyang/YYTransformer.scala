@@ -150,7 +150,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
            * generated at compile time and wired for execution.
            */
           c parse s"""
-            YYStorage.incrementCompileTimeCompileCount($classUID)
+            ch.epfl.yinyang.runtime.YYStorage.incrementCompileTimeCompileCount($classUID)
             ${reflInstance[CodeGenerator](dsl) generateCode className}
             new $className().apply(${args(allCaptured)})
           """
