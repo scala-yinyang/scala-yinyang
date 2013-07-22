@@ -161,7 +161,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
           log("RUNTIME COMPILED with guards", 2)
           val programId = new scala.util.Random().nextLong
           val retType = block.tree.tpe.toString
-          val functionType = s"""${(0 until args(sortedHoles).length).map(y => "scala.Any").mkString("(", ", ", ")")} => ${retType}"""
+          val functionType = s"""${(0 until sortedHoles.length).map(y => "scala.Any").mkString("(", ", ", ")")} => ${retType}"""
           val refs = reqVars filterNot (isPrimitive)
           val dslInit = s"""
             val dslInstance = ch.epfl.yinyang.runtime.YYStorage.lookup(${programId}L, new $className())
@@ -172,7 +172,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
           val guardedExecute = c parse dslInit + (dslType match {
             case t if t <:< typeOf[CodeGenerator] => s"""
               ${reqVars.map({ k => "dslInstance.captured$" + k.name.decoded + " = " + k.name.decoded }) mkString "\n"}
-              def recompile(): () => Any = dslInstance.compile[$retType, $functionType]
+              def recompile(): Any = dslInstance.compile[$retType, $functionType]
               val program = ch.epfl.yinyang.runtime.YYStorage.$guardType[$functionType](
                 ${programId}L, values, refs, recompile
               )

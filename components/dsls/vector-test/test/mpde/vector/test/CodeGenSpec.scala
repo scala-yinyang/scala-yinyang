@@ -185,6 +185,19 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
     }, "optimized")
   }
 
+  "Runtime code generating" should "sometimes recompile" in {
+    checkCounts(0, 2, () => {
+      for (i: Int <- 0 to 1) {
+        for (j: Int <- 0 to 1) {
+          liftOptimizedPrint {
+            println(j)
+            optimizingPrintln(i)
+          }
+        }
+      }
+    }, "optimized")
+  }
+
   "Virtualization" should "work" in {
     checkCounts(1, 0, () => {
       val x = 1
