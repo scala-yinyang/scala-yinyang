@@ -104,25 +104,26 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
       }
 
       // DSL returns what holes it needs
-      val reqVars = dslType match {
+      val (reqVars: List[Symbol], guards: List[Guard]) = dslType match {
         case tpe if tpe <:< typeOf[FullyStaged] =>
-          allCaptured
+          allCaptured map (s => (s, defaultGuard(s))) unzip
         case tpe if tpe <:< typeOf[FullyUnstaged] =>
-          Nil
+          (Nil, Nil)
         case tpe if tpe <:< typeOf[HoleTypeAnalyser] => {
           allCaptured foreach { x =>
             log(x.typeSignature.typeConstructor.toString)
           }
           allCaptured filter { x =>
             liftTypes.exists(l => x.typeSignature <:< l.asInstanceOf[Type])
-          }
+          } map (s => (s, defaultGuard(s))) unzip
         }
         case tpe =>
-          reflInstance[BaseYinYang](unboundDSL).requiredHoles(allCaptured.asInstanceOf[List[reflect.runtime.universe.Symbol]]).asInstanceOf[List[Symbol]]
+          reflInstance[BaseYinYang](unboundDSL).requiredHoles(allCaptured.asInstanceOf[List[reflect.runtime.universe.Symbol]])
+            .map(t => (t._1.asInstanceOf[Symbol], t._2)).unzip
       }
 
       val holes = allCaptured diff reqVars
-      log(s"captured: $allCaptured, reqVars: $reqVars, holes: $holes", 2)
+      log(s"captured: $allCaptured, reqVars: $reqVars, holes: $holes, guards: $guards", 2)
 
       // re-transform the tree with new holes if there are required vars
       val dsl = if (reqVars.isEmpty) unboundDSL
@@ -162,27 +163,32 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
           val programId = new scala.util.Random().nextLong
           val retType = block.tree.tpe.toString
           val functionType = s"""${(0 until sortedHoles.length).map(y => "scala.Any").mkString("(", ", ", ")")} => ${retType}"""
-          val refs = reqVars filterNot (isPrimitive)
+
+          log("Guard function strings: " + guards.map(_.getGuardFunction), 2)
+          val reifiedGuards = guards.map((g: Guard) => c parse g.getGuardFunction)
+          log("Guard function trees: " + reifiedGuards, 3)
+
           val dslInit = s"""
-            val dslInstance = ch.epfl.yinyang.runtime.YYStorage.lookup(${programId}L, new $className())
-            val values: Seq[Any] = Seq(${(reqVars diff refs) map (_.name.decoded) mkString ", "})
-            val refs: Seq[Any] = Seq(${refs map (_.name.decoded) mkString ", "})
+            
+            val dslInstance = ch.epfl.yinyang.runtime.YYStorage.lookup(${programId}L, new $className(), 
+              List(${guards map (_.getGuardFunction) mkString ("(", "), (", ")")}));
+            val reqVars: Seq[Any] = Seq(${reqVars map (_.name.decoded) mkString ", "})
+            ${reqVars.map({ k => "dslInstance.captured$" + k.name.decoded + " = " + k.name.decoded }) mkString "\n"}
           """
 
           val guardedExecute = c parse dslInit + (dslType match {
-            case t if t <:< typeOf[CodeGenerator] => s"""
-              ${reqVars.map({ k => "dslInstance.captured$" + k.name.decoded + " = " + k.name.decoded }) mkString "\n"}
+            case t if t <:< typeOf[CodeGenerator] =>
+              s"""
               def recompile(): Any = dslInstance.compile[$retType, $functionType]
-              val program = ch.epfl.yinyang.runtime.YYStorage.$guardType[$functionType](
-                ${programId}L, values, refs, recompile
+              val program = ch.epfl.yinyang.runtime.YYStorage.check[$functionType](
+                ${programId}L, reqVars, recompile
               )
               program.apply(${args(sortedHoles)})
             """
             case t if t <:< typeOf[Interpreted] => s"""
-              ${reqVars.map({ k => "dslInstance.captured$" + k.name.decoded + " = " + k.name.decoded }) mkString "\n"}
               def invalidate(): () => Any = () => dslInstance.reset
-              ch.epfl.yinyang.runtime.YYStorage.$guardType[Any](
-                ${programId}L, values, refs, invalidate
+              ch.epfl.yinyang.runtime.YYStorage.check[Any](
+                ${programId}L, reqVars, invalidate
               )
               dslInstance.interpret[${retType}](${args(sortedHoles)})
             """
@@ -355,8 +361,9 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
   def constructTypeTree(tctx: TypeContext, inType: Type): Tree =
     typeTransformer transform (tctx, inType)
 
-  def isPrimitive(s: Symbol): Boolean = false
-  val guardType = "checkRef"
+  def defaultGuard(s: Symbol): Guard = {
+    Guard.defaultGuard
+  }
 
   private lazy val dslTrait = {
     val names = dslName.split("\\.").toList.reverse

@@ -83,11 +83,48 @@ abstract class OptimizedPrintDSL extends BasePrintDSL {
     super.reset()
   }
 
-  override def requiredHoles(symbols: List[Symbol]): List[Symbol] = {
+  override def requiredHoles(symbols: List[Symbol]): List[(Symbol, Guard)] = {
     reset()
     main()
 
-    recompileHoles.toList.map(symbols(_))
+    recompileHoles.toList.map(i => (symbols(i), Guard.defaultGuard))
+  }
+}
+
+/**
+ * The even-odd optimizing version of the int printing DSL offers two versions
+ * of printing code, one for even and one for odd integers. It shows how to use
+ * custom guards to define when recompilation is triggered.
+ */
+abstract class EvenOddOptimizedPrintDSL extends BasePrintDSL {
+  val recompileHoles = mutable.Map[scala.Int, Guard]()
+
+  def evenOddPrintln(x: Int): Int = {
+    x match {
+      case Hole(tpe, id) =>
+        val (t1: Any, t2: Any) = ("", "")
+        recompileHoles.put(id, recompileHoles.getOrElse(id, Guard.always_true)
+          .and(Guard.custom("t1.asInstanceOf[scala.Int] % 2 == t2.asInstanceOf[scala.Int] % 2")))
+        IntConst(1)
+      case IntConst(i) =>
+        if (i % 2 == 0)
+          sb.append("scala.Predef.println(\"Even: " + x.toString + "\");\n")
+        else
+          sb.append("scala.Predef.println(\"Odd: " + x.toString + "\");\n")
+        IntConst(1)
+    }
+  }
+
+  override def reset(): Unit = {
+    recompileHoles.clear
+    super.reset()
+  }
+
+  override def requiredHoles(symbols: List[Symbol]): List[(Symbol, Guard)] = {
+    reset()
+    main()
+
+    recompileHoles.toList.map(x => (symbols(x._1), x._2))
   }
 }
 

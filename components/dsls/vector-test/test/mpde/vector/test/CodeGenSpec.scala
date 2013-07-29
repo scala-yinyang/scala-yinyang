@@ -20,6 +20,7 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
     assert(comp2 == compileTime && run2 == runtime,
       s"$dlsType DSL compilation counts don't agree, should be $compileTime at compile time " +
         s"and $runtime at runtime, but was $comp2 and $run2.")
+
   }
 
   "Eval test" should "work" in {
@@ -196,6 +197,14 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
         }
       }
     }, "optimized")
+
+    checkCounts(0, 2, () => {
+      for (i <- List(0, 2, 1, 3)) {
+        liftEvenOddOptimizedPrint {
+          evenOddPrintln(i)
+        }
+      }
+    }, "even-odd-optimized")
   }
 
   "Virtualization" should "work" in {
