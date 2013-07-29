@@ -8,9 +8,10 @@ trait BaseYinYang {
    * Compile-time optimized DSLs should return `Nil`.
    *   @param symbols Maps from hole ids to symbols.
    *   @return list of hole symbols required for run-time optimizations. Holes will be promoted
-   *           to constants in the next stage of compilation (at runtime).
+   *           to constants in the next stage of compilation (at runtime). Each hole has a guard
+   *           that defines when recompilation is necessary.
    */
-  def requiredHoles(symbols: List[Symbol]): List[Symbol]
+  def requiredHoles(symbols: List[Symbol]): List[(Symbol, Guard)]
 
   /**
    * Abstract super class for implicit lifters that the DSL author needs to provide.
@@ -20,7 +21,7 @@ trait BaseYinYang {
      * Constructs the DSL internal IR node that will represent a hole.
      *   @param tpe Represents the run-time type information for this hole.
      *   @param symbolId informs the DSL about the unique identifier of this hole.
-     *          This information can be passed back to Yin-Yang byt the `requiredHoles` method.
+     *          This information can be passed back to Yin-Yang by the `requiredHoles` method.
      *   @return DSL internal representation of a hole for type T.
      */
     def hole(tpe: TypeTag[T], symbolId: Int): Ret

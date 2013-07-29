@@ -3,7 +3,7 @@ package ch.epfl.yinyang.runtime
 import java.util.concurrent.ConcurrentHashMap
 import scala.ref.WeakReference
 
-final class GuardState(val values: Seq[Any], val refs: Seq[WeakReference[AnyRef]], val function: Any)
+final class GuardState(val refs: Seq[WeakReference[AnyRef]], val function: Any)
 
 object YYStorage {
   private var runtimeCompileCount = 0
@@ -24,57 +24,47 @@ object YYStorage {
   // DSL instances
   final private val programs = new ConcurrentHashMap[Long, Any]
 
+  // Guards
+  type GuardFunctions = List[(Any, Any) => Boolean]
+  final private val guardStates = new ConcurrentHashMap[Long, GuardState]()
+  final private val guardFunctions = new ConcurrentHashMap[Long, GuardFunctions]()
+
   @inline
-  final def lookup[Ret](id: Long, dsl: => Ret): Ret = {
+  final def lookup[Ret](id: Long, dsl: => Ret, guardFuns: => GuardFunctions): Ret = {
     var program: Any = programs.get(id)
     if (program == null) {
       program = dsl
       programs.put(id, program)
+      guardFunctions.put(id, guardFuns)
     }
 
     program.asInstanceOf[Ret]
   }
 
-  // Guards
-  final private val guards = new ConcurrentHashMap[Long, GuardState]()
-
   @inline
-  private final def fetchGuard(id: Long, values: Seq[Any], refs: Seq[Any], recompile: () => Any): GuardState = {
-    val guard = guards.get(id)
-    guard match {
-      case null => createAndStoreGuard(id, values, refs, recompile)
+  private final def fetchGuard(id: Long, refs: Seq[Any], recompile: () => Any): (GuardState, GuardFunctions) = {
+    val guard = guardStates.get(id)
+    (guard match {
+      case null => createAndStoreGuard(id, refs, recompile)
       case _    => guard
-    }
+    }, guardFunctions.get(id))
   }
 
   // avoids instantiation of the arguments
   @inline
-  final private def createAndStoreGuard(id: Long, values: Seq[Any], refs: Seq[Any], recompile: () => Any) = {
+  final private def createAndStoreGuard(id: Long, refs: Seq[Any], recompile: () => Any) = {
     runtimeCompileCount += 1
-    val g = new GuardState(values, refs.asInstanceOf[Seq[AnyRef]].map(x => new WeakReference(x)), recompile())
-    guards.put(id, g)
+    val g = new GuardState(refs.asInstanceOf[Seq[AnyRef]].map(x => new WeakReference(x)), recompile())
+    guardStates.put(id, g)
     g
   }
 
   @inline
-  final def checkRef[Ret](id: Long, values: Seq[Any], refs: Seq[Any], recompile: () => Any): Ret = {
-    val guard = fetchGuard(id, values, refs, recompile)
+  final def check[Ret](id: Long, refs: Seq[Any], recompile: () => Any): Ret = {
+    val (guard, funs) = fetchGuard(id, refs, recompile)
 
-    (if (guard.values != values || guard.refs.map(_.apply()) != refs) {
-      createAndStoreGuard(id, values, refs, recompile)
-    } else {
-      guard
-    }).function.asInstanceOf[Ret]
-  }
-
-  @inline
-  final def checkEq[Ret](id: Long, values: Seq[Any], refs: Seq[Any], recompile: () => Any): Ret = {
-    val anyRefs = refs.asInstanceOf[Seq[AnyRef]]
-    val guard = fetchGuard(id, values, refs, recompile)
-
-    // TODO optimize
-    (if (guard.values != values || (guard.refs.map(_.apply()).zip(anyRefs).exists { x => !(x._1 eq x._2) })) {
-      createAndStoreGuard(id, values, refs, recompile)
+    (if (guard.refs.map(_.apply()).zip(refs).zip(funs).exists(x => !(x._2(x._1._1, x._1._2)))) {
+      createAndStoreGuard(id, refs, recompile)
     } else {
       guard
     }).function.asInstanceOf[Ret]
