@@ -12,7 +12,7 @@ import reflect.runtime.universe.Symbol
  */
 trait FullyStaged { this: BaseYinYang =>
 
-  override def requiredHoles(symbols: List[Symbol]): List[(Symbol, Guard)] =
+  override def compilationVars(symbols: List[Symbol]): List[(Symbol, Guard)] =
     throw new RuntimeException("This method must not be called!!!")
 
 }
