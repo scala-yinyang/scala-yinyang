@@ -79,57 +79,66 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
 
       /**
        * Transforms the given DSL program block.
-       *   @param toLift All contained symbolIds will be replaced with
+       *   @param toHoles All contained symbolIds will be replaced with
        *     `hole[T](classTag[T], holeId)` and the holeTable will map from
        *     holeId to symbolId
-       *   @param toLift All contained symbols will be replaced with
+       *   @param toLiftedHoles All contained symbolIds will be replaced with
+       *     `lift("captured$" + sym, hole[T](classTag[T], holeId))` and the
+       *     holeTable will map from holeId to symbolId
+       *   @param toLifts All contained symbols will be replaced with
        *     `lift("captured$" + sym)`
        */
-      def transform(toHoles: List[Int], toLift: List[Symbol])(block: Tree): Tree =
+      def transform(toHoles: List[Symbol], toLiftedHoles: List[Symbol], toLifts: List[Symbol])(block: Tree): Tree =
         (AscriptionTransformer andThen
-          LiftLiteralTransformer(toLift) andThen
+          LiftLiteralTransformer(toLifts, toLiftedHoles) andThen
           (x => VirtualizationTransformer(x)._1) andThen
           ScopeInjectionTransformer andThen
           TypeTreeTransformer andThen
-          HoleTransformer(toHoles, shortenNames) andThen
-          composeDSL(toLift) andThen
+          HoleTransformer((toHoles ++ toLiftedHoles).distinct, shortenNames) andThen
+          composeDSL((toLifts ++ toLiftedHoles).distinct) andThen
           PostProcess)(block)
 
       lazy val unboundDSL = {
-        val t = transform(allCaptured map symbolId, Nil)(block.tree)
+        val t = transform(allCaptured, Nil, Nil)(block.tree)
         log("FIRST TRANSFORM DONE (prettyPrinting in Caps):\n" + shortenNames(t) + "\n", 2)
         log(showRaw(t, printTypes = true), 3)
-        // c.typeCheck()
         t
       }
 
       // DSL returns what holes it needs
-      val (reqVars: List[Symbol], guards: List[Guard]) = dslType match {
+      val (compilVars: List[Symbol], guards: List[Guard], staticCompilVars: List[Symbol]) = dslType match {
         case tpe if tpe <:< typeOf[FullyStaged] =>
-          allCaptured map (s => (s, defaultGuard(s))) unzip
+          val t: (List[Symbol], List[Guard]) = allCaptured.map(s => (s, defaultGuard(s))).unzip
+          (t._1, t._2, t._1)
         case tpe if tpe <:< typeOf[FullyUnstaged] =>
-          (Nil, Nil)
+          (Nil, Nil, Nil)
         case tpe if tpe <:< typeOf[HoleTypeAnalyser] => {
           allCaptured foreach { x =>
             log(x.typeSignature.typeConstructor.toString)
           }
-          allCaptured filter { x =>
+          val t: (List[Symbol], List[Guard]) = allCaptured.filter({ x =>
             liftTypes.exists(l => x.typeSignature <:< l.asInstanceOf[Type])
-          } map (s => (s, defaultGuard(s))) unzip
+          }).map(s => (s, defaultGuard(s))).unzip
+          (t._1, t._2, t._1)
         }
         case tpe =>
-          reflInstance[BaseYinYang](unboundDSL).requiredHoles(allCaptured.asInstanceOf[List[reflect.runtime.universe.Symbol]])
-            .map(t => (t._1.asInstanceOf[Symbol], t._2)).unzip
+          val (compilVars: List[Symbol], guards: List[Guard]) = reflInstance[BaseYinYang](unboundDSL)
+            .compilationVars(allCaptured.asInstanceOf[List[reflect.runtime.universe.Symbol]])
+            .map(t3 => (t3._1.asInstanceOf[Symbol], t3._2)).unzip
+          val statics = compilVars.zip(guards).filter(!_._2.isDynamic).unzip._1
+          (compilVars, guards, statics)
       }
 
-      val holes = allCaptured diff reqVars
-      log(s"captured: $allCaptured, reqVars: $reqVars, holes: $holes, guards: $guards", 2)
+      val nonCompilVars = allCaptured diff compilVars
+      val dynamicCompilVars = compilVars diff staticCompilVars
+
+      log(s"allCaptured: $allCaptured, compilVars: $compilVars, guards: $guards, static: $staticCompilVars, dyn: $dynamicCompilVars", 2)
 
       // re-transform the tree with new holes if there are required vars
-      val dsl = if (reqVars.isEmpty) unboundDSL
+      val dsl = if (compilVars.isEmpty) unboundDSL
       else {
         holeTable.clear()
-        transform(holes map symbolId, reqVars)(block.tree)
+        transform(nonCompilVars, dynamicCompilVars, staticCompilVars)(block.tree)
       }
 
       // if the DSL inherits the StaticallyChecked trait reflectively do the static analysis
@@ -138,13 +147,13 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
         reflInstance[StaticallyChecked](dsl).staticallyCheck(new Reporter(c))
       }
 
-      val sortedHoles = holes.sortBy(h => holeTable.indexOf(symbolId(h)))
+      val sortedHoles = (nonCompilVars ++ dynamicCompilVars).distinct.sortBy(h => holeTable.indexOf(symbolId(h)))
 
       def args(holes: List[Symbol]): String =
         holes.map({ y: Symbol => y.name.decoded }).mkString("", ",", "")
 
       val dslTree = dslType match {
-        case tpe if tpe <:< typeOf[CodeGenerator] && reqVars.isEmpty =>
+        case tpe if tpe <:< typeOf[CodeGenerator] && compilVars.isEmpty =>
           log("COMPILE TIME COMPILED", 2)
           /*
            * If DSL does not require run-time data it can be completely
@@ -169,11 +178,10 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
           log("Guard function trees: " + reifiedGuards, 3)
 
           val dslInit = s"""
-            
             val dslInstance = ch.epfl.yinyang.runtime.YYStorage.lookup(${programId}L, new $className(), 
               List(${guards map (_.getGuardFunction) mkString ("(", "), (", ")")}));
-            val reqVars: Seq[Any] = Seq(${reqVars map (_.name.decoded) mkString ", "})
-            ${reqVars.map({ k => "dslInstance.captured$" + k.name.decoded + " = " + k.name.decoded }) mkString "\n"}
+            val compilVars: Seq[Any] = Seq(${compilVars map (_.name.decoded) mkString ", "})
+            ${compilVars.map({ k => "dslInstance.captured$" + k.name.decoded + " = " + k.name.decoded }) mkString "\n"}
           """
 
           val guardedExecute = c parse dslInit + (dslType match {
@@ -181,14 +189,14 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
               s"""
               def recompile(): Any = dslInstance.compile[$retType, $functionType]
               val program = ch.epfl.yinyang.runtime.YYStorage.check[$functionType](
-                ${programId}L, reqVars, recompile
+                ${programId}L, compilVars, recompile
               )
               program.apply(${args(sortedHoles)})
             """
             case t if t <:< typeOf[Interpreted] => s"""
               def invalidate(): () => Any = () => dslInstance.reset
               ch.epfl.yinyang.runtime.YYStorage.check[Any](
-                ${programId}L, reqVars, invalidate
+                ${programId}L, compilVars, invalidate
               )
               dslInstance.interpret[${retType}](${args(sortedHoles)})
             """
@@ -401,11 +409,11 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
   private def constructor = Apply(Select(New(Ident(newTypeName(className))),
     nme.CONSTRUCTOR), List())
 
-  def composeDSL(reqVars: List[Symbol])(transformedBody: Tree) =
+  def composeDSL(compilVars: List[Symbol])(transformedBody: Tree) =
     // class MyDSL extends DSL {
     ClassDef(Modifiers(), newTypeName(className), List(),
       Template(List(dslTrait), emptyValDef,
-        reqVars.map({ k => ValDef(Modifiers(Flag.MUTABLE), newTermName("captured$" + k.name.decoded), TypeTree(), Ident(k)) }) ++
+        compilVars.map({ k => ValDef(Modifiers(Flag.MUTABLE), newTermName("captured$" + k.name.decoded), TypeTree(), Ident(k)) }) ++
           List(
             DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(List()), TypeTree(),
               Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY),

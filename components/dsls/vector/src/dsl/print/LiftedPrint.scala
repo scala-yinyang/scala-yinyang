@@ -59,13 +59,13 @@ abstract class BasePrintDSL
 abstract class UnstagedPrintDSL extends BasePrintDSL with FullyUnstaged {}
 
 /**
- * The optimizing version of the int printing DSL uses requiredHoles to signal
- * which holes are needed for optimizations, e.g. those that appear as
+ * The optimizing version of the int printing DSL uses compilationVars to
+ * signal which holes are needed for optimizations, e.g. those that appear as
  * arguments to the <code>optimizingPrintln</code> method. If there are no such
  * holes in the DSL program, it will be generated at compile time.
  */
 abstract class OptimizedPrintDSL extends BasePrintDSL {
-  val recompileHoles = mutable.Set[scala.Int]()
+  val compilationHoles = mutable.Set[scala.Int]()
 
   // x is needed for optimizations, so it is a required hole.
   def optimizingPrintln(x: Int): Unit = {
@@ -73,58 +73,66 @@ abstract class OptimizedPrintDSL extends BasePrintDSL {
     sb.append("scala.Predef.println(\"optimizing on: " + x.toString + "\");\n")
     x match {
       case Hole(tpe, id) =>
-        recompileHoles += id
+        compilationHoles += id
       case _ =>
     }
   }
 
   override def reset(): scala.Unit = {
-    recompileHoles.clear
+    compilationHoles.clear
     super.reset()
   }
 
-  override def requiredHoles(symbols: List[Symbol]): List[(Symbol, Guard)] = {
+  override def compilationVars(symbols: List[Symbol]): List[(Symbol, Guard)] = {
     reset()
     main()
 
-    recompileHoles.toList.map(i => (symbols(i), Guard.defaultGuard))
+    compilationHoles.toList.map(i => (symbols(i), Guard.defaultGuard))
   }
 }
 
 /**
  * The even-odd optimizing version of the int printing DSL offers two versions
  * of printing code, one for even and one for odd integers. It shows how to use
- * custom guards to define when recompilation is triggered.
+ * custom guards to define when recompilation is triggered, and how dynamic
+ * variables allow both optimizations on a concrete value and generating code
+ * containing the variable.
  */
 abstract class EvenOddOptimizedPrintDSL extends BasePrintDSL {
-  val recompileHoles = mutable.Map[scala.Int, Guard]()
+  val compilationHoles = mutable.Map[scala.Int, Guard]()
 
-  def evenOddPrintln(x: Int): Int = {
+  def evenOddPrintln(x: Int): Unit = {
     x match {
       case Hole(tpe, id) =>
-        val (t1: Any, t2: Any) = ("", "")
-        recompileHoles.put(id, recompileHoles.getOrElse(id, Guard.always_true)
-          .and(Guard.custom("t1.asInstanceOf[scala.Int] % 2 == t2.asInstanceOf[scala.Int] % 2")))
-        IntConst(1)
-      case IntConst(i) =>
-        if (i % 2 == 0)
-          sb.append("scala.Predef.println(\"Even: " + x.toString + "\");\n")
-        else
-          sb.append("scala.Predef.println(\"Odd: " + x.toString + "\");\n")
-        IntConst(1)
+        // Retrieve previously stored guard.
+        val guard = compilationHoles.getOrElse(id, Guard.always_true)
+        // Compose previous guard with custom guard function, indicating with
+        // the Boolean that this variable is dynamic, so it will be
+        // transformed to a liftedHole.
+        compilationHoles.put(id, guard.and(Guard.custom("t1.asInstanceOf[scala.Int] % 2 == t2.asInstanceOf[scala.Int] % 2", true)))
+      case IntConst(value, hole) =>
+        // The dynamic variable contains both a value for code generation time
+        // and the hole that can be used in the generated code.
+        sb.append("scala.Predef.println(\"" + (value % 2 match {
+          case 0 => "Even: "
+          case 1 => "Odd: "
+        }) + (hole match {
+          case None    => value + "\""
+          case Some(h) => "\" + " + h.toString
+        }) + ");\n")
     }
   }
 
-  override def reset(): Unit = {
-    recompileHoles.clear
+  override def reset(): scala.Unit = {
+    compilationHoles.clear
     super.reset()
   }
 
-  override def requiredHoles(symbols: List[Symbol]): List[(Symbol, Guard)] = {
+  override def compilationVars(symbols: List[Symbol]): List[(Symbol, Guard)] = {
     reset()
     main()
 
-    recompileHoles.toList.map(x => (symbols(x._1), x._2))
+    compilationHoles.toList.map(x => (symbols(x._1), x._2))
   }
 }
 
@@ -137,13 +145,13 @@ abstract class EvenOddOptimizedPrintDSL extends BasePrintDSL {
 abstract class StagedPrintDSL extends BasePrintDSL with FullyStaged {}
 
 abstract class ReturningPrintDSL extends BasePrintDSL {
-  val recompileHoles = mutable.Set[scala.Int]()
+  val compilationHoles = mutable.Set[scala.Int]()
 
   def returningIncrementedPrintln(x: Int): Int = {
     sb.append("scala.Predef.println(\"inc: " + x.toString + "\");\n " + x.toString + " + 1;\n")
     x match {
       case Hole(tpe, id) =>
-        recompileHoles += id
+        compilationHoles += id
       case _ =>
     }
     // TODO this hack doesn't work for nesting calls, need AST instead of manual emission to buffer,
@@ -152,15 +160,15 @@ abstract class ReturningPrintDSL extends BasePrintDSL {
   }
 
   override def reset(): Unit = {
-    recompileHoles.clear
+    compilationHoles.clear
     super.reset()
   }
 
-  override def requiredHoles(symbols: List[Symbol]): List[Symbol] = {
+  override def compilationVars(symbols: List[Symbol]): List[(Symbol, Guard)] = {
     reset()
     main()
 
-    recompileHoles.toList.map(symbols(_))
+    compilationHoles.toList.map(i => (symbols(i), Guard.defaultGuard))
   }
 }
 
@@ -186,7 +194,7 @@ trait MiniIntDSL extends BaseYinYang { self: BooleanOps with PrintCodeGenerator 
   }
 
   // classes that provide lifting
-  case class IntConst(i: scala.Int) extends IntOps {
+  case class IntConst(i: scala.Int, h: Option[Int] = None) extends IntOps {
     override def toString = s"$i"
     def value = i
   }
@@ -209,7 +217,10 @@ trait MiniIntDSL extends BaseYinYang { self: BooleanOps with PrintCodeGenerator 
   }
 
   implicit object LiftInt extends LiftEvidence[scala.Int, Int] {
-    def lift(v: scala.Int): Int = IntConst(v)
+    // The EvenOddOptimizedPrintDSL uses dynamic Int compilation vars.
+    override def lift(v: scala.Int, h: Option[Int] = None): Int = IntConst(v, h)
+
+    def lift(v: scala.Int): Int = IntConst(v, None)
     def hole(tpe: TypeTag[scala.Int], symbolId: scala.Int): Int = {
       val h = Hole(tpe, symbolId)
       holes += h

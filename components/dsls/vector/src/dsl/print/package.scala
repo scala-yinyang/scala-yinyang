@@ -56,5 +56,5 @@ object `package` {
   def returningIncrementedPrintln(x: Int): Int = { scala.Predef.println("inc: " + x); x + 1 }
 
   // Shallow embedding not mandatory:
-  def evenOddPrintln(x: Int): Int = ???
+  def evenOddPrintln(x: Int): Unit = ???
 }
