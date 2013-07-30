@@ -20,7 +20,6 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
     assert(comp2 == compileTime && run2 == runtime,
       s"$dlsType DSL compilation counts don't agree, should be $compileTime at compile time " +
         s"and $runtime at runtime, but was $comp2 and $run2.")
-
   }
 
   "Eval test" should "work" in {
@@ -247,5 +246,16 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
           b
         } == 1, "staged should yield 1")
     }, "staged")
+  }
+
+  "Runtime code generating" should "recompile only if NOT cached" in {
+    checkCounts(0, 2, () =>
+      for (i ← List(0, 1, 0, 1)) {
+        val j = liftOptimizedPrint {
+          optimizingPrintln(i)
+          i
+        }
+        assert(j == i, s"Value $j didn't change to $i (optimized)")
+      }, "optimized")
   }
 }

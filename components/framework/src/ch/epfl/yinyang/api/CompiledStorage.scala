@@ -26,7 +26,10 @@ object YYStorage {
 
   // Guards
   type GuardFunctions = List[(Any, Any) => Boolean]
-  final private val guardStates = new ConcurrentHashMap[Long, GuardState]()
+  
+  // Number of variants of each program that are cashed. TODO not static
+  final private val CACHE_SIZE_PER_PROGRAM = 5
+  final private val guardStates = new ConcurrentHashMap[Long, List[GuardState]]()
   final private val guardFunctions = new ConcurrentHashMap[Long, GuardFunctions]()
 
   @inline
@@ -42,31 +45,33 @@ object YYStorage {
   }
 
   @inline
-  private final def fetchGuard(id: Long, refs: Seq[Any], recompile: () => Any): (GuardState, GuardFunctions) = {
-    val guard = guardStates.get(id)
-    (guard match {
+  private final def fetchGuard(id: Long, refs: Seq[Any], recompile: () => Any): (Seq[GuardState], GuardFunctions) = {
+    val guards = guardStates.get(id)
+    (guards match {
       case null => createAndStoreGuard(id, refs, recompile)
-      case _    => guard
+      case _    => guards
     }, guardFunctions.get(id))
   }
 
-  // avoids instantiation of the arguments
   @inline
   final private def createAndStoreGuard(id: Long, refs: Seq[Any], recompile: () => Any) = {
     runtimeCompileCount += 1
     val g = new GuardState(refs.asInstanceOf[Seq[AnyRef]].map(x => new WeakReference(x)), recompile())
-    guardStates.put(id, g)
-    g
+    val gs = guardStates.get(id) match {
+      case null => List(g)
+      case gs   => g :: (gs.take(CACHE_SIZE_PER_PROGRAM - 1))
+    }
+    guardStates.put(id, gs)
+    gs
   }
 
   @inline
   final def check[Ret](id: Long, refs: Seq[Any], recompile: () => Any): Ret = {
-    val (guard, funs) = fetchGuard(id, refs, recompile)
+    val (guards, funs) = fetchGuard(id, refs, recompile)
 
-    (if (guard.refs.map(_.apply()).zip(refs).zip(funs).exists(x => !(x._2(x._1._1, x._1._2)))) {
-      createAndStoreGuard(id, refs, recompile)
-    } else {
-      guard
+    (guards.find(!_.refs.map(_.apply()).zip(refs).zip(funs).exists(x => !(x._2(x._1._1, x._1._2)))) match {
+      case None        => createAndStoreGuard(id, refs, recompile).head
+      case Some(guard) => guard
     }).function.asInstanceOf[Ret]
   }
 }
