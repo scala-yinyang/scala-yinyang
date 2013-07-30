@@ -9,7 +9,7 @@ import reflect.runtime.universe.Symbol
  * NOTE: DSLs that inherit this trait will not be reflectively instantiated at compile time.
  */
 trait HoleTypeAnalyser { this: BaseYinYang =>
-  override def requiredHoles(symbols: List[Symbol]): List[Symbol] =
+  override def compilationVars(symbols: List[Symbol]): List[(Symbol, Guard)] =
     throw new RuntimeException("This method must not be called!!!")
 
 }

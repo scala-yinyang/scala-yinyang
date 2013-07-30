@@ -225,10 +225,8 @@ trait VirtualizationDSL extends BooleanDSL with Base {
 trait VectorDSL
   extends ClassTagOps with ArrayDSL
   with IntDSL with DoubleDSL with NumericOps with Base
-  with Interpreted {
+  with Interpreted with FullyUnstaged {
   type Vector[T] = VectorOps[T]
-
-  def requiredHoles(symbols: List[Symbol]): List[Symbol] = Nil
 
   //TODO (NEW) (TOASK) - where should we provide implementation for methods of VectorOps
   trait VectorOps[T] {

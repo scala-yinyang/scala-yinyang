@@ -5,12 +5,13 @@ import dsl.print._
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import reflect.runtime.universe._
-import ch.epfl.yinyang.runtime.YYStorage
 
 @RunWith(classOf[JUnitRunner])
 class CodeGenSpec extends FlatSpec with ShouldMatchers {
 
   def checkCounts(compileTime: Int, runtime: Int, block: () => Unit, dlsType: String): Unit = {
+    import ch.epfl.yinyang.runtime.YYStorage
+
     val comp = YYStorage.getCompileTimeCompileCount()
     val run = YYStorage.getRuntimeCompileCount()
     block()
@@ -184,6 +185,27 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
     }, "optimized")
   }
 
+  "Runtime code generating" should "sometimes recompile" in {
+    checkCounts(0, 2, () => {
+      for (i: Int <- 0 to 1) {
+        for (j: Int <- 0 to 1) {
+          liftOptimizedPrint {
+            println(j)
+            optimizingPrintln(i)
+          }
+        }
+      }
+    }, "optimized")
+
+    checkCounts(0, 2, () => {
+      for (i <- List(0, 2, 1, 3)) {
+        liftEvenOddOptimizedPrint {
+          evenOddPrintln(i)
+        }
+      }
+    }, "even-odd-optimized")
+  }
+
   "Virtualization" should "work" in {
     checkCounts(1, 0, () => {
       val x = 1
@@ -224,5 +246,16 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
           b
         } == 1, "staged should yield 1")
     }, "staged")
+  }
+
+  "Runtime code generating" should "recompile only if NOT cached" in {
+    checkCounts(0, 2, () =>
+      for (i ← List(0, 1, 0, 1)) {
+        val j = liftOptimizedPrint {
+          optimizingPrintln(i)
+          i
+        }
+        assert(j == i, s"Value $j didn't change to $i (optimized)")
+      }, "optimized")
   }
 }
