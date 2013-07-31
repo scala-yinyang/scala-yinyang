@@ -27,12 +27,14 @@ class PostProcessing[C <: Context](val c: C)(val statements: List[(PostProcessin
     override def transform(tree: Tree): Tree = {
       tree match {
         case ClassDef(mods, name, tparams,
-          Template(parents, self, List(constructor, DefDef(mainMods, mainName, mainTparams, mainVparamss,
-            mainTpt, transformedBody)))) => {
+          Template(parents, self, body)) => {
+          val List(constructor, DefDef(mainMods, mainName, mainTparams, mainVparamss,
+            mainTpt, transformedBody)) = body collect { case d: DefDef => d }
+          val valDefs = body collect { case v: ValDef => v }
           val classStatements = statementsWithContext(ClassContext)
           val mainStatements = statementsWithContext(MainContext)
           ClassDef(mods, name, tparams,
-            Template(parents, self, classStatements ++ List(constructor, DefDef(mainMods, mainName, mainTparams, mainVparamss,
+            Template(parents, self, classStatements ++ valDefs ++ List(constructor, DefDef(mainMods, mainName, mainTparams, mainVparamss,
               mainTpt, Block(mainStatements, transformedBody)))))
         }
       }
