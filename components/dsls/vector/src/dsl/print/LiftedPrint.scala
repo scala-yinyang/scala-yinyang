@@ -8,17 +8,16 @@ import reflect.runtime.universe._
 /** The basic int printing DSL. */
 abstract class BasePrintDSL
   extends ScalaCompile with PrintCodeGenerator with CodeGenerator with MiniIntDSL
-  with BooleanOps with Interpreted with BaseYinYang with Base {
+  with BooleanOps with MiniUnitDSL with Interpreted with BaseYinYang with Base {
 
   var sb: StringBuffer = new StringBuffer()
 
   // hey, we can refine println -- but we don't need it right now
-  def println(x: Int): Int = {
+  def println(x: Int): Unit = {
     sb.append(s"scala.Predef.println(${x.toString});\n")
-    IntConst(1)
   }
 
-  override def reset(): Unit = {
+  override def reset(): scala.Unit = {
     sb = new StringBuffer()
     holes.clear
   }
@@ -26,9 +25,14 @@ abstract class BasePrintDSL
   def generateCode(className: String): String = {
     reset()
     val res = main()
+    val retType = res match {
+      case _: Int     => "Int" // scala.Int
+      case _: Boolean => "Boolean"
+      case _: Unit    => "Unit"
+    }
     val distinctHoles = holes.distinct
     s"""
-      class $className extends Function${distinctHoles.size}[${"Int, " * distinctHoles.size} Int] {
+      class $className extends Function${distinctHoles.size}[${"Int, " * distinctHoles.size} $retType] {
         def apply(${distinctHoles.map(y => y.toString + ": " + y.tpe.tpe.toString).mkString("", ",", "")}) = {
           ${sb.toString}
           ${res.toString}
@@ -64,19 +68,17 @@ abstract class OptimizedPrintDSL extends BasePrintDSL {
   val recompileHoles = mutable.Set[scala.Int]()
 
   // x is needed for optimizations, so it is a required hole.
-  def optimizingPrintln(x: Int): Int = {
+  def optimizingPrintln(x: Int): Unit = {
     // imagine that we create a fancy specialized print here
     sb.append("scala.Predef.println(\"optimizing on: " + x.toString + "\");\n")
     x match {
       case Hole(tpe, id) =>
         recompileHoles += id
-        IntConst(1)
       case _ =>
-        IntConst(1)
     }
   }
 
-  override def reset(): Unit = {
+  override def reset(): scala.Unit = {
     recompileHoles.clear
     super.reset()
   }
@@ -96,6 +98,34 @@ abstract class OptimizedPrintDSL extends BasePrintDSL {
  * compile time.
  */
 abstract class StagedPrintDSL extends BasePrintDSL with FullyStaged {}
+
+abstract class ReturningPrintDSL extends BasePrintDSL {
+  val recompileHoles = mutable.Set[scala.Int]()
+
+  def returningIncrementedPrintln(x: Int): Int = {
+    sb.append("scala.Predef.println(\"inc: " + x.toString + "\");\n " + x.toString + " + 1;\n")
+    x match {
+      case Hole(tpe, id) =>
+        recompileHoles += id
+      case _ =>
+    }
+    // TODO this hack doesn't work for nesting calls, need AST instead of manual emission to buffer,
+    // but how to get AST from type-checking main function?
+    CodeGeneratingStatement()
+  }
+
+  override def reset(): Unit = {
+    recompileHoles.clear
+    super.reset()
+  }
+
+  override def requiredHoles(symbols: List[Symbol]): List[Symbol] = {
+    reset()
+    main()
+
+    recompileHoles.toList.map(symbols(_))
+  }
+}
 
 trait PrintCodeGenerator { self: CodeGenerator =>
   trait BaseHole[T] {
@@ -132,6 +162,13 @@ trait MiniIntDSL extends BaseYinYang { self: BooleanOps with PrintCodeGenerator 
   case class IntEq(l: IntOps, r: IntOps) extends BooleanOps {
     override def toString = s"$l == $r"
     def value = true
+  }
+
+  case class CodeGeneratingStatement extends IntOps {
+    // This statement adds its code directly to the StringBuffer, so if it's in
+    // result position, we don't want to add it again.
+    override def toString = ""
+    def value = -42
   }
 
   implicit object LiftInt extends LiftEvidence[scala.Int, Int] {
@@ -187,6 +224,8 @@ trait BooleanOps extends BaseYinYang { self: PrintCodeGenerator =>
 }
 
 trait MiniUnitDSL extends BaseYinYang {
+  type Unit = scala.Unit
+
   implicit object LiftUnit extends LiftEvidence[scala.Unit, Unit] {
     def lift(v: scala.Unit): Unit = ()
     def hole(tpe: TypeTag[scala.Unit], symbolId: scala.Int): Unit = {

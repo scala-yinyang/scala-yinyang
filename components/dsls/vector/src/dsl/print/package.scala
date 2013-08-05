@@ -12,6 +12,7 @@ object `package` {
   def liftUnstagedPrint[T](block: => T): T = macro _liftUnstagedPrint[T]
   def liftOptimizedPrint[T](block: => T): T = macro _liftOptimizedPrint[T]
   def liftStagedPrint[T](block: => T): T = macro _liftStagedPrint[T]
+  def liftReturningPrint[T](block: => T): T = macro _liftReturningPrint[T]
 
   def _liftUnstagedPrint[T](c: Context)(block: c.Expr[T]): c.Expr[T] =
     YYTransformer[c.type, T](c)(
@@ -34,9 +35,17 @@ object `package` {
       None,
       Map("shallow" -> false))(block)
 
+  def _liftReturningPrint[T](c: Context)(block: c.Expr[T]): c.Expr[T] =
+    YYTransformer[c.type, T](c)(
+      "dsl.print.ReturningPrintDSL",
+      new PolyTransformer[c.type](c),
+      None,
+      Map("shallow" -> false))(block)
+
   // Shallow embedding:
-  def println(x: Int): Int = { scala.Predef.println("shallow: " + x); x }
-  def optimizingPrintln(x: Int): Int = { scala.Predef.println("shallow optimizing: " + x); x }
+  def println(x: Int): Unit = scala.Predef.println("shallow: " + x)
+  def optimizingPrintln(x: Int): Unit = scala.Predef.println("shallow optimizing: " + x)
+  def returningIncrementedPrintln(x: Int): Int = { scala.Predef.println("inc: " + x); x + 1 }
 
   // No shallow embedding necessary
   //  def println(x: Int): Int = ???

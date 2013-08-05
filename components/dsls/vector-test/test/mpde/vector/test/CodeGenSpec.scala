@@ -239,4 +239,21 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
         } == 1, "staged should yield 1")
     }, "staged")
   }
+
+  "Return test" should "compile and work" in {
+    assert(liftOptimizedPrint {
+      optimizingPrintln(3)
+    }.getClass == ().getClass, "optimizingPrintln didn't return Unit")
+    assert(liftOptimizedPrint {
+      true
+    } == true)
+    assert(liftReturningPrint {
+      returningIncrementedPrintln(1)
+    } == 2, "returningIncrementedPrintln didn't return 2")
+    // TODO nested statements with both effects and values that are computed
+    // assert(liftReturningPrint {
+    //   returningIncrementedPrintln(returningIncrementedPrintln(1))
+    // } == 3, "NESTED returningIncrementedPrintln didn't return 3")
+
+  }
 }
