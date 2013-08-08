@@ -67,9 +67,8 @@ abstract class UnstagedPrintDSL extends BasePrintDSL with FullyUnstaged {}
 abstract class OptimizedPrintDSL extends BasePrintDSL {
   val compilationHoles = mutable.Set[scala.Int]()
 
-  // x is needed for optimizations, so it is a required hole.
+  // x is needed for optimizations, so it is a compilation variable.
   def optimizingPrintln(x: Int): Unit = {
-    // imagine that we create a fancy specialized print here
     sb.append("scala.Predef.println(\"optimizing on: " + x.toString + "\");\n")
     x match {
       case Hole(tpe, id) =>
@@ -83,33 +82,45 @@ abstract class OptimizedPrintDSL extends BasePrintDSL {
     super.reset()
   }
 
-  override def compilationVars(symbols: List[Symbol]): List[(Symbol, Guard)] = {
+  override def compilationVars(symbols: List[Symbol]): List[VarType] = {
     reset()
     main()
 
-    compilationHoles.toList.map(i => (symbols(i), Guard.defaultGuard))
+    // Since we want to generate a new version of the println code for each value
+    // we mark the holes encountered in optimizingPrintln as DefaultCompVar.
+    List.range(0, symbols.length).map(i => if (compilationHoles.contains(i)) DefaultCompVar else NonCompVar())
   }
 }
 
 /**
  * The even-odd optimizing version of the int printing DSL offers two versions
  * of printing code, one for even and one for odd integers. It shows how to use
- * custom guards to define when recompilation is triggered, and how dynamic
- * variables allow both optimizations on a concrete value and generating code
- * containing the variable.
+ * dynamic compilation variables with custom guards to define when
+ * recompilation is triggered. The first step is to mark the variables as
+ * RequiredDynamicCompVar. Then we define the custom guard function, which
+ * returns whether two values t1 and t2 are equivalent with respect to
+ * compilation or whether the new one triggers recompilation.
+ *
+ * Then, the MiniIntDSL was extended so that the LiftInt evidence implements the
+ * second version of the lift function:
+ *   override def lift(v: scala.Int, h: Option[Int] = None): Int = IntConst(v, h)
+ * The IntConst node now also has a second argument, so it can carry both the
+ * value indicating which parity version to use, and the hole that will be used
+ * in the generated code.
  */
 abstract class EvenOddOptimizedPrintDSL extends BasePrintDSL {
-  val compilationHoles = mutable.Map[scala.Int, Guard]()
+  // Although we only use one VarType here, we store and compose them using and
+  // as would be done in the general case.
+  val compilationHoles = mutable.Map[scala.Int, VarType]()
 
   def evenOddPrintln(x: Int): Unit = {
     x match {
       case Hole(tpe, id) =>
-        // Retrieve previously stored guard.
-        val guard = compilationHoles.getOrElse(id, Guard.always_true)
-        // Compose previous guard with custom guard function, indicating with
-        // the Boolean that this variable is dynamic, so it will be
-        // transformed to a liftedHole.
-        compilationHoles.put(id, guard.and(Guard.custom("t1.asInstanceOf[scala.Int] % 2 == t2.asInstanceOf[scala.Int] % 2", true)))
+        // Retrieve previously stored type or the neutral type.
+        val varType: VarType = compilationHoles.getOrElse(id, NonCompVar())
+        // Compose previous type with the new type:
+        // required dynamic type with custom guard function.
+        compilationHoles.put(id, RequiredDynamicCompVar(Guard.custom("t1.asInstanceOf[scala.Int] % 2 == t2.asInstanceOf[scala.Int] % 2")).and(varType))
       case IntConst(value, hole) =>
         // The dynamic variable contains both a value for code generation time
         // and the hole that can be used in the generated code.
@@ -117,8 +128,8 @@ abstract class EvenOddOptimizedPrintDSL extends BasePrintDSL {
           case 0 => "Even: "
           case 1 => "Odd: "
         }) + (hole match {
-          case None    => value + "\""
-          case Some(h) => "\" + " + h.toString
+          case None    => value + "\"" // a regular constant, not a variable
+          case Some(h) => "\" + " + h.toString // a variable, represented by a hole
         }) + ");\n")
     }
   }
@@ -128,11 +139,11 @@ abstract class EvenOddOptimizedPrintDSL extends BasePrintDSL {
     super.reset()
   }
 
-  override def compilationVars(symbols: List[Symbol]): List[(Symbol, Guard)] = {
+  override def compilationVars(symbols: List[Symbol]): List[VarType] = {
     reset()
     main()
 
-    compilationHoles.toList.map(x => (symbols(x._1), x._2))
+    List.range(0, symbols.length).map(i => compilationHoles.getOrElse(i, NonCompVar()))
   }
 }
 
@@ -164,11 +175,11 @@ abstract class ReturningPrintDSL extends BasePrintDSL {
     super.reset()
   }
 
-  override def compilationVars(symbols: List[Symbol]): List[(Symbol, Guard)] = {
+  override def compilationVars(symbols: List[Symbol]): List[VarType] = {
     reset()
     main()
 
-    compilationHoles.toList.map(i => (symbols(i), Guard.defaultGuard))
+    List.range(0, symbols.length).map(i => if (compilationHoles.contains(i)) DefaultCompVar else NonCompVar())
   }
 }
 

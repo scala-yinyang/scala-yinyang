@@ -105,33 +105,33 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
         t
       }
 
-      // DSL returns what holes it needs
-      val (compilVars: List[Symbol], guards: List[Guard], staticCompilVars: List[Symbol]) = dslType match {
+      val varTypes: List[(Symbol, VarType)] = dslType match {
         case tpe if tpe <:< typeOf[FullyStaged] =>
-          val t: (List[Symbol], List[Guard]) = allCaptured.map(s => (s, defaultGuard(s))).unzip
-          (t._1, t._2, t._1)
+          allCaptured.map(s => (s, RequiredStaticCompVar(defaultGuard(s))))
+
         case tpe if tpe <:< typeOf[FullyUnstaged] =>
-          (Nil, Nil, Nil)
+          allCaptured.map(s => (s, NonCompVar()))
+
         case tpe if tpe <:< typeOf[HoleTypeAnalyser] => {
-          allCaptured foreach { x =>
-            log(x.typeSignature.typeConstructor.toString)
-          }
-          val t: (List[Symbol], List[Guard]) = allCaptured.filter({ x =>
-            liftTypes.exists(l => x.typeSignature <:< l.asInstanceOf[Type])
-          }).map(s => (s, defaultGuard(s))).unzip
-          (t._1, t._2, t._1)
+          allCaptured.foreach { s => log(s.typeSignature.typeConstructor.toString, 3) }
+          allCaptured.map(s => (s,
+            if (liftTypes.exists(l => s.typeSignature <:< l.asInstanceOf[Type])) RequiredStaticCompVar(defaultGuard(s))
+            else NonCompVar()))
         }
+
         case tpe =>
-          val (compilVars: List[Symbol], guards: List[Guard]) = reflInstance[BaseYinYang](unboundDSL)
-            .compilationVars(allCaptured.asInstanceOf[List[reflect.runtime.universe.Symbol]])
-            .map(t3 => (t3._1.asInstanceOf[Symbol], t3._2)).unzip
-          val statics = compilVars.zip(guards).filter(!_._2.isDynamic).unzip._1
-          (compilVars, guards, statics)
+          allCaptured.zip(
+            reflInstance[BaseYinYang](unboundDSL)
+              .compilationVars(allCaptured.asInstanceOf[List[reflect.runtime.universe.Symbol]]))
       }
 
+      val compilVars: List[Symbol] = varTypes.collect({ case (s, _: CompVar) => s })
+      val guards: List[Guard] = varTypes.collect({ case (_, v: CompVar) => v.guard })
+      val staticCompilVars: List[Symbol] = varTypes.collect({ case (s, _: Static) => s })
       val nonCompilVars = allCaptured diff compilVars
       val dynamicCompilVars = compilVars diff staticCompilVars
 
+      log(s"varTypes: $varTypes", 2)
       log(s"allCaptured: $allCaptured, compilVars: $compilVars, guards: $guards, static: $staticCompilVars, dyn: $dynamicCompilVars", 2)
 
       // re-transform the tree with new holes if there are required vars

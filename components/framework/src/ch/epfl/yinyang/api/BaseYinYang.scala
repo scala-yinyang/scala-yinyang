@@ -4,17 +4,14 @@ import reflect.runtime.universe._
 
 trait BaseYinYang {
   /**
-   * Returns the holes required for run-time optimizations.
-   * Compile-time optimized DSLs should return `Nil`.
-   *   @param symbols Maps from hole ids to symbols.
-   *   @return list of hole symbols indicating which variables are required at
-   *     code generation time for optimizations. Each variable has a guard that
-   *     defines when recompilation is necessary. The guard also marks whether
-   *     the variable is static (can be lifted, e.g. promoted to a constant
-   *     after code generation) or dynamic (needs to be a lifted hole, because
-   *     not every value change will trigger recompilation).
+   * Returns whether and how each hole is needed for compilation.
+   *   @see [[VarType]] for details about the different types.
+   *   @see [[FullyStaged]] and [[FullyUnstaged]] traits.
+   *   @param symbols Maps from hole ids to symbols, useful for generating
+   *     debugging output.
+   *   @return the type of each hole in the symbols list, in the same order.
    */
-  def compilationVars(symbols: List[Symbol]): List[(Symbol, Guard)]
+  def compilationVars(symbols: List[Symbol]): List[VarType]
 
   /**
    * Abstract super class for implicit lifters that the DSL author needs to provide.
