@@ -173,13 +173,17 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
           val retType = block.tree.tpe.toString
           val functionType = s"""${(0 until sortedHoles.length).map(y => "scala.Any").mkString("(", ", ", ")")} => ${retType}"""
 
-          log("Guard function strings: " + guards.map(_.getGuardFunction), 2)
-          val reifiedGuards = guards.map((g: Guard) => c parse g.getGuardFunction)
-          log("Guard function trees: " + reifiedGuards, 3)
+          log("Guard function strings: " + guards.map(_.getGuardFunction), 3)
+          log("Guard function trees: " + guards.map((g: Guard) => c parse g.getGuardFunction), 3)
+
+          val optional = varTypes.zipWithIndex.map(v => v._1._2 match {
+            case _: Optional => v._2
+            case _           => -1
+          })
 
           val dslInit = s"""
             val dslInstance = ch.epfl.yinyang.runtime.YYStorage.lookup(${programId}L, new $className(), 
-              List(${guards map (_.getGuardFunction) mkString ("(", "), (", ")")}));
+              List(${guards map (_.getGuardFunction) mkString ("(", "), (", ")")}), $optional);
             val compilVars: Seq[Any] = Seq(${compilVars map (_.name.decoded) mkString ", "})
             ${compilVars.map({ k => "dslInstance.captured$" + k.name.decoded + " = " + k.name.decoded }) mkString "\n"}
           """
@@ -187,12 +191,13 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
           val guardedExecute = c parse dslInit + (dslType match {
             case t if t <:< typeOf[CodeGenerator] =>
               s"""
-              def recompile(): Any = dslInstance.compile[$retType, $functionType]()
+              def recompile(unstableMixed: scala.collection.immutable.Set[scala.Int]): Any = dslInstance.compile[$retType, $functionType](unstableMixed)
               val program = ch.epfl.yinyang.runtime.YYStorage.check[$functionType](
                 ${programId}L, compilVars, recompile
               )
               program.apply(${args(sortedHoles)})
             """
+            // TODO(vsalvis) How do optional variables interact with interpretation?
             case t if t <:< typeOf[Interpreted] => s"""
               def invalidate(): () => Any = () => dslInstance.reset
               ch.epfl.yinyang.runtime.YYStorage.check[Any](

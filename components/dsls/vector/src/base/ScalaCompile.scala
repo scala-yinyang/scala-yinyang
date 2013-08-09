@@ -41,14 +41,14 @@ trait ScalaCompile { this: CodeGenerator =>
 
   var dumpGeneratedCode = false
 
-  def compile[T: TypeTag, Ret](stableMixed: Set[Int] = Set()): Ret = {
+  def compile[T: TypeTag, Ret](unstableHoleIds: Set[Int] = Set()): Ret = {
     if (this.compiler eq null)
       setupCompiler()
 
     val className = "staged$" + compileCount
     compileCount += 1
 
-    val source = generateCode(className, stableMixed)
+    val source = generateCode(className, unstableHoleIds)
 
     if (dumpGeneratedCode) println(source)
 

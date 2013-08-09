@@ -23,7 +23,7 @@ abstract class BasePrintDSL
     holes.clear
   }
 
-  def generateCode(className: String, stableMixed: Set[scala.Int]): String = {
+  def generateCode(className: String, unstableHoleIds: Set[scala.Int]): String = {
     reset()
     val res = main()
     val retType = res match {
@@ -123,8 +123,6 @@ abstract class EvenOddOptimizedPrintDSL extends BasePrintDSL {
         // required dynamic type with custom guard function.
         compilationHoles.put(id, RequiredDynamicCompVar(Guard.custom("t1.asInstanceOf[scala.Int] % 2 == t2.asInstanceOf[scala.Int] % 2")).and(varType))
       case IntConst(value) =>
-        // The dynamic variable contains both a value for code generation time
-        // and the hole that can be used in the generated code.
         sb.append("scala.Predef.println(\"" + (value % 2 match {
           case 0 => "Even: "
           case 1 => "Odd: "
@@ -209,13 +207,17 @@ trait MiniIntDSL extends BaseYinYang { self: BooleanOps with PrintCodeGenerator 
     def __##(): Int = IntConst(value)
   }
 
+  trait IntValue extends IntOps {
+    def i: scala.Int
+  }
+
   // classes that provide lifting
-  case class IntConst(i: scala.Int) extends IntOps {
+  case class IntConst(i: scala.Int) extends IntValue {
     override def toString = s"$i"
     def value = i
   }
 
-  case class IntMixed(i: scala.Int, hole: Int) extends IntOps {
+  case class IntMixed(i: scala.Int, hole: Int) extends IntValue {
     override def toString = s"$i"
     def value = i
   }
@@ -242,15 +244,15 @@ trait MiniIntDSL extends BaseYinYang { self: BooleanOps with PrintCodeGenerator 
     override def mixed(v: scala.Int, hole: Int): Int = IntMixed(v, hole)
 
     def lift(v: scala.Int): Int = IntConst(v)
-    def hole(tpe: TypeTag[scala.Int], symbolId: scala.Int): Int = {
-      val h = Hole(tpe, symbolId)
+    def hole(tpe: TypeTag[scala.Int], holeId: scala.Int): Int = {
+      val h = Hole(tpe, holeId)
       holes += h
       h
     }
   }
 
-  case class Hole[T](tpe: TypeTag[T], symbolId: scala.Int) extends IntOps with BaseHole[T] {
-    override def toString = "x" + symbolId
+  case class Hole[T](tpe: TypeTag[T], holeId: scala.Int) extends IntOps with BaseHole[T] {
+    override def toString = "x" + holeId
     def value = -1
   }
 

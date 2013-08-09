@@ -3,8 +3,6 @@ package ch.epfl.yinyang.runtime
 import java.util.concurrent.ConcurrentHashMap
 import scala.ref.WeakReference
 
-final class GuardState(val refs: Seq[WeakReference[AnyRef]], val function: Any)
-
 object YYStorage {
   private var runtimeCompileCount = 0
   private var compileTimeCompileCount = 0
@@ -21,57 +19,81 @@ object YYStorage {
     }
   }
 
-  // DSL instances
-  final private val programs = new ConcurrentHashMap[Long, Any]
+  type GuardFun = (Any, Any) => Boolean
+  /**
+   * A guard consists of a guard function and an Int holding the holeId if it is
+   * an optional variable, and -1 otherwise.
+   */
+  final case class GuardFunction(fun: GuardFun, optionalHoleId: Int)
 
-  // Guards
-  type GuardFunctions = List[(Any, Any) => Boolean]
+  /**
+   * A program variant in the cache consists of the compiled function, to be cast
+   * to the right type. Additionally, it stores the values it was compiled for,
+   * so they can be checked by the guard at the next possible execution. It also
+   * remembers which of the variables were designated as unstable and therefore
+   * don't need to be checked by the guard, but could become stable eventually.
+   */
+  final case class ProgramVariant(val function: Any, val refs: Seq[WeakReference[AnyRef]],
+                                  val unstable: List[Boolean])
 
   // Number of variants of each program that are cashed. TODO not static
   final private val CACHE_SIZE_PER_PROGRAM = 5
-  final private val guardStates = new ConcurrentHashMap[Long, List[GuardState]]()
-  final private val guardFunctions = new ConcurrentHashMap[Long, GuardFunctions]()
+
+  // The singleton DSL class instance is stored by the UID of the class
+  final private val DSLInstances = new ConcurrentHashMap[Long, Any]
+
+  // For each DSL instance, a maximum of CACHE_SIZE_PER_PROGRAM compiled variants are cached
+  final private val programVariants = new ConcurrentHashMap[Long, List[ProgramVariant]]()
+
+  // For each DSL instance, there is a GuardFunction for each compilation variable
+  final private val guardFunctions = new ConcurrentHashMap[Long, List[GuardFunction]]()
 
   @inline
-  final def lookup[Ret](id: Long, dsl: => Ret, guardFuns: => GuardFunctions): Ret = {
-    var program: Any = programs.get(id)
-    if (program == null) {
-      program = dsl
-      programs.put(id, program)
-      guardFunctions.put(id, guardFuns)
-    }
+  final def lookup[Ret](id: Long, dsl: => Ret, guardFuns: => List[GuardFun],
+                        optional: List[Int]): Ret = {
+    val dslInstance: Any = DSLInstances.get(id)
 
-    program.asInstanceOf[Ret]
+    (if (dslInstance == null) {
+      DSLInstances.put(id, dsl)
+      guardFunctions.put(id, guardFuns zip optional map (g => new GuardFunction(g._1, g._2)))
+      dsl
+    } else dslInstance).asInstanceOf[Ret]
   }
 
   @inline
-  private final def fetchGuard(id: Long, refs: Seq[Any], recompile: () => Any): (Seq[GuardState], GuardFunctions) = {
-    val guards = guardStates.get(id)
-    (guards match {
-      case null => createAndStoreGuard(id, refs, recompile)
-      case _    => guards
-    }, guardFunctions.get(id))
+  private final def fetch(id: Long, refs: Seq[Any], recompile: Set[Int] => Any): (List[ProgramVariant], List[GuardFunction]) = {
+    val variants = programVariants.get(id)
+    val guardFuns = guardFunctions.get(id)
+    (variants match {
+      case null => createAndStoreVariant(id, refs, recompile, guardFuns)
+      case _    => variants
+    }, guardFuns)
   }
 
   @inline
-  final private def createAndStoreGuard(id: Long, refs: Seq[Any], recompile: () => Any) = {
+  final private def createAndStoreVariant(id: Long, refs: Seq[Any], recompile: Set[Int] => Any,
+                                          guardFuns: List[GuardFunction], unstable: List[Boolean] = Nil) = {
     runtimeCompileCount += 1
-    val g = new GuardState(refs.asInstanceOf[Seq[AnyRef]].map(x => new WeakReference(x)), recompile())
-    val gs = guardStates.get(id) match {
+    val unstableSet: Set[Int] = unstable match {
+      case Nil => Set()
+      case l   => l zip guardFuns collect ({ case (unst, GuardFunction(_, id)) if unst => id }) toSet
+    }
+    val g = new ProgramVariant(recompile(unstableSet), refs.asInstanceOf[Seq[AnyRef]].map(x => new WeakReference(x)), unstable)
+    val gs = programVariants.get(id) match {
       case null => List(g)
       case gs   => g :: (gs.take(CACHE_SIZE_PER_PROGRAM - 1))
     }
-    guardStates.put(id, gs)
+    programVariants.put(id, gs)
     gs
   }
 
   @inline
-  final def check[Ret](id: Long, refs: Seq[Any], recompile: () => Any): Ret = {
-    val (guards, funs) = fetchGuard(id, refs, recompile)
+  final def check[Ret](id: Long, refs: Seq[Any], recompile: Set[Int] => Any): Ret = {
+    val (variants, funs) = fetch(id, refs, recompile)
 
-    (guards.find(!_.refs.map(_.apply()).zip(refs).zip(funs).exists(x => !(x._2(x._1._1, x._1._2)))) match {
-      case None        => createAndStoreGuard(id, refs, recompile).head
-      case Some(guard) => guard
+    (variants.find(!_.refs.map(_.apply()).zip(refs).zip(funs).exists(x => !(x._2.fun(x._1._1, x._1._2)))) match {
+      case None          => createAndStoreVariant(id, refs, recompile, funs).head
+      case Some(variant) => variant
     }).function.asInstanceOf[Ret]
   }
 }
