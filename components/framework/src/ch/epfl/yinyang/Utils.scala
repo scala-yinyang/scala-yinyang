@@ -23,8 +23,13 @@ trait TransformationUtils extends MacroModule {
 
   /* These two should be unified */
   def method(recOpt: Option[Tree], methName: String, args: List[List[Tree]], targs: List[Tree] = Nil): Tree = {
-    val receiver: Tree = typeApply(targs)(Select(recOpt.getOrElse(This(tpnme.EMPTY)), newTermName(methName)))
-    args.foldLeft(receiver) { Apply(_, _) }
+    val calleeName = newTermName(methName)
+    val callee = recOpt match {
+      case Some(rec) => Select(rec, calleeName)
+      case None      => Ident(calleeName)
+    }
+    val calleeAndTargs: Tree = typeApply(targs)(callee)
+    args.foldLeft(calleeAndTargs) { Apply(_, _) }
   }
 
   private[yinyang] def symbolId(symbol: Symbol): Int =

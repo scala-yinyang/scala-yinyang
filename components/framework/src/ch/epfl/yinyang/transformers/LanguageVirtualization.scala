@@ -60,8 +60,8 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
         case ValDef(mods, sym, tpt, rhs) if mods.hasFlag(Flag.MUTABLE) =>
           ValDef(mods, sym, tpt, liftFeature(None, "__newVar", List(List(rhs))))
 
-        case t @ If(cond, then, elze) =>
-          liftFeature(None, "__ifThenElse", List(List(transform(cond), transform(then), transform(elze))))
+        case t @ If(cond, thenBr, elseBr) =>
+          liftFeature(None, "__ifThenElse", List(List(transform(cond), transform(thenBr), transform(elseBr))))
 
         case Return(e) =>
           liftFeature(None, "__return", List(List(transform(e))))

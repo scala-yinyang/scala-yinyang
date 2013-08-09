@@ -48,6 +48,12 @@ object YinYangBuild extends Build {
       "junit" % "junit" % "4.8.1" % "test" // we need JUnit explicitly
     )),
 
+    // add the macro paradise compiler plugin
+    addCompilerPlugin("org.scala-lang.plugins" % "macro-paradise_2.10.2" % "2.0.0-SNAPSHOT"),
+
+    // add scalac options (verbose deprecation warnings)
+    scalacOptions += "-deprecation",
+
     // testing
     parallelExecution in Test := false,
     organization := "ch.epfl.lamp"
