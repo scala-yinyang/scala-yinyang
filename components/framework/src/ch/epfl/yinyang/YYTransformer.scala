@@ -82,20 +82,20 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
        *   @param toHoles All contained symbolIds will be replaced with
        *     `hole[T](classTag[T], holeId)` and the holeTable will map from
        *     holeId to symbolId
-       *   @param toLiftedHoles All contained symbolIds will be replaced with
+       *   @param toMixed All contained symbolIds will be replaced with
        *     `lift("captured$" + sym, hole[T](classTag[T], holeId))` and the
        *     holeTable will map from holeId to symbolId
        *   @param toLifts All contained symbols will be replaced with
        *     `lift("captured$" + sym)`
        */
-      def transform(toHoles: List[Symbol], toLiftedHoles: List[Symbol], toLifts: List[Symbol])(block: Tree): Tree =
+      def transform(toHoles: List[Symbol], toMixed: List[Symbol], toLifts: List[Symbol])(block: Tree): Tree =
         (AscriptionTransformer andThen
-          LiftLiteralTransformer(toLifts, toLiftedHoles) andThen
+          LiftLiteralTransformer(toLifts, toMixed) andThen
           (x => VirtualizationTransformer(x)._1) andThen
           ScopeInjectionTransformer andThen
           TypeTreeTransformer andThen
-          HoleTransformer((toHoles ++ toLiftedHoles).distinct, shortenNames) andThen
-          composeDSL((toLifts ++ toLiftedHoles).distinct) andThen
+          HoleTransformer((toHoles ++ toMixed).distinct, shortenNames) andThen
+          composeDSL((toLifts ++ toMixed).distinct) andThen
           PostProcess)(block)
 
       lazy val unboundDSL = {
@@ -126,9 +126,9 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
       }
 
       val compilVars: List[Symbol] = varTypes.collect({ case (s, _: CompVar) => s })
+      val nonCompilVars = allCaptured diff compilVars
       val guards: List[Guard] = varTypes.collect({ case (_, v: CompVar) => v.guard })
       val staticCompilVars: List[Symbol] = varTypes.collect({ case (s, _: Static) => s })
-      val nonCompilVars = allCaptured diff compilVars
       val dynamicCompilVars = compilVars diff staticCompilVars
 
       log(s"varTypes: $varTypes", 2)

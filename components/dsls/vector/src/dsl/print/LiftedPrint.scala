@@ -121,16 +121,20 @@ abstract class EvenOddOptimizedPrintDSL extends BasePrintDSL {
         // Compose previous type with the new type:
         // required dynamic type with custom guard function.
         compilationHoles.put(id, RequiredDynamicCompVar(Guard.custom("t1.asInstanceOf[scala.Int] % 2 == t2.asInstanceOf[scala.Int] % 2")).and(varType))
-      case IntConst(value, hole) =>
+      case IntConst(value) =>
         // The dynamic variable contains both a value for code generation time
         // and the hole that can be used in the generated code.
         sb.append("scala.Predef.println(\"" + (value % 2 match {
           case 0 => "Even: "
           case 1 => "Odd: "
-        }) + (hole match {
-          case None    => value + "\"" // a regular constant, not a variable
-          case Some(h) => "\" + " + h.toString // a variable, represented by a hole
-        }) + ");\n")
+        }) + value + "\");\n")
+      case IntMixed(value, hole) =>
+        // The dynamic variable contains both a value for code generation time
+        // and the hole that can be used in the generated code.
+        sb.append("scala.Predef.println(\"" + (value % 2 match {
+          case 0 => "Even: "
+          case 1 => "Odd: "
+        }) + "\" + " + hole.toString + ");\n")
     }
   }
 
@@ -205,7 +209,12 @@ trait MiniIntDSL extends BaseYinYang { self: BooleanOps with PrintCodeGenerator 
   }
 
   // classes that provide lifting
-  case class IntConst(i: scala.Int, h: Option[Int] = None) extends IntOps {
+  case class IntConst(i: scala.Int) extends IntOps {
+    override def toString = s"$i"
+    def value = i
+  }
+
+  case class IntMixed(i: scala.Int, hole: Int) extends IntOps {
     override def toString = s"$i"
     def value = i
   }
@@ -229,9 +238,9 @@ trait MiniIntDSL extends BaseYinYang { self: BooleanOps with PrintCodeGenerator 
 
   implicit object LiftInt extends LiftEvidence[scala.Int, Int] {
     // The EvenOddOptimizedPrintDSL uses dynamic Int compilation vars.
-    override def lift(v: scala.Int, h: Option[Int] = None): Int = IntConst(v, h)
+    override def mixed(v: scala.Int, hole: Int): Int = IntMixed(v, hole)
 
-    def lift(v: scala.Int): Int = IntConst(v, None)
+    def lift(v: scala.Int): Int = IntConst(v)
     def hole(tpe: TypeTag[scala.Int], symbolId: scala.Int): Int = {
       val h = Hole(tpe, symbolId)
       holes += h

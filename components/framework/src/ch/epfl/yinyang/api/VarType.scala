@@ -16,17 +16,19 @@ import reflect.runtime.universe._
  * recompilation but should lead to a different execution anyhow (they appear
  * as variables in the compiled code instead of being fixed to the value used
  * when compiling). In this case, the DSL needs to implement the function:
- * LiftEvidence[T: TypeTag, Ret].lift(v: T, hole: Option[Ret] = None): Ret
+ * LiftEvidence[T: TypeTag, Ret].mixed(v: T, hole: Ret): Ret
  * The value v is used for optimization decisions (e.g. sparse vs. dense
  * matrix), and the hole as variable in the generated code.
  *
  * The second characteristic is whether a variable is required for compilation
- * or optional. For optional variables, runtime statistics are being collected
+ * or optional. For required variables, optimized code will always be
+ * generated. For optional variables, runtime statistics are being collected
  * and optimized code is only generated when a variable is sufficiently stable,
  * otherwise generic code with a variable should be generated. The decision
- * which one to use is passed as an Array[Boolean] to the generateCode method,
+ * which are stable is passed as a set of holeIds to the generateCode method,
  * indicating for each optional variable whether it should be treated as a lift
- * or a hole. For required variables, optimized code will always be generated.
+ * (stable and static), a mixed (stable and dynamic) or a hole (unstable). The
+ * mixed method also needs to be implemented for optional variables.
  */
 abstract class VarType {
   /**

@@ -33,26 +33,31 @@ trait BaseYinYang {
     def lift(v: T): Ret
 
     /**
-     * Constructs the DSL internal IR node needed for dynamic compilationVars.
-     * It will represent both a value available at code generation time, and a
-     * hole in the generated code. DSLs without dynamic compilationVars don't
-     * need to override this method.
+     * Constructs the DSL internal IR node that will represent a mixed variable
+     * that carries both an initial value available at code generation time and
+     * a hole that can be used in the generated code. Only DSLs with dynamic or
+     * optional compilation variables need to override this method.
      */
-    def lift(v: T, hole: Option[Ret] = None): Ret = ???
+    def mixed(v: T, hole: Ret): Ret = ???
   }
 
   /**
    * Method that replaces captured identifiers of the DSL body.
    */
   def hole[T, Ret](tpe: TypeTag[T], symbolId: Int)(implicit liftEv: LiftEvidence[T, Ret]): Ret =
-    liftEv hole (tpe, symbolId)
+    liftEv.hole(tpe, symbolId)
 
   /**
    * Method that replaces constants and captured identifiers required for run-time
    * optimizations in the DSL body.
    */
-  def lift[T, Ret](v: T, hole: Option[Ret] = None)(implicit liftEv: LiftEvidence[T, Ret]): Ret = hole match {
-    case None => liftEv lift (v)
-    case _    => liftEv lift (v, hole)
-  }
+  def lift[T, Ret](v: T)(implicit liftEv: LiftEvidence[T, Ret]): Ret =
+    liftEv.lift(v)
+
+  /**
+   * Method that replaces constants and captured identifiers required for run-time
+   * optimizations in the DSL body.
+   */
+  def mixed[T, Ret](v: T, hole: Ret)(implicit liftEv: LiftEvidence[T, Ret]): Ret =
+    liftEv.mixed(v, hole)
 }
