@@ -24,11 +24,13 @@ import reflect.runtime.universe._
  * or optional. For required variables, optimized code will always be
  * generated. For optional variables, runtime statistics are being collected
  * and optimized code is only generated when a variable is sufficiently stable,
- * otherwise generic code with a variable should be generated. The decision
- * which are stable is passed as a set of holeIds to the generateCode method,
- * indicating for each optional variable whether it should be treated as a lift
- * (stable and static), a mixed (stable and dynamic) or a hole (unstable). The
- * mixed method also needs to be implemented for optional variables.
+ * otherwise generic code with a variable should be generated. Optional
+ * variables are also represented as mixed nodes in the DSL body. The stable
+ * variables are passed as a set of holeIds to the generateCode method and can
+ * be treated like required variables, respecting their static/dynamic nature,
+ * and will be guarded with the provided guard function. For the unstable ones,
+ * generic code only using the hole and not the value of the mixed node has to
+ * be generated. The value will not be guarded.
  */
 abstract class VarType {
   /**

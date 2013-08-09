@@ -3,6 +3,7 @@ package dsl.print
 import ch.epfl.yinyang.api._
 import base._
 import scala.collection._
+import scala.collection.immutable.Set
 import reflect.runtime.universe._
 
 /** The basic int printing DSL. */
@@ -22,7 +23,7 @@ abstract class BasePrintDSL
     holes.clear
   }
 
-  def generateCode(className: String): String = {
+  def generateCode(className: String, stableMixed: Set[scala.Int]): String = {
     reset()
     val res = main()
     val retType = res match {
@@ -43,7 +44,7 @@ abstract class BasePrintDSL
 
   override def interpret[T: TypeTag](params: Any*): T = {
     if (compiledCode == null) {
-      compiledCode = compile[T, () => T]
+      compiledCode = compile[T, () => T]()
     }
     compiledCode.apply().asInstanceOf[T]
   }

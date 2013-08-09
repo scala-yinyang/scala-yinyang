@@ -7,6 +7,7 @@ import scala.tools.nsc.reporters._
 import scala.tools.nsc.io._
 import scala.tools.nsc.interpreter.AbstractFileClassLoader
 import reflect.runtime.universe.TypeTag
+import scala.collection.immutable.Set
 
 import java.io._
 
@@ -40,14 +41,14 @@ trait ScalaCompile { this: CodeGenerator =>
 
   var dumpGeneratedCode = false
 
-  def compile[T: TypeTag, Ret]: Ret = {
+  def compile[T: TypeTag, Ret](stableMixed: Set[Int] = Set()): Ret = {
     if (this.compiler eq null)
       setupCompiler()
 
     val className = "staged$" + compileCount
     compileCount += 1
 
-    val source = generateCode(className)
+    val source = generateCode(className, stableMixed)
 
     if (dumpGeneratedCode) println(source)
 

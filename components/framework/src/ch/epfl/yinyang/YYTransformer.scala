@@ -187,7 +187,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
           val guardedExecute = c parse dslInit + (dslType match {
             case t if t <:< typeOf[CodeGenerator] =>
               s"""
-              def recompile(): Any = dslInstance.compile[$retType, $functionType]
+              def recompile(): Any = dslInstance.compile[$retType, $functionType]()
               val program = ch.epfl.yinyang.runtime.YYStorage.check[$functionType](
                 ${programId}L, compilVars, recompile
               )
