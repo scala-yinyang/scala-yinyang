@@ -19,12 +19,21 @@ object YYStorage {
     }
   }
 
+  /** Each DSL program is represented by a singleton instance of the transformed DSL class. */
+  final private case class DSLInstance(classCode: Any, optionalInitiallyStable: Boolean, codeCacheSize: Int)
+
+  /** DSL instances are stored and retrieved by their UID. */
+  final private val DSLInstances = new ConcurrentHashMap[Long, DSLInstance]
+
   type GuardFun = (Any, Any) => Boolean
   /**
    * A guard consists of a guard function and an Int holding the holeId if it is
    * an optional variable, and -1 otherwise.
    */
-  final case class GuardFunction(fun: GuardFun, optionalHoleId: Int)
+  final private case class GuardFunction(fun: GuardFun, optionalHoleId: Int)
+
+  /** For each DSL instance, there is a GuardFunction for each compilation variable. */
+  final private val guardFunctions = new ConcurrentHashMap[Long, List[GuardFunction]]()
 
   /**
    * A program variant in the cache consists of the compiled function, to be cast
@@ -33,33 +42,21 @@ object YYStorage {
    * variable was designated as unstable at compilation time, its reference has
    * to be `null` and won't be checked by the guard.
    */
-  final case class ProgramVariant(val function: Any, val refs: Seq[WeakReference[AnyRef]])
+  final private case class ProgramVariant(val function: Any, val refs: Seq[WeakReference[AnyRef]])
 
-  // Number of variants of each program that are cashed. TODO not static
-  final private val CACHE_SIZE_PER_PROGRAM = 5
-
-  // Indicates whether optional variables are assumed to be stable or unstable initially.
-  final val OPTIONAL_INITALLY_STABLE = true
-
-  // The singleton DSL class instance is stored by the UID of the class
-  final private val DSLInstances = new ConcurrentHashMap[Long, Any]
-
-  // For each DSL instance, a maximum of CACHE_SIZE_PER_PROGRAM compiled variants are cached
+  /** For each DSL instance, a maximum of dslInstance.codeCacheSize compiled variants are cached. */
   final private val programVariants = new ConcurrentHashMap[Long, List[ProgramVariant]]()
-
-  // For each DSL instance, there is a GuardFunction for each compilation variable
-  final private val guardFunctions = new ConcurrentHashMap[Long, List[GuardFunction]]()
 
   @inline
   final def lookup[Ret](id: Long, dsl: => Ret, guardFuns: => List[GuardFun],
-                        optional: List[Int]): Ret = {
-    val dslInstance: Any = DSLInstances.get(id)
+                        optional: List[Int], optionalInitiallyStable: Boolean, codeCacheSize: Int): Ret = {
+    val dslInstance = DSLInstances.get(id)
 
     (if (dslInstance == null) {
-      DSLInstances.put(id, dsl)
+      DSLInstances.put(id, DSLInstance(dsl, optionalInitiallyStable, codeCacheSize))
       guardFunctions.put(id, guardFuns zip optional map (g => new GuardFunction(g._1, g._2)))
       dsl
-    } else dslInstance).asInstanceOf[Ret]
+    } else dslInstance.classCode).asInstanceOf[Ret]
   }
 
   @inline
@@ -67,17 +64,17 @@ object YYStorage {
     val variants = programVariants.get(id)
     val guardFuns = guardFunctions.get(id)
     (variants match {
-      case null => createAndStoreVariant(id, computeStabilityOfRefs(refs, guardFuns), recompile, guardFuns)
+      case null => createAndStoreVariant(id, computeStabilityOfRefs(id, refs, guardFuns), recompile, guardFuns)
       case _    => variants
     }, guardFuns)
   }
 
   @inline
-  private final def computeStabilityOfRefs(refs: Seq[Any], guardFuns: List[GuardFunction]): Seq[Any] = {
+  private final def computeStabilityOfRefs(id: Long, refs: Seq[Any], guardFuns: List[GuardFunction]): Seq[Any] = {
     refs zip guardFuns map {
-      case (ref, GuardFunction(_, -1))          => ref // Not optional
-      case (ref, _) if OPTIONAL_INITALLY_STABLE => ref // Optional, but stable
-      case (ref, _)                             => null // Optional and unstable
+      case (ref, GuardFunction(_, -1)) => ref // Not optional
+      case (ref, _) if DSLInstances.get(id).optionalInitiallyStable => ref // Optional, but stable
+      case (ref, _) => null // Optional and unstable
     }
   }
 
@@ -98,7 +95,7 @@ object YYStorage {
 
     val gs = programVariants.get(id) match {
       case null => List(g)
-      case gs   => g :: (gs.take(CACHE_SIZE_PER_PROGRAM - 1))
+      case gs   => g :: (gs.take(DSLInstances.get(id).codeCacheSize - 1))
     }
     programVariants.put(id, gs)
     gs
@@ -132,7 +129,7 @@ object YYStorage {
 
     cachedVariant.getOrElse(
       // TODO change decision about stable/unstable based on collected statistics
-      createAndStoreVariant(id, computeStabilityOfRefs(refs, guardFuns), recompile, guardFuns).head)
+      createAndStoreVariant(id, computeStabilityOfRefs(id, refs, guardFuns), recompile, guardFuns).head)
       .function.asInstanceOf[Ret]
   }
 }

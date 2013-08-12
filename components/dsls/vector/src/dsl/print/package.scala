@@ -15,6 +15,7 @@ object `package` {
   def liftStagedPrint[T](block: => T): T = macro _liftStagedPrint[T]
   def liftReturningPrint[T](block: => T): T = macro _liftReturningPrint[T]
   def liftVarTypePrint[T](block: => T): T = macro _liftVarTypePrint[T]
+  def liftVarTypeInitiallyUnstablePrint[T](block: => T): T = macro _liftVarTypeInitiallyUnstablePrint[T]
 
   def _liftUnstagedPrint[T](c: Context)(block: c.Expr[T]): c.Expr[T] =
     YYTransformer[c.type, T](c)(
@@ -57,6 +58,13 @@ object `package` {
       new PolyTransformer[c.type](c),
       None,
       Map("shallow" -> false))(block)
+
+  def _liftVarTypeInitiallyUnstablePrint[T](c: Context)(block: c.Expr[T]): c.Expr[T] =
+    YYTransformer[c.type, T](c)(
+      "dsl.print.VarTypePrintDSL",
+      new PolyTransformer[c.type](c),
+      None,
+      Map("shallow" -> false, "optionalInitiallyStable" -> false))(block)
 
   // Shallow embedding:
   def print(x: Int): Unit = scala.Predef.print("shallow: " + x + " ")
