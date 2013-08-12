@@ -3,7 +3,7 @@ package annotation
 
 import org.scalatest.{ FlatSpec, ShouldMatchers }
 
-class VirtualizeSpec extends FlatSpec with ShouldMatchers {
+class VirtualizeSpec extends FlatSpec with ShouldMatchers with EmbeddedControls {
 
   def __ifThenElse[T](cs: List[Boolean], tb: => T, eb: => T): T = {
     if (cs forall (_ == true)) tb else eb
@@ -31,20 +31,18 @@ class VirtualizeSpec extends FlatSpec with ShouldMatchers {
     VirtualizeTest(List(true, true)) should be("yep")
   }
 
-  // Need to provide an equivalent of Scala Virtualized's
-  // EmbeddedControls for this to work.
-  /*
+  // Should use default control structures from EmbeddedControls.
   "defaultTest" should "be virtualized" in {
 
     @virtualize
-    def defaultTest(c: Boolean) = {
-      if (c) "yep" else "nope"
+    def defaultTest(c: Boolean) = if (c) "yep" else {
+      var x = "no"
+      x + "pe"
     }
 
-    defaultTest(false) should be ("nope")
-    defaultTest(true)  should be ("yep")
+    defaultTest(false) should be("nope")
+    defaultTest(true) should be("yep")
   }
-   */
 
   "parameter of virtualizeParamTest" should "not be virtualized" in {
 
