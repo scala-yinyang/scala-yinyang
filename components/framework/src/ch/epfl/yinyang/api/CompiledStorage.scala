@@ -89,11 +89,29 @@ object YYStorage {
 
   @inline
   final def check[Ret](id: Long, refs: Seq[Any], recompile: Set[Int] => Any): Ret = {
-    val (variants, funs) = fetch(id, refs, recompile)
+    val (variants, guardFuns) = fetch(id, refs, recompile)
+    val GCed = new Array[Boolean](variants.length)
 
-    (variants.find(!_.refs.map(_.apply()).zip(refs).zip(funs).exists(x => !(x._2.fun(x._1._1, x._1._2)))) match {
-      case None          => createAndStoreVariant(id, refs, recompile, funs).head
-      case Some(variant) => variant
-    }).function.asInstanceOf[Ret]
+    val cachedVariant: Option[ProgramVariant] = variants.zipWithIndex.find({
+      case (variant, index) => {
+        val refOptions = variant.refs.map(_.get)
+        // Check whether some weakRefs have been GC'ed, in that case ignore the variant.
+        if (refOptions.exists(_.isEmpty)) {
+          GCed(index) = true
+          false
+        } else {
+          // Otherwise check whether all guarded values are equivalent
+          refOptions.map(_.get).zip(refs).zip(guardFuns)
+            .find({ case ((ref1, ref2), equ) => !equ.fun(ref1, ref2) }).isEmpty
+        }
+      }
+    }).map(_._1)
+
+    if (GCed.exists(b => b)) { // remove program variants for which some guarded values have been GC'ed
+      programVariants.put(id, variants zip GCed filter (!_._2) map (_._1))
+    }
+
+    cachedVariant.getOrElse(createAndStoreVariant(id, refs, recompile, guardFuns).head)
+      .function.asInstanceOf[Ret]
   }
 }
