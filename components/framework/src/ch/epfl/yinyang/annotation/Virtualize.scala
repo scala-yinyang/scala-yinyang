@@ -2,9 +2,9 @@ package ch.epfl.yinyang
 package annotation
 
 import ch.epfl.yinyang.transformers.LanguageVirtualization
-import scala.reflect.macros.Context
 import language.experimental.macros
 import scala.annotation.StaticAnnotation
+import scala.reflect.macros.Context
 
 /** Annotation class for @virtualize macro annotation. */
 final class virtualize extends StaticAnnotation {
@@ -28,16 +28,17 @@ private object virtualize {
      */
     val inputs = annottees.map(_.tree).toList
     val (annottee, rest) = inputs match {
-      case (_: ValDef | _: TypeDef) :: as => (EmptyTree, as)
-      case a :: as                        => (a, as)
-      case Nil                            => (EmptyTree, Nil)
+      case (_: ValDef | _: TypeDef) :: as => (None, as)
+      case a :: as                        => (Some(a), as)
+      case Nil                            => (None, Nil)
     }
 
     /* Virtualize the annottee. */
-    val (virtualized, _) = transformer.virtualize(annottee)
+    val expandees = annottee match {
+      case Some(a) => transformer.virtualize(a)._1 :: rest
+      case None    => rest
+    }
 
-    val expandees = virtualized :: rest
-    println(expandees)
     c.Expr[Any](Block(expandees, Literal(Constant(()))))
   }
 
@@ -47,4 +48,3 @@ private object virtualize {
     val debugLevel = 0
   }
 }
-
