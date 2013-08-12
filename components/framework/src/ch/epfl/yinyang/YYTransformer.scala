@@ -128,17 +128,17 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
       val compilVars: List[Symbol] = varTypes.collect({ case (s, _: CompVar) => s })
       val nonCompilVars = allCaptured diff compilVars
       val guards: List[Guard] = varTypes.collect({ case (_, v: CompVar) => v.guard })
-      val staticCompilVars: List[Symbol] = varTypes.collect({ case (s, _: Static) => s })
-      val dynamicCompilVars = compilVars diff staticCompilVars
+      val liftedCompilVars: List[Symbol] = varTypes.collect({ case (s, _: RequiredStaticCompVar) => s })
+      val mixedCompilVars = compilVars diff liftedCompilVars
 
-      log(s"varTypes: $varTypes", 2)
-      log(s"allCaptured: $allCaptured, compilVars: $compilVars, guards: $guards, static: $staticCompilVars, dyn: $dynamicCompilVars", 2)
+      log(s"VarTypes: $varTypes", 2)
+      log(s"allCaptured: $allCaptured\nnonCompilVars (holes): $nonCompilVars\ncompilVars: $compilVars\nlifted: $liftedCompilVars\nmixed: $mixedCompilVars", 2)
 
       // re-transform the tree with new holes if there are required vars
       val dsl = if (compilVars.isEmpty) unboundDSL
       else {
         holeTable.clear()
-        transform(nonCompilVars, dynamicCompilVars, staticCompilVars)(block.tree)
+        transform(nonCompilVars, mixedCompilVars, liftedCompilVars)(block.tree)
       }
 
       // if the DSL inherits the StaticallyChecked trait reflectively do the static analysis
@@ -147,7 +147,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
         reflInstance[StaticallyChecked](dsl).staticallyCheck(new Reporter(c))
       }
 
-      val sortedHoles = (nonCompilVars ++ dynamicCompilVars).distinct.sortBy(h => holeTable.indexOf(symbolId(h)))
+      val sortedHoles = (nonCompilVars ++ mixedCompilVars).distinct.sortBy(h => holeTable.indexOf(symbolId(h)))
 
       def args(holes: List[Symbol]): String =
         holes.map({ y: Symbol => y.name.decoded }).mkString("", ",", "")

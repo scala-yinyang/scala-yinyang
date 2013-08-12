@@ -29,15 +29,17 @@ object YYStorage {
   /**
    * A program variant in the cache consists of the compiled function, to be cast
    * to the right type. Additionally, it stores the values it was compiled for,
-   * so they can be checked by the guard at the next possible execution. It also
-   * remembers which of the variables were designated as unstable and therefore
-   * don't need to be checked by the guard, but could become stable eventually.
+   * so they can be checked by the guard at the next possible execution. If a
+   * variable was designated as unstable at compilation time, its reference has
+   * to be `null` and won't be checked by the guard.
    */
-  final case class ProgramVariant(val function: Any, val refs: Seq[WeakReference[AnyRef]],
-                                  val unstable: List[Boolean])
+  final case class ProgramVariant(val function: Any, val refs: Seq[WeakReference[AnyRef]])
 
   // Number of variants of each program that are cashed. TODO not static
   final private val CACHE_SIZE_PER_PROGRAM = 5
+
+  // Indicates whether optional variables are assumed to be stable or unstable initially.
+  final val OPTIONAL_INITALLY_STABLE = true
 
   // The singleton DSL class instance is stored by the UID of the class
   final private val DSLInstances = new ConcurrentHashMap[Long, Any]
@@ -65,20 +67,35 @@ object YYStorage {
     val variants = programVariants.get(id)
     val guardFuns = guardFunctions.get(id)
     (variants match {
-      case null => createAndStoreVariant(id, refs, recompile, guardFuns)
+      case null => createAndStoreVariant(id, computeStabilityOfRefs(refs, guardFuns), recompile, guardFuns)
       case _    => variants
     }, guardFuns)
   }
 
   @inline
-  final private def createAndStoreVariant(id: Long, refs: Seq[Any], recompile: Set[Int] => Any,
-                                          guardFuns: List[GuardFunction], unstable: List[Boolean] = Nil) = {
-    runtimeCompileCount += 1
-    val unstableSet: Set[Int] = unstable match {
-      case Nil => Set()
-      case l   => l zip guardFuns collect ({ case (unst, GuardFunction(_, id)) if unst => id }) toSet
+  private final def computeStabilityOfRefs(refs: Seq[Any], guardFuns: List[GuardFunction]): Seq[Any] = {
+    refs zip guardFuns map {
+      case (ref, GuardFunction(_, -1))          => ref // Not optional
+      case (ref, _) if OPTIONAL_INITALLY_STABLE => ref // Optional, but stable
+      case (ref, _)                             => null // Optional and unstable
     }
-    val g = new ProgramVariant(recompile(unstableSet), refs.asInstanceOf[Seq[AnyRef]].map(x => new WeakReference(x)), unstable)
+  }
+
+  @inline
+  final private def createAndStoreVariant(id: Long, refs: Seq[Any], recompile: Set[Int] => Any,
+                                          guardFuns: List[GuardFunction]) = {
+    runtimeCompileCount += 1
+    val unstableSet: Set[Int] = refs zip guardFuns collect ({
+      case (null, GuardFunction(_, id)) => id
+    }) toSet
+
+    val weakRefs = refs.asInstanceOf[Seq[AnyRef]].map({
+      case null => null
+      case x    => new WeakReference(x)
+    })
+
+    val g = new ProgramVariant(recompile(unstableSet), weakRefs)
+
     val gs = programVariants.get(id) match {
       case null => List(g)
       case gs   => g :: (gs.take(CACHE_SIZE_PER_PROGRAM - 1))
@@ -94,24 +111,28 @@ object YYStorage {
 
     val cachedVariant: Option[ProgramVariant] = variants.zipWithIndex.find({
       case (variant, index) => {
-        val refOptions = variant.refs.map(_.get)
+        val refOptions = variant.refs.map({ case null => null; case weakRef => weakRef.get })
         // Check whether some weakRefs have been GC'ed, in that case ignore the variant.
-        if (refOptions.exists(_.isEmpty)) {
+        if (refOptions.contains(None)) {
           GCed(index) = true
           false
         } else {
-          // Otherwise check whether all guarded values are equivalent
-          refOptions.map(_.get).zip(refs).zip(guardFuns)
-            .find({ case ((ref1, ref2), equ) => !equ.fun(ref1, ref2) }).isEmpty
+          // Otherwise check whether all guarded values except unstable are equivalent
+          refOptions.zip(refs).zip(guardFuns).find({
+            case ((null, _), _)      => false
+            case ((ref1, ref2), equ) => !equ.fun(ref1.get, ref2)
+          }).isEmpty
         }
       }
     }).map(_._1)
 
-    if (GCed.exists(b => b)) { // remove program variants for which some guarded values have been GC'ed
+    if (GCed.contains(true)) { // remove program variants for which some guarded values have been GC'ed
       programVariants.put(id, variants zip GCed filter (!_._2) map (_._1))
     }
 
-    cachedVariant.getOrElse(createAndStoreVariant(id, refs, recompile, guardFuns).head)
+    cachedVariant.getOrElse(
+      // TODO change decision about stable/unstable based on collected statistics
+      createAndStoreVariant(id, computeStabilityOfRefs(refs, guardFuns), recompile, guardFuns).head)
       .function.asInstanceOf[Ret]
   }
 }

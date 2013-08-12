@@ -291,18 +291,33 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
       }, "reqDynamicPrint")
   }
 
-  "Optional VarTypes" should "initially be assumed stable" in {
-    checkCounts(0, 4, () =>
-      for (i ← List(0, 1, 2, 3)) {
-        liftVarTypePrint {
-          optionalStaticPrint(i)
-        }
-      }, "optionalStatic")
-    checkCounts(0, 2, () =>
-      for (i ← List(0, 1, 2, 3)) {
-        liftVarTypePrint {
-          optionalDynamicPrint(i)
-        }
-      }, "optionalDynamic")
+  "Optional VarTypes" should "satisfy the initial stability assumptions" in {
+    if (ch.epfl.yinyang.runtime.YYStorage.OPTIONAL_INITALLY_STABLE) {
+      checkCounts(0, 4, () =>
+        for (i ← List(0, 1, 2, 3)) {
+          liftVarTypePrint {
+            optionalStaticPrint(i)
+          }
+        }, "optionalStatic")
+      checkCounts(0, 2, () =>
+        for (i ← List(0, 1, 2, 3)) {
+          liftVarTypePrint {
+            optionalDynamicPrint(i)
+          }
+        }, "optionalDynamic")
+    } else {
+      checkCounts(0, 1, () =>
+        for (i ← List(0, 1, 2, 3)) {
+          liftVarTypePrint {
+            optionalStaticPrint(i)
+          }
+        }, "optionalStatic")
+      checkCounts(0, 1, () =>
+        for (i ← List(0, 1, 2, 3)) {
+          liftVarTypePrint {
+            optionalDynamicPrint(i)
+          }
+        }, "optionalDynamic")
+    }
   }
 }
