@@ -15,6 +15,7 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
     val comp = YYStorage.getCompileTimeCompileCount()
     val run = YYStorage.getRuntimeCompileCount()
     block()
+    scala.Predef.println()
     val comp2 = YYStorage.getCompileTimeCompileCount() - comp
     val run2 = YYStorage.getRuntimeCompileCount() - run
     assert(comp2 == compileTime && run2 == runtime,
@@ -83,7 +84,7 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
         val x = 1
         val y = 2
         val z = 4
-        println(x + y + z)
+        print(x + y + z)
         x + y + z
       }
       assert(v == 7, "unstaged: computation should yield 7")
@@ -93,7 +94,7 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
         val x = 1
         val y = 2
         val z = 4
-        println(x + y + z)
+        print(x + y + z)
         x + y + z
       }
       assert(v == 7, "optimized: computation should yield 7")
@@ -103,7 +104,7 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
         val x = 1
         val y = 2
         val z = 4
-        println(x + y + z)
+        print(x + y + z)
         x + y + z
       }
       assert(v == 7, "staged: computation should yield 7")
@@ -117,7 +118,7 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
       assert(
         liftUnstagedPrint {
           val z = 4
-          println(z + x + y)
+          print(z + x + y)
           z + x + y
         } == 7, "unstaged: computation should yield 7")
     }, "unstaged")
@@ -127,7 +128,7 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
       assert(
         liftOptimizedPrint {
           val z = 4
-          println(z + x + y)
+          print(z + x + y)
           z + x + y
         } == 7, "optimized: computation should yield 7")
     }, "optimized")
@@ -137,7 +138,7 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
       assert(
         liftStagedPrint {
           val z = 4
-          println(z + x + y)
+          print(z + x + y)
           z + x + y
         } == 7, "staged: computation should yield 7")
     }, "staged")
@@ -149,8 +150,8 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
       assert(
         liftOptimizedPrint {
           val b = 0
-          println(y)
-          optimizingPrintln(b) // do not recompile
+          print(y)
+          optimizingPrint(b) // do not recompile
           1 + b
         } == 1)
     }, "optimized")
@@ -163,8 +164,8 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
         assert(
           liftOptimizedPrint {
             val b = 0
-            println(b)
-            optimizingPrintln(y)
+            print(b)
+            optimizingPrint(y)
             1 + b
           } == 1)
       }
@@ -177,8 +178,8 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
         assert(
           liftOptimizedPrint {
             val b = 0
-            println(b)
-            optimizingPrintln(i)
+            print(b)
+            optimizingPrint(i)
             1 + b
           } == 1)
       }
@@ -190,8 +191,8 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
       for (i: Int <- 0 to 1) {
         for (j: Int <- 0 to 1) {
           liftOptimizedPrint {
-            println(j)
-            optimizingPrintln(i)
+            print(j)
+            optimizingPrint(i)
           }
         }
       }
@@ -200,7 +201,7 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
     checkCounts(0, 2, () => {
       for (i <- List(0, 2, 1, 3)) {
         liftEvenOddOptimizedPrint {
-          evenOddPrintln(i)
+          evenOddPrint(i)
         }
       }
     }, "even-odd-optimized")
@@ -250,28 +251,58 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
 
   "Return test" should "compile and work" in {
     assert(liftOptimizedPrint {
-      optimizingPrintln(3)
-    }.getClass == ().getClass, "optimizingPrintln didn't return Unit")
+      optimizingPrint(3)
+    }.getClass == ().getClass, "optimizingPrint didn't return Unit")
     assert(liftOptimizedPrint {
       true
     } == true)
     assert(liftReturningPrint {
-      returningIncrementedPrintln(1)
-    } == 2, "returningIncrementedPrintln didn't return 2")
+      returningIncrementedPrint(1)
+    } == 2, "returningIncrementedPrint didn't return 2")
     // TODO nested statements with both effects and values that are computed
     // assert(liftReturningPrint {
-    //   returningIncrementedPrintln(returningIncrementedPrintln(1))
-    // } == 3, "NESTED returningIncrementedPrintln didn't return 3")
+    //   returningIncrementedPrint(returningIncrementedPrint(1))
+    // } == 3, "NESTED returningIncrementedPrint didn't return 3")
   }
 
   "Runtime code generating" should "recompile only if NOT cached" in {
     checkCounts(0, 2, () =>
       for (i ← List(0, 1, 0, 1)) {
         val j = liftOptimizedPrint {
-          optimizingPrintln(i)
+          optimizingPrint(i)
           i
         }
         assert(j == i, s"Value $j didn't change to $i (optimized)")
       }, "optimized")
+  }
+
+  "Required VarTypes" should "work" in {
+    checkCounts(0, 4, () =>
+      for (i ← List(0, 1, 2, 3)) {
+        liftVarTypePrint {
+          reqStaticPrint(i)
+        }
+      }, "reqStatic")
+    checkCounts(0, 2, () =>
+      for (i ← List(0, 1, 2, 3)) {
+        liftVarTypePrint {
+          reqDynamicPrint(i)
+        }
+      }, "reqDynamicPrint")
+  }
+
+  "Optional VarTypes" should "initially be assumed stable" in {
+    checkCounts(0, 4, () =>
+      for (i ← List(0, 1, 2, 3)) {
+        liftVarTypePrint {
+          optionalStaticPrint(i)
+        }
+      }, "optionalStatic")
+    checkCounts(0, 2, () =>
+      for (i ← List(0, 1, 2, 3)) {
+        liftVarTypePrint {
+          optionalDynamicPrint(i)
+        }
+      }, "optionalDynamic")
   }
 }

@@ -13,9 +13,8 @@ abstract class BasePrintDSL
 
   var sb: StringBuffer = new StringBuffer()
 
-  // hey, we can refine println -- but we don't need it right now
-  def println(x: Int): Unit = {
-    sb.append(s"scala.Predef.println(${x.toString});\n")
+  def print(x: Int): Unit = {
+    sb.append(s"""scala.Predef.print(${x.toString} + " ");""" + "\n")
   }
 
   override def reset(): scala.Unit = {
@@ -62,15 +61,15 @@ abstract class UnstagedPrintDSL extends BasePrintDSL with FullyUnstaged {}
 /**
  * The optimizing version of the int printing DSL uses compilationVars to
  * signal which holes are needed for optimizations, e.g. those that appear as
- * arguments to the <code>optimizingPrintln</code> method. If there are no such
+ * arguments to the <code>optimizingPrint</code> method. If there are no such
  * holes in the DSL program, it will be generated at compile time.
  */
 abstract class OptimizedPrintDSL extends BasePrintDSL {
   val compilationHoles = mutable.Set[scala.Int]()
 
   // x is needed for optimizations, so it is a compilation variable.
-  def optimizingPrintln(x: Int): Unit = {
-    sb.append("scala.Predef.println(\"optimizing on: " + x.toString + "\");\n")
+  def optimizingPrint(x: Int): Unit = {
+    sb.append("scala.Predef.print(\"optimizing on: " + x.toString + " \");\n")
     x match {
       case Hole(tpe, id) =>
         compilationHoles += id
@@ -87,8 +86,8 @@ abstract class OptimizedPrintDSL extends BasePrintDSL {
     reset()
     main()
 
-    // Since we want to generate a new version of the println code for each value
-    // we mark the holes encountered in optimizingPrintln as DefaultCompVar.
+    // Since we want to generate a new version of the print code for each value
+    // we mark the holes encountered in optimizingPrint as DefaultCompVar.
     List.range(0, symbols.length).map(i => if (compilationHoles.contains(i)) DefaultCompVar else NonCompVar())
   }
 }
@@ -114,7 +113,7 @@ abstract class EvenOddOptimizedPrintDSL extends BasePrintDSL {
   // as would be done in the general case.
   val compilationHoles = mutable.Map[scala.Int, VarType]()
 
-  def evenOddPrintln(x: Int): Unit = {
+  def evenOddPrint(x: Int): Unit = {
     x match {
       case Hole(tpe, id) =>
         // Retrieve previously stored type or the neutral type.
@@ -123,17 +122,17 @@ abstract class EvenOddOptimizedPrintDSL extends BasePrintDSL {
         // required dynamic type with custom guard function.
         compilationHoles.put(id, RequiredDynamicCompVar(Guard.custom("t1.asInstanceOf[scala.Int] % 2 == t2.asInstanceOf[scala.Int] % 2")).and(varType))
       case IntConst(value) =>
-        sb.append("scala.Predef.println(\"" + (value % 2 match {
+        sb.append("scala.Predef.print(\"" + (value % 2 match {
           case 0 => "Even: "
           case 1 => "Odd: "
-        }) + value + "\");\n")
+        }) + value + " \");\n")
       case IntMixed(value, hole) =>
         // The dynamic variable contains both a value for code generation time
         // and the hole that can be used in the generated code.
-        sb.append("scala.Predef.println(\"" + (value % 2 match {
+        sb.append("scala.Predef.print(\"" + (value % 2 match {
           case 0 => "Even: "
           case 1 => "Odd: "
-        }) + "\" + " + hole.toString + ");\n")
+        }) + "\" + " + hole.toString + " + \" \");\n")
     }
   }
 
@@ -161,8 +160,8 @@ abstract class StagedPrintDSL extends BasePrintDSL with FullyStaged {}
 abstract class ReturningPrintDSL extends BasePrintDSL {
   val compilationHoles = mutable.Set[scala.Int]()
 
-  def returningIncrementedPrintln(x: Int): Int = {
-    sb.append("scala.Predef.println(\"inc: " + x.toString + "\");\n " + x.toString + " + 1;\n")
+  def returningIncrementedPrint(x: Int): Int = {
+    sb.append("scala.Predef.print(\"inc: " + x.toString + " \");\n " + x.toString + " + 1;\n")
     x match {
       case Hole(tpe, id) =>
         compilationHoles += id
@@ -183,6 +182,138 @@ abstract class ReturningPrintDSL extends BasePrintDSL {
     main()
 
     List.range(0, symbols.length).map(i => if (compilationHoles.contains(i)) DefaultCompVar else NonCompVar())
+  }
+}
+
+abstract class VarTypePrintDSL extends BasePrintDSL {
+  val compilationHoles = mutable.Map[scala.Int, VarType]()
+
+  // GenerateCode sets this variable to contain the decision using the runtime
+  // statistics about what to stage.
+  var unstableHoleIds: Set[scala.Int] = Set()
+
+  // Remember which optional variables ended up as static in compilationVars.
+  var optionalStatic: Set[scala.Int] = Set()
+
+  def reqDynamicPrint(x: Int): Unit = {
+    // compilationVars collection phase:
+    x match {
+      case Hole(tpe, id) =>
+        val varType: VarType = compilationHoles.getOrElse(id, NonCompVar())
+        compilationHoles.put(id, RequiredDynamicCompVar(Guard.custom("t1.asInstanceOf[scala.Int] % 2 == t2.asInstanceOf[scala.Int] % 2")).and(varType))
+      case _ =>
+    }
+
+    // code generation phase:
+    x match {
+      case IntConst(value) => sb.append("scala.Predef.print(\"" + (value % 2 match {
+        case 0 => "Even: "
+        case 1 => "Odd: "
+      }) + "\" + " + value + " + \" \");\n")
+      case IntMixed(value, hole) => sb.append("scala.Predef.print(\"" + (value % 2 match {
+        case 0 => "Even: "
+        case 1 => "Odd: "
+      }) + "\" + " + hole + " + \" \");\n")
+      case _ =>
+    }
+  }
+
+  def reqStaticPrint(x: Int): Unit = {
+    // compilationVars collection phase:
+    x match {
+      case Hole(tpe, id) =>
+        val varType: VarType = compilationHoles.getOrElse(id, NonCompVar())
+        compilationHoles.put(id, RequiredStaticCompVar(Guard.defaultGuard).and(varType))
+      case _ =>
+    }
+
+    // code generation phase:
+    x match {
+      case x: IntValue => sb.append("scala.Predef.print(\"" + (x.i % 2 match {
+        case 0 => "Even: "
+        case 1 => "Odd: "
+      }) + "\" + " + x.i + " + \" \");\n")
+      case _ =>
+    }
+  }
+
+  def optionalDynamicPrint(x: Int): Unit = {
+    // compilationVars collection phase:
+    x match {
+      case Hole(tpe, id) =>
+        val varType: VarType = compilationHoles.getOrElse(id, NonCompVar())
+        compilationHoles.put(id, OptionalDynamicCompVar(Guard.custom("t1.asInstanceOf[scala.Int] % 2 == t2.asInstanceOf[scala.Int] % 2")).and(varType))
+      case _ =>
+    }
+
+    // code generation phase:
+    x match {
+      case IntConst(value) => sb.append("scala.Predef.print(\"" + (value % 2 match {
+        case 0 => "Even: "
+        case 1 => "Odd: "
+      }) + "\" + " + value + " + \" \");\n")
+      case IntMixed(_, h @ Hole(tpe, id)) if unstableHoleIds.contains(id) =>
+        sb.append(s"""if ($h % 2 == 0) scala.Predef.print("Even: " + $h + " ");""")
+        sb.append("\nelse scala.Predef.print(\"Odd: \" + " + h + " + \" \");\n")
+      case IntMixed(value, hole) =>
+        sb.append("scala.Predef.print(\"" + (value % 2 match {
+          case 0 => "Even: "
+          case 1 => "Odd: "
+        }) + "\" + " + hole + " + \" \");\n")
+      case _ =>
+    }
+  }
+
+  def optionalStaticPrint(x: Int): Unit = {
+    // compilationVars collection phase:
+    x match {
+      case Hole(tpe, id) =>
+        val varType: VarType = compilationHoles.getOrElse(id, NonCompVar())
+        compilationHoles.put(id, OptionalStaticCompVar(Guard.defaultGuard).and(varType))
+      case _ =>
+    }
+
+    // code generation phase:
+    x match {
+      case IntConst(value) => sb.append("scala.Predef.print(\"" + (value % 2 match {
+        case 0 => "Even: "
+        case 1 => "Odd: "
+      }) + "\" + " + value + " + \" \");\n")
+      case IntMixed(_, hole @ Hole(_, id)) if unstableHoleIds.contains(id) =>
+        sb.append(s"""if ($hole % 2 == 0) scala.Predef.print("Even: " + $hole + " ");""")
+        sb.append("\nelse scala.Predef.print(\"Odd: \" + " + hole + " + \" \");\n")
+      case IntMixed(value, Hole(_, id)) if optionalStatic.contains(id) =>
+        sb.append("scala.Predef.print(\"" + (value % 2 match {
+          case 0 => "Even: "
+          case 1 => "Odd: "
+        }) + "\" + " + value + " + \" \");\n")
+      case IntMixed(value, hole) =>
+        sb.append("scala.Predef.print(\"" + (value % 2 match {
+          case 0 => "Even: "
+          case 1 => "Odd: "
+        }) + "\" + " + hole + " + \" \");\n")
+      case _ =>
+    }
+  }
+
+  override def reset(): scala.Unit = {
+    compilationHoles.clear
+    super.reset()
+  }
+
+  override def compilationVars(symbols: List[Symbol]): List[VarType] = {
+    reset()
+    main()
+
+    val varTypes = List.range(0, symbols.length).map(i => compilationHoles.getOrElse(i, NonCompVar()))
+    optionalStatic = varTypes.zipWithIndex.collect({ case (_: OptionalStaticCompVar, i) => i }).toSet
+
+    varTypes
+  }
+
+  override def generateCode(className: String, unstableHoleIds: Set[scala.Int]): String = {
+    this.unstableHoleIds = unstableHoleIds
+    super.generateCode(className, unstableHoleIds)
   }
 }
 
