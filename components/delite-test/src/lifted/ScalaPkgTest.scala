@@ -5,6 +5,7 @@ import scala.virtualization.lms.internal.ScalaCompile
 import scala.virtualization.lms.util.OverloadHack
 import ch.epfl.yinyang.api._
 import scala.reflect.runtime.universe._
+import reflect.ClassTag
 import scala.tools.nsc._
 import scala.tools.nsc.util._
 import scala.tools.nsc.reporters._
@@ -56,9 +57,9 @@ trait ScalaDSL extends ScalaOpsPkg with ScalaOpsPkgExp with LMSYinYang with Code
   }
 
   /*
-   * Ret must be Nothing* => T. If I was only smarter to make this work without a convention :/
+   * Ret must be Any* => T. If I was only smarter to make this work without a convention :/
    */
-  def compile[T: TypeTag, Ret] = {
+  def compile[T: TypeTag: ClassTag, Ret] = {
 
     if (this.compiler eq null)
       setupCompiler()
@@ -86,7 +87,7 @@ trait ScalaDSL extends ScalaOpsPkg with ScalaOpsPkgExp with LMSYinYang with Code
     cls.getConstructor().newInstance().asInstanceOf[Ret]
   }
 
-  def interpret[T: TypeTag](params: Nothing*): T = {
+  def interpret[T: TypeTag: ClassTag](params: Nothing*): T = {
     params.length match {
       case 0 =>
         compile[T, () => T].apply
