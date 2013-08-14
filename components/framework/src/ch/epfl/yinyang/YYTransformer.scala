@@ -149,6 +149,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
            * If DSL does not require run-time data it can be completely
            * generated at compile time and wired for execution.
            */
+          println(reflInstance[CodeGenerator](dsl) generateCode className)
           c parse s"""
             YYStorage.incrementCompileTimeCompileCount($classUID)
             ${reflInstance[CodeGenerator](dsl) generateCode className}

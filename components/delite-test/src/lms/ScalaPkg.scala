@@ -32,7 +32,7 @@ trait YinYangLMSCompile extends CodeGenerator with ScalaCompile { self: LMSYinYa
 
   def generateCode(className: String) = {
     val source = new StringWriter()
-    codegen.emitSourceYinYang(main.asInstanceOf[codegen.IR.Exp[_]], className, new PrintWriter(source))
+    codegen.emitSourceYinYang(main.asInstanceOf[codegen.IR.Exp[Any]], className, new PrintWriter(source))
     source.toString
   }
 
