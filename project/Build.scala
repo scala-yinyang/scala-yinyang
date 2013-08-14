@@ -61,8 +61,6 @@ object YinYangBuild extends Build {
 
    // delite settings
   lazy val deliteSettings = defaults ++ Seq(
-    libraryDependencies += "stanford-ppl" % "optiml_2.10" % "0.1-SNAPSHOT",
-    libraryDependencies += "stanford-ppl" % "optigraph_2.10" % "0.1-SNAPSHOT",
     libraryDependencies += "EPFL" % "lms_2.10" % "0.3-SNAPSHOT"
   )
 
