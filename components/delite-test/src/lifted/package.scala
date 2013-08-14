@@ -1,4 +1,5 @@
 import ch.epfl.yinyang._
+import ch.epfl.yinyang.typetransformers._
 import scala.language.experimental.macros
 import scala.reflect.macros.Context
 
@@ -13,51 +14,64 @@ package object lifted {
 
   object implementations {
     def lift[T](c: Context)(block: c.Expr[T]): c.Expr[T] =
-      new YYTransformer[c.type, T](c, "lifted.ScalaDSL",
-        shallow = false,
-        debug = false,
-        rep = true)(block)
+      YYTransformer[c.type, T](c)(
+        "lifted.ScalaDSL",
+        new RepTransformer[c.type](c),
+        None,
+        Map("shallow" -> false))(block)
 
     def liftDebug[T](c: Context)(block: c.Expr[T]): c.Expr[T] =
-      new YYTransformer[c.type, T](c, "lifted.ScalaDSL",
-        shallow = false,
-        debug = true,
-        rep = true)(block)
+      YYTransformer[c.type, T](c)(
+        "lifted.ScalaDSL",
+        new RepTransformer[c.type](c),
+        None,
+        Map("shallow" -> false, "debug" -> true))(block)
 
     def optiML[T](c: Context)(block: c.Expr[T]): c.Expr[T] =
-      new YYTransformer[c.type, T](c, "lifted.OptiML",
-        shallow = false,
-        debug = false,
-        rep = true,
-        mainMethod = "mainDelite")(block)
+      YYTransformer[c.type, T](c)(
+        "lifted.OptiML",
+        new RepTransformer[c.type](c),
+        None,
+        Map("shallow" -> false, "mainMethod" -> "mainDelite"))(block)
 
     def optiMLDebug[T](c: Context)(block: c.Expr[T]): c.Expr[T] =
-      new YYTransformer[c.type, T](c, "lifted.OptiML",
-        shallow = false,
-        debug = true,
-        rep = true,
-        mainMethod = "mainDelite")(block)
+      YYTransformer[c.type, T](c)(
+        "lifted.OptiML",
+        new RepTransformer[c.type](c),
+        None,
+        Map("shallow" -> false,
+          "mainMethod" -> "mainDelite",
+          "debug" -> true))(block)
 
     def optiGraph[T](c: Context)(block: c.Expr[T]): c.Expr[T] =
-      new YYTransformer[c.type, T](c, "lifted.OptiGraph",
-        shallow = false,
-        debug = false,
-        rep = true,
-        mainMethod = "mainDelite")(block)
+      YYTransformer[c.type, T](c)(
+        "lifted.OptiGraph",
+        new RepTransformer[c.type](c),
+        None,
+        Map(
+          "shallow" -> false,
+          "mainMethod" -> "mainDelite",
+          "debug" -> false))(block)
 
     def optiGraphDebug[T](c: Context)(block: c.Expr[T]): c.Expr[T] =
-      new YYTransformer[c.type, T](c, "lifted.OptiGraph",
-        shallow = false,
-        debug = true,
-        rep = true,
-        mainMethod = "mainDelite")(block)
+      YYTransformer[c.type, T](c)(
+        "lifted.OptiML",
+        new RepTransformer[c.type](c),
+        None,
+        Map(
+          "shallow" -> false,
+          "mainMethod" -> "mainDelite",
+          "debug" -> true))(block)
 
     def optiGraphAnalysis[T](c: Context)(block: c.Expr[T]): c.Expr[T] =
-      new YYTransformer[c.type, T](c, "lifted.OptiGraph",
-        shallow = true,
-        debug = false,
-        rep = true,
-        mainMethod = "mainDelite")(block)
+      YYTransformer[c.type, T](c)(
+        "lifted.OptiGraph",
+        new RepTransformer[c.type](c),
+        None,
+        Map(
+          "shallow" -> true,
+          "mainMethod" -> "mainDelite",
+          "debug" -> true))(block)
   }
 
 }

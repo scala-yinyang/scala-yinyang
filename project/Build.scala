@@ -19,10 +19,10 @@ object YinYangBuild extends Build {
     .setPreference(AlignParameters, true)
     .setPreference(AlignSingleLineCaseStatements, true)
   }
-  lazy val scalaOrg = "org.scala-lang"
+  lazy val scalaOrg = "org.scala-lang.virtualized"
   lazy val scalaSettings = Defaults.defaultSettings ++ Seq(
     scalaOrganization := scalaOrg,
-    scalaVersion := "2.10.2"
+    scalaVersion := "2.10.2-RC1"
   )
 
   lazy val defaults = scalaSettings ++ formatSettings ++ Seq(
@@ -39,7 +39,7 @@ object YinYangBuild extends Build {
     unmanagedSourceDirectories in Compile <<= (scalaSource in Compile)(Seq(_)),
     unmanagedSourceDirectories in Test <<= (scalaSource in Test)(Seq(_)),
 
-    // add the library, reflect and the compiler as libraries
+    // add the library, reflect, and the compiler as libraries
     libraryDependencies <<= scalaVersion(ver => Seq(
       scalaOrg % "scala-library" % ver,
       scalaOrg % "scala-reflect" % ver,
@@ -49,7 +49,7 @@ object YinYangBuild extends Build {
     )),
 
     // add the macro paradise compiler plugin
-    addCompilerPlugin("org.scala-lang.plugins" % "macro-paradise_2.10.2" % "2.0.0-SNAPSHOT"),
+//    addCompilerPlugin("org.scala-lang.plugins" % "macro-paradise_2.10.2" % "2.0.0-SNAPSHOT"),
 
     // add scalac options (verbose deprecation warnings)
     scalacOptions += "-deprecation",
@@ -59,8 +59,16 @@ object YinYangBuild extends Build {
     organization := "ch.epfl.lamp"
   )
 
+   // delite settings
+  lazy val deliteSettings = defaults ++ Seq(
+    libraryDependencies += "stanford-ppl" % "optiml_2.10" % "0.1-SNAPSHOT",
+    libraryDependencies += "stanford-ppl" % "optigraph_2.10" % "0.1-SNAPSHOT",
+    libraryDependencies += "EPFL" % "lms_2.10" % "0.3-SNAPSHOT"
+  )
+
   lazy val _yinyang        = Project(id = "root",                     base = file("."), settings = Project.defaultSettings ++ Seq(publishArtifact := false)) aggregate (framework, vector_dsl, vector_dsl_test)
   lazy val framework       = Project(id = "yinyang",                  base = file("components/framework"), settings = defaults ++ Seq(name := "yinyang"))
   lazy val vector_dsl      = Project(id = "yinyang-vector-dsl",       base = file("components/dsls/vector"), settings = defaults) dependsOn(framework)
   lazy val vector_dsl_test = Project(id = "yinyang-vector-dsl-test",  base = file("components/dsls/vector-test"), settings = defaults) dependsOn(framework, vector_dsl)
+  lazy val delite_test = Project(id = "delite-test",  base = file("components/delite-test"), settings = deliteSettings) dependsOn(framework)
 }

@@ -4,6 +4,7 @@ import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.ScalaCompile
 import scala.virtualization.lms.util.OverloadHack
 import ch.epfl.yinyang.api._
+import scala.reflect.runtime.universe._
 import scala.tools.nsc._
 import scala.tools.nsc.util._
 import scala.tools.nsc.reporters._
