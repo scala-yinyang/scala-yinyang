@@ -41,7 +41,7 @@ trait ScalaCompile { this: CodeGenerator =>
 
   var dumpGeneratedCode = false
 
-  def compile[T: TypeTag: ClassTag, Ret]: Ret = {
+  def compile[T: TypeTag, Ret]: Ret = {
     if (this.compiler eq null)
       setupCompiler()
 

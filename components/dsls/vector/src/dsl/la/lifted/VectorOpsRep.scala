@@ -11,7 +11,7 @@ import reflect.runtime.universe._
  *
  * We need to provide the interface for basic Scala library features.
  */
-trait Base extends BaseYinYang {
+trait Base extends BaseYinYangTypeTag {
   type Rep[+T]
 
   def main(): Any

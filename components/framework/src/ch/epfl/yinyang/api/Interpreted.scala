@@ -17,5 +17,5 @@ trait Interpreted { this: BaseYinYang =>
   /**
    * Accepts the captured values and returns the result.
    */
-  def interpret[T: TypeTag: ClassTag](params: Any*): T
+  def interpret[T: TypeRep](params: Any*): T
 }
