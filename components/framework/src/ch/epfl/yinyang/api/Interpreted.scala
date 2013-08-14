@@ -1,6 +1,7 @@
 package ch.epfl.yinyang
 package api
 
+import reflect.ClassTag
 import reflect.runtime.universe.TypeTag
 
 /**
@@ -16,5 +17,5 @@ trait Interpreted { this: BaseYinYang =>
   /**
    * Accepts the captured values and returns the result.
    */
-  def interpret[T: TypeTag](params: Any*): T
+  def interpret[T: TypeTag: ClassTag](params: Any*): T
 }

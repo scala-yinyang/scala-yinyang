@@ -7,6 +7,7 @@ import scala.tools.nsc.reporters._
 import scala.tools.nsc.io._
 import scala.tools.nsc.interpreter.AbstractFileClassLoader
 import reflect.runtime.universe.TypeTag
+import reflect.ClassTag
 
 import java.io._
 
@@ -40,7 +41,7 @@ trait ScalaCompile { this: CodeGenerator =>
 
   var dumpGeneratedCode = false
 
-  def compile[T: TypeTag, Ret]: Ret = {
+  def compile[T: TypeTag: ClassTag, Ret]: Ret = {
     if (this.compiler eq null)
       setupCompiler()
 

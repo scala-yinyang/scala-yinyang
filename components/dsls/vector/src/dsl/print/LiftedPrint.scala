@@ -4,6 +4,7 @@ import ch.epfl.yinyang.api._
 import base._
 import scala.collection._
 import reflect.runtime.universe._
+import reflect.ClassTag
 
 /** The basic int printing DSL. */
 abstract class BasePrintDSL
@@ -37,7 +38,7 @@ abstract class BasePrintDSL
     """
   }
 
-  override def interpret[T: TypeTag](params: Any*): T = {
+  override def interpret[T: TypeTag: ClassTag](params: Any*): T = {
     if (compiledCode == null) {
       compiledCode = compile[T, () => T]
     }

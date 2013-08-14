@@ -1,7 +1,8 @@
 package ch.epfl.yinyang
 package api
 
-import reflect.runtime.universe._
+import reflect.ClassTag
+import reflect.runtime.universe.TypeTag
 
 /**
  * Base trait for code generating DSLs.
@@ -17,5 +18,5 @@ trait CodeGenerator { this: BaseYinYang =>
   /**
    * Method that should compile the DSL and return a function of type (...) => T.
    */
-  def compile[T: TypeTag, Ret]: Ret
+  def compile[T: TypeTag: ClassTag, Ret]: Ret
 }
