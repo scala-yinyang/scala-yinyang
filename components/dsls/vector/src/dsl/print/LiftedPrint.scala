@@ -9,7 +9,7 @@ import reflect.ClassTag
 /** The basic int printing DSL. */
 abstract class BasePrintDSL
   extends ScalaCompile with PrintCodeGenerator with CodeGenerator with MiniIntDSL
-  with BooleanOps with Interpreted with BaseYinYang with Base {
+  with BooleanOps with Interpreted with BaseYinYangTypeTag with Base {
 
   var sb: StringBuffer = new StringBuffer()
 
@@ -38,7 +38,7 @@ abstract class BasePrintDSL
     """
   }
 
-  override def interpret[T: TypeTag: ClassTag](params: Any*): T = {
+  override def interpret[T: TypeTag](params: Any*): T = {
     if (compiledCode == null) {
       compiledCode = compile[T, () => T]
     }
@@ -151,7 +151,7 @@ trait MiniIntDSL extends BaseYinYang { self: BooleanOps with PrintCodeGenerator 
 
 }
 
-trait BooleanOps extends BaseYinYang { self: PrintCodeGenerator =>
+trait BooleanOps extends BaseYinYangTypeTag { self: PrintCodeGenerator =>
 
   type Boolean = BooleanOps
 
@@ -187,7 +187,7 @@ trait BooleanOps extends BaseYinYang { self: PrintCodeGenerator =>
 
 }
 
-trait MiniUnitDSL extends BaseYinYang {
+trait MiniUnitDSL extends BaseYinYangTypeTag {
   implicit object LiftUnit extends LiftEvidence[scala.Unit, Unit] {
     def lift(v: scala.Unit): Unit = ()
     def hole(tpe: TypeTag[scala.Unit], symbolId: scala.Int): Unit = {

@@ -4,6 +4,13 @@ import reflect.runtime.universe._
 
 trait BaseYinYang {
   /**
+   * Abstraction over different scala runtime types. Once the Manifests are deprecated
+   * this abstraction will be removed.
+   */
+  type TypeRep[T]
+  def runtimeType[T: TypeRep]: TypeRep[T]
+
+  /**
    * Returns the holes required for run-time optimizations.
    * Compile-time optimized DSLs should return `Nil`.
    *   @param symbols Maps from hole ids to symbols.
@@ -15,7 +22,7 @@ trait BaseYinYang {
   /**
    * Abstract super class for implicit lifters that the DSL author needs to provide.
    */
-  abstract class LiftEvidence[T: TypeTag, Ret] {
+  abstract class LiftEvidence[T: TypeRep, Ret] {
     /**
      * Constructs the DSL internal IR node that will represent a hole.
      *   @param tpe Represents the run-time type information for this hole.
@@ -23,7 +30,7 @@ trait BaseYinYang {
      *          This information can be passed back to Yin-Yang byt the `requiredHoles` method.
      *   @return DSL internal representation of a hole for type T.
      */
-    def hole(tpe: TypeTag[T], symbolId: Int): Ret
+    def hole(tpe: TypeRep[T], symbolId: Int): Ret
 
     /**
      * Constructs the DSL internal IR node that will represent a constant.
@@ -35,7 +42,7 @@ trait BaseYinYang {
   /**
    * Method that replaces captured identifiers of the DSL body.
    */
-  def hole[T, Ret](tpe: TypeTag[T], symbolId: Int)(implicit liftEv: LiftEvidence[T, Ret]): Ret =
+  def hole[T, Ret](tpe: TypeRep[T], symbolId: Int)(implicit liftEv: LiftEvidence[T, Ret]): Ret =
     liftEv hole (tpe, symbolId)
 
   /**
@@ -46,3 +53,29 @@ trait BaseYinYang {
     liftEv lift (v)
 
 }
+
+/*
+ * Component for TypeTag based DSLs.
+ */
+trait TypeTagBased {
+  type TypeRep[T] = TypeTag[T]
+  def runtimeType[T: TypeRep]: TypeRep[T] = typeTag[T]
+}
+
+/*
+ * Component for Manifest based DSLs.
+ */
+trait ManifestBased {
+  type TypeRep[T] = Manifest[T]
+  def runtimeType[T: TypeRep]: TypeRep[T] = manifest[T]
+}
+
+/**
+ * BaseYinYang with ManifestBased.
+ */
+trait BaseYinYangManifest extends BaseYinYang with ManifestBased
+
+/**
+ * BaseYinYang with TypeTag.
+ */
+trait BaseYinYangTypeTag extends BaseYinYang with TypeTagBased

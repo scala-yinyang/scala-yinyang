@@ -18,5 +18,5 @@ trait CodeGenerator { this: BaseYinYang =>
   /**
    * Method that should compile the DSL and return a function of type (...) => T.
    */
-  def compile[T: TypeTag: ClassTag, Ret]: Ret
+  def compile[T: TypeRep, Ret]: Ret
 }

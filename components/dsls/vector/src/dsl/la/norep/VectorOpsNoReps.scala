@@ -5,7 +5,7 @@ import base._
 import ch.epfl.yinyang.api._
 import reflect.runtime.universe._
 
-trait Base extends BaseYinYang {
+trait Base extends BaseYinYangTypeTag {
   def main(): Any
 }
 
