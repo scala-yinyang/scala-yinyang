@@ -31,6 +31,10 @@ import scala.collection.mutable
  *   t.wait             =>       t.__wait()
  *   t.wait(l)          =>       t.__wait(l)
  *   t.wait(t1,l)       =>       t.__wait(t1, l)
+ *   @todo try catch  => __try(body, catch, finallize))
+ *   @todo Nothing ???
+ *   @todo throw
+ *   @todo Null
  */
 trait LanguageVirtualization extends MacroModule with TransformationUtils with DataDefs {
   import c.universe._
