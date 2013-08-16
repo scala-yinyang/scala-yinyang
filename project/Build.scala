@@ -52,7 +52,7 @@ object YinYangBuild extends Build {
     addCompilerPlugin("org.scala-lang.plugins" % "macro-paradise_2.10.2" % "2.0.0-SNAPSHOT"),
 
     // add scalac options (verbose deprecation warnings)
-    scalacOptions += "-deprecation",
+    scalacOptions ++= Seq("-deprecation", "-feature"),
 
     // testing
     parallelExecution in Test := false,
