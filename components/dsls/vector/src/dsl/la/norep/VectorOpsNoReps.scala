@@ -4,6 +4,7 @@ import scala.reflect.ClassTag
 import base._
 import ch.epfl.yinyang.api._
 import reflect.runtime.universe._
+import scala.language.implicitConversions
 
 trait Base extends BaseYinYangTypeTag {
   def main(): Any
@@ -207,17 +208,17 @@ trait VirtualizationDSL extends BooleanDSL with Base {
   def __whileDo[T](cond: ⇒ Boolean, body: T) = ???
   def __doWhile[T](body: T, cond: ⇒ Boolean) = ???
 
-  def __==(lhs: AnyRef, rhs: AnyRef): Boolean = ???
-  def __!=(lhs: AnyRef, rhs: AnyRef): Boolean = ???
-  def __eq(lhs: AnyRef, rhs: AnyRef): Boolean = ???
-  def __ne(lhs: AnyRef, rhs: AnyRef): Boolean = ???
+  def infix_==(lhs: AnyRef, rhs: AnyRef): Boolean = ???
+  def infix_!=(lhs: AnyRef, rhs: AnyRef): Boolean = ???
+  def infix_eq(lhs: AnyRef, rhs: AnyRef): Boolean = ???
+  def infix_ne(lhs: AnyRef, rhs: AnyRef): Boolean = ???
 
-  def __##(lhs: AnyRef): Boolean = ???
-  def __hashCode(lhs: AnyRef): Boolean = ???
-  def __isInstanceOf[T](lhs: AnyRef): Boolean
-  def __asInstanceOf[T](lhs: AnyRef): T
+  def infix_##(lhs: AnyRef): Boolean = ???
+  def infix_hashCode(lhs: AnyRef): Boolean = ???
+  def infix_isInstanceOf[T](lhs: AnyRef): Boolean
+  def infix_asInstanceOf[T](lhs: AnyRef): T
 
-  def __getClass(lhs: AnyRef) = ???
+  def infix_getClass(lhs: AnyRef) = ???
 
   // TODO Java Synchronization
 }
