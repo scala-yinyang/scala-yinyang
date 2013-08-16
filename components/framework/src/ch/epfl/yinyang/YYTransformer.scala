@@ -188,7 +188,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
             """
           })
 
-          Block(dsl, guardedExecute)
+          Block(List(dsl), guardedExecute)
       }
 
       log(s"Final tree: ${showRaw(c.resetAllAttrs(dslTree))}", 3)
@@ -299,8 +299,10 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
 
     val res = try {
       // block containing only dummy methods that were applied.
-      val block = Block(composeDSL(Nil)(Block(
-        methodSet.map(x => application(x)).toSeq: _*)), Literal(Constant(())))
+      val block = Block(List(
+        composeDSL(Nil)(Block(
+          methodSet.map(x => application(x)).toList,
+          Literal(Constant(()))))), Literal(Constant(())))
       log(s"Block: ${show(block)})", 3)
       log(s"Block raw: ${showRaw(block)})", 3)
       c.typeCheck(block)
@@ -383,7 +385,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
       log("Reflectively instantiating and memoizing DSL.", 2)
       val st = System.currentTimeMillis()
       _reflInstance = Some(c.eval(
-        c.Expr(c.resetAllAttrs(Block(dslDef, constructor)))))
+        c.Expr(c.resetAllAttrs(Block(List(dslDef), constructor)))))
       log(s"Eval time: ${(System.currentTimeMillis() - st)}", 2)
     } else {
       log("Retrieving memoized reflective DSL instance.", 2)
