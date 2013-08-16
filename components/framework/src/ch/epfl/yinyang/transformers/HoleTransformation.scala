@@ -56,9 +56,7 @@ trait HoleTransformation extends MacroModule with TransformationUtils with YYCon
           Select(This(tpnme.EMPTY), newTermName(holeMethod)),
           List(
             TypeApply(
-              Select(Select(Select(Select(Select(Ident(newTermName("scala")), newTermName("reflect")),
-                newTermName("runtime")), nme.PACKAGE), newTermName("universe")),
-                newTermName("typeTag")), List(TypeTree(i.tpe.widen))),
+              Select(This(tpnme.EMPTY), newTermName("runtimeType")), List(TypeTree(i.tpe.widen))),
             Literal(Constant(index))))
       }
       case _ =>
