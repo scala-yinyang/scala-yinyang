@@ -33,7 +33,7 @@ class VirtualizeSpec extends FlatSpec with ShouldMatchers with EmbeddedControls 
     VirtualizeIfTest(List(true, true)) should be("yep")
   }
 
-  // Should use default control structures from EmbeddedControls.
+  // Should use default `__ifThenElse` from EmbeddedControls.
   "defaultIfTest" should "be virtualized" in {
 
     @virtualize
@@ -44,6 +44,20 @@ class VirtualizeSpec extends FlatSpec with ShouldMatchers with EmbeddedControls 
 
     defaultIfTest(false) should be("nope")
     defaultIfTest(true) should be("yep")
+  }
+
+  // Should use inner virtualized `__ifThenElse`
+  "virtualizeInnerIfTest" should "be virtualized" in {
+
+    // This overrides the `__ifThenElse` in `EmbeddedControls`
+    def __ifThenElse[T](c: Boolean, thenBr: => T, elseBr: => T): T =
+      if (!c) thenBr else elseBr
+
+    @virtualize
+    def virtualizeInnerIfTest(c: Boolean) = if (c) "yep" else "nope"
+
+    virtualizeInnerIfTest(false) should be("yep")
+    virtualizeInnerIfTest(true) should be("nope")
   }
 
   "virtualizeEqualsTest" should "be virtualized" in {
