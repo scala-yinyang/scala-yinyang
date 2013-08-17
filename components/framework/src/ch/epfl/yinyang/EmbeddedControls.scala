@@ -1,7 +1,5 @@
 package ch.epfl.yinyang
 
-import ch.epfl.yinyang._
-import ch.epfl.yinyang.transformers._
 import language.experimental.macros
 import scala.reflect.macros.Context
 
@@ -77,9 +75,6 @@ trait EmbeddedControls {
 
 /**
  * EmbeddedControls companion object containing macro implementations.
- *
- * This companion object servers a dual purpose: it contains the macro
- * implementations of the [[EmbeddedControl]] macros, and it enables
  */
 private object EmbeddedControls {
 
@@ -223,7 +218,7 @@ private object EmbeddedControls {
   def anyRef_wait0(c: Context)(x: c.Expr[AnyRef]): c.Expr[Unit] = {
 
     import c.universe._
-    c.Expr(q"$x.wait")
+    c.Expr(q"$x.wait()")
   }
 
   def anyRef_wait1(c: Context)(
