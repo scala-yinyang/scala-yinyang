@@ -20,6 +20,6 @@ package object lms {
         "lms.ScalaDSL",
         new RepTransformer[c.type](c),
         None,
-        Map("shallow" -> false, "debug" -> true))(block)
+        Map("shallow" -> false, "debug" -> 7))(block)
   }
 }

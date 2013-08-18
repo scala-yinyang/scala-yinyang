@@ -302,15 +302,15 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
       // block containing only dummy methods that were applied.
       val block = Block(List(
         composeDSL(Nil)(Block(
-          methodSet.map(x => application(x)).toList,
-          Literal(Constant(()))))), Literal(Constant(())))
-      log(s"Block: ${show(block)})", 3)
-      log(s"Block raw: ${showRaw(block)})", 3)
+          methodSet.map(x => application(x)).toSeq: _*))), Literal(Constant(())))
+      log(s"Block: ${show(block)}", 3)
+      log(s"Block raw: ${showRaw(block)}", 3)
       c.typeCheck(block)
       true
     } catch {
       case e: Throwable =>
-        log("Feature not working!!!" + e, 2)
+        log(s"Feature not working!!! ${e}", 2)
+        e.printStackTrace
         false
     }
 

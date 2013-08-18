@@ -12,6 +12,7 @@ import scala.tools.nsc.util._
 import scala.tools.nsc.reporters._
 import scala.tools.nsc.io._
 import scala.tools.nsc.interpreter.AbstractFileClassLoader
+import scala.reflect.internal.util.BatchSourceFile
 import java.io._
 
 trait LMSYinYang extends BaseYinYangManifest with FullyStaged with BaseExp with Expressions with Effects { self =>
@@ -54,7 +55,7 @@ trait YinYangLMSCompile extends CodeGenerator with ScalaCompile { self: LMSYinYa
 
     val fileSystem = new VirtualDirectory("<vfs>", None)
     compiler.settings.outputDirs.setSingleOutput(fileSystem)
-    run.compileSources(scala.List(new util.BatchSourceFile("<stdin>", source.toString)))
+    run.compileSources(scala.List(new BatchSourceFile("<stdin>", source.toString)))
     reporter.printSummary()
 
     reporter.reset
@@ -66,7 +67,7 @@ trait YinYangLMSCompile extends CodeGenerator with ScalaCompile { self: LMSYinYa
     cls.getConstructor().newInstance().asInstanceOf[Ret]
   }
 
-  def interpret[T: TypeTag: ClassTag](params: Any*): T = {
+  def interpret[T: Manifest](params: Any*): T = {
     params.length match {
       case 0 =>
         compile[T, () => T].apply
@@ -87,8 +88,8 @@ trait YinYangGenerator extends ScalaNestedCodegen with ScalaCodegen {
     case _       => super.emitNode(sym, rhs)
   }
 
-  def emitSourceYinYang[T: Manifest](f: Exp[T], className: String, stream: PrintWriter): List[(Sym[Any], Any)] = {
-    val body = reifyBlock(f)
+  def emitSourceYinYang(f: Exp[Any], className: String, stream: PrintWriter): List[(Sym[Any], Any)] = {
+    val body = reifyBlock(f)(f.tp)
 
     val syms: List[Sym[_]] = focusBlock(body) {
       innerScope flatMap {
@@ -100,12 +101,16 @@ trait YinYangGenerator extends ScalaNestedCodegen with ScalaCodegen {
         case _ => Nil
       }
     }
-    emitSource(syms, body, className, stream)
+    emitSource(syms, body, className, stream)(body.tp)
   }
 }
 
 trait ScalaDSL extends ScalaOpsPkg with ScalaOpsPkgExp with LMSYinYang with YinYangLMSCompile { self =>
-
+  type Int = scala.Int
+  type Long = scala.Long
+  type Double = scala.Double
+  type Float = scala.Float
+  type Char = scala.Char
+  type Boolean = scala.Boolean
   val codegen = new ScalaCodeGenPkg with YinYangGenerator { val IR: self.type = self }
-
 }
