@@ -22,7 +22,8 @@ object YYTransformer {
     ("ascriptionTransforming" -> true),
     ("liftTypes" -> Nil),
     ("optionalInitiallyStable" -> true),
-    ("codeCacheSize" -> 3))
+    ("codeCacheSize" -> 3),
+    ("minimumCountToStabilize" -> 500))
 
   def apply[C <: Context, T](c: C)(
     dslName: String,
@@ -186,7 +187,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
           val dslInit = s"""
             val dslInstance = ch.epfl.yinyang.runtime.YYStorage.lookup(${programId}L, new $className(), 
               List(${guards map (_.getGuardFunction) mkString ("(", "), (", ")")}), $optional,
-              $optionalInitiallyStable, $codeCacheSize);
+              $optionalInitiallyStable, $codeCacheSize, $minimumCountToStabilize);
             val compilVars: Seq[Any] = Seq(${compilVars map (_.name.decoded) mkString ", "})
             ${compilVars.map({ k => "dslInstance.captured$" + k.name.decoded + " = " + k.name.decoded }) mkString "\n"}
           """

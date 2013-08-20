@@ -10,25 +10,10 @@ import java.io.{ PrintStream, ByteArrayOutputStream }
 @RunWith(classOf[JUnitRunner])
 class CodeGenSpec extends FlatSpec with ShouldMatchers {
 
-  // From FileDiffSuite.scala
   def captureOutput(func: => Unit): String = {
-    val bstream = new ByteArrayOutputStream
-    withOutput(new PrintStream(bstream))(func)
+    val bstream = new java.io.ByteArrayOutputStream()
+    Console.withOut(bstream)(Console.withErr(bstream)(func))
     bstream.toString
-  }
-  def withOutput(out: PrintStream)(func: => Unit): Unit = {
-    val oldStdOut = System.out
-    val oldStdErr = System.err
-    try {
-      System.setOut(out)
-      System.setErr(out)
-      Console.withOut(out)(Console.withErr(out)(func))
-    } finally {
-      out.flush()
-      out.close()
-      System.setOut(oldStdOut)
-      System.setErr(oldStdErr)
-    }
   }
 
   def checkCounts(compileTime: Int, runtime: Int, block: () => Unit, dlsType: String,
@@ -43,6 +28,9 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
     val run = YYStorage.getRuntimeCompileCount()
 
     val output = captureOutput(block())
+    if (print) {
+      scala.Predef.println(output)
+    }
     expectedOutput map { exp =>
       assert(exp == output, {
         val prefix = (output, exp).zipped.takeWhile(t => t._1 == t._2).map(_._1).mkString
@@ -54,16 +42,16 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
           s"Common suffix: $suffix\n"
       })
     }
-    if (print) {
-      scala.Predef.println(output)
-    }
-
     val comp2 = YYStorage.getCompileTimeCompileCount() - comp
     val run2 = YYStorage.getRuntimeCompileCount() - run
     assert(comp2 == compileTime && run2 == runtime,
       s"$dlsType DSL compilation counts don't agree, should be $compileTime at compile time " +
         s"and $runtime at runtime, but was $comp2 and $run2.")
   }
+
+  def evenOdd(i: Int) = if (i % 2 == 0) s"Even: $i " else s"Odd: $i "
+  def stringEvenOdd(l: List[Int]): String = l.map(evenOdd).mkString
+  def stringEvenOdd2(l1: List[Int], l2: List[Int]): String = l1.zip(l2).map(t => evenOdd(t._1) + evenOdd(t._2)).mkString
 
   "Eval test" should "work" in {
     checkCounts(1, 0, () => {
@@ -326,13 +314,13 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
   "Required VarTypes" should "work" in {
     checkCounts(0, 4, () =>
       for (i ← List(0, 1, 2, 3)) {
-        liftVarTypePrint {
+        liftVarTypeStab10Print {
           reqStaticPrint(i)
         }
       }, "reqStatic", "Even: 0 Odd: 1 Even: 2 Odd: 3 ")
     checkCounts(0, 2, () =>
       for (i ← List(0, 1, 2, 3)) {
-        liftVarTypePrint {
+        liftVarTypeStab10Print {
           reqDynamicPrint(i)
         }
       }, "reqDynamicPrint", "Even: 0 Odd: 1 Even: 2 Odd: 3 ")
@@ -341,64 +329,97 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
   "Optional VarTypes" should "have correct initial stability" in {
     checkCounts(0, 2, () =>
       for (i ← List(0, 1)) {
-        liftVarTypePrint {
+        liftVarTypeStab10Print {
           optionalStaticPrint(i)
         }
       }, "optionalStatic", "Even: 0 Odd: 1 ")
     checkCounts(0, 1, () =>
       for (i ← List(0, 1)) {
-        liftVarTypeInitiallyUnstablePrint {
+        liftVarTypeInitiallyUnstableStab10Print {
           optionalStaticPrint(i)
         }
       }, "optionalStaticInitiallyUnstable", "Even: 0 Odd: 1 ")
     checkCounts(0, 1, () =>
       for (i ← List(0, 2)) {
-        liftVarTypePrint {
+        liftVarTypeStab10Print {
           optionalDynamicPrint(i)
         }
       }, "optionalDynamic stable", "Even: 0 Even: 2 ")
     checkCounts(0, 2, () =>
       for (i ← List(0, 1)) {
-        liftVarTypePrint {
+        liftVarTypeStab10Print {
           optionalDynamicPrint(i)
         }
       }, "optionalDynamic stable -> unstable", "Even: 0 Odd: 1 ")
     checkCounts(0, 1, () =>
       for (i ← List(0, 2)) {
-        liftVarTypeInitiallyUnstablePrint {
+        liftVarTypeInitiallyUnstableStab10Print {
           optionalDynamicPrint(i)
         }
       }, "optionalDynamic unstable", "Even: 0 Even: 2 ")
     checkCounts(0, 1, () =>
       for (i ← List(0, 1)) {
-        liftVarTypeInitiallyUnstablePrint {
+        liftVarTypeInitiallyUnstableStab10Print {
           optionalDynamicPrint(i)
         }
       }, "optionalDynamic unstable", "Even: 0 Odd: 1 ")
   }
 
   "Optional VarTypes" should "get promoted" in {
-    val list1 = 0 :: List.fill(600)(1)
-    val list300_250_50 = List.fill(300)(1) ::: List.fill(250)(2) ::: List.fill(50)(3)
-    val list1_575_U = 0 :: List.fill(575)(1) ::: List.range(0, 25)
+    val list0012 = List(0, 0, 1, 2)
 
-    def stringEvenOdd(l1: List[Int], l2: List[Int]): String = {
-      def evenOdd(i: Int) = if (i % 2 == 0) s"Even: $i " else s"Odd: $i "
-      l1.map(evenOdd).zip(l2.map(evenOdd)).foldLeft("")((s, t) => s + t._1 + t._2)
-    }
+    val list0012_3x13_456 = list0012 ::: List.fill(13)(3) ::: List(4, 5, 6)
+    val list0x15_1x5 = List.fill(15)(0) ::: List.fill(5)(1)
+
+    checkCounts(0, 2, () =>
+      for (i ← list0012) {
+        liftVarTypeStab10Print {
+          optionalStaticPrint(i)
+        }
+      }, "stable -> unstable", stringEvenOdd(list0012))
+    checkCounts(0, 2, () =>
+      for (i ← list0012_3x13_456) {
+        liftVarTypeStab10Print {
+          optionalStaticPrint(i)
+        }
+      }, "stable -> unstable (no promote w/o recomp)", stringEvenOdd(list0012_3x13_456))
     checkCounts(0, 4, () =>
-      for ((i, j) ← (list1 zip list300_250_50)) {
-        liftVarTypePrint {
+      for ((i, j) ← (list0012_3x13_456 zip list0x15_1x5)) {
+        liftVarTypeStab10Print {
           optionalStaticPrint(i)
           reqStaticPrint(j)
         }
-      }, "stable -> unstable -> stable", stringEvenOdd(list1, list300_250_50))
+      }, "stable -> unstable -> stable -> unstable", stringEvenOdd2(list0012_3x13_456, list0x15_1x5))
+  }
+
+  they should "inherit unstable counts" in {
+    val list0_12x1 = 0 :: List.fill(12)(1)
+    val list0_12x1_2 = 0 :: List.fill(12)(1) ::: List(2)
+    val list0to10_4x11 = (0 to 11).toList ::: List.fill(3)(11)
+
+    val list0_4x1_2_7x1_3 = 0 :: List.fill(4)(1) ::: List(2) ::: List.fill(8)(1) ::: List(3)
+    val list5x0_2_6x0_2x3 = List.fill(5)(0) ::: List(2) ::: List.fill(7)(0) ::: List.fill(2)(3)
+
+    checkCounts(0, 12, () =>
+      for ((i, j) ← (list0_12x1 zip list0to10_4x11)) {
+        liftVarTypeStab10Print {
+          optionalStaticPrint(i)
+          reqStaticPrint(j)
+        }
+      }, "on recompile inherit unstable count from prev. head 1", stringEvenOdd2(list0_12x1, list0to10_4x11))
+    checkCounts(0, 13, () =>
+      for ((i, j) ← (list0_12x1_2 zip list0to10_4x11)) {
+        liftVarTypeStab10Print {
+          optionalStaticPrint(i)
+          reqStaticPrint(j)
+        }
+      }, "on recompile inherit unstable count from prev. head 2", stringEvenOdd2(list0_12x1_2, list0to10_4x11))
     checkCounts(0, 5, () =>
-      for ((i, j) ← (list1_575_U zip list300_250_50)) {
-        liftVarTypePrint {
+      for ((i, j) ← (list0_4x1_2_7x1_3 zip list5x0_2_6x0_2x3)) {
+        liftVarTypeStab10Print {
           optionalStaticPrint(i)
           reqStaticPrint(j)
         }
-      }, "stable -> unstable -> stable -> unstable", stringEvenOdd(list1_575_U, list300_250_50))
+      }, "keep counts per variant", stringEvenOdd2(list0_4x1_2_7x1_3, list5x0_2_6x0_2x3))
   }
 }

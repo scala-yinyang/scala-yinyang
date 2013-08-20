@@ -4,6 +4,7 @@ import java.util.concurrent.ConcurrentHashMap
 import scala.ref.WeakReference
 
 object YYStorage {
+  // Debugging information
   private var runtimeCompileCount = 0
   private var compileTimeCompileCount = 0
   private var alreadyCountedCompileTimeUIDs: List[Long] = Nil
@@ -20,7 +21,9 @@ object YYStorage {
   }
 
   /** Each DSL program is represented by a singleton instance of the transformed DSL class. */
-  final private case class DSLInstance(classCode: Any, optionalInitiallyStable: Boolean, codeCacheSize: Int)
+  // Promotion currently only happens on recompilation. TODO periodically check unstable?
+  final private case class DSLInstance(classCode: Any, optionalInitiallyStable: Boolean, codeCacheSize: Int,
+                                       minimumCountToStabilize: Int)
 
   /** DSL instances are stored and retrieved by their UID. */
   final private val DSLInstances = new ConcurrentHashMap[Long, DSLInstance]
@@ -28,9 +31,10 @@ object YYStorage {
   type GuardFun = (Any, Any) => Boolean
   /**
    * A guard consists of a guard function and an Int holding the holeId if it is
-   * an optional variable, and -1 otherwise.
+   * an optional variable, and REQUIRED_ID otherwise.
    */
   final private case class GuardFunction(fun: GuardFun, optionalHoleId: Int)
+  private val REQUIRED_ID = -1
 
   /** For each DSL instance, there is a GuardFunction for each compilation variable. */
   final private val guardFunctions = new ConcurrentHashMap[Long, Seq[GuardFunction]]()
@@ -50,41 +54,34 @@ object YYStorage {
   private val REQUIRED_COUNT = 0
   private val STABLE_COUNT = -1
   private val UNSTABLE_COUNT = 1
-  // Promotion currently only happens on recompilation. TODO periodically check unstable?
-  private val MIN_COUNT_TO_PROMOTE_TO_STABLE = 500
 
   /** For each DSL instance, a maximum of dslInstance.codeCacheSize compiled variants are cached. */
   final private val programVariants = new ConcurrentHashMap[Long, Seq[ProgramVariant]]()
 
   @inline
   final def lookup[Ret](id: Long, dsl: => Ret, guardFuns: => Seq[GuardFun],
-                        optional: Seq[Int], optionalInitiallyStable: Boolean, codeCacheSize: Int): Ret = {
+                        optional: Seq[Int], optionalInitiallyStable: Boolean,
+                        codeCacheSize: Int, minimumCountToStabilize: Int): Ret = {
     val dslInstance = DSLInstances.get(id)
 
     (if (dslInstance == null) {
-      DSLInstances.put(id, DSLInstance(dsl, optionalInitiallyStable, codeCacheSize))
+      DSLInstances.put(id, DSLInstance(dsl, optionalInitiallyStable, codeCacheSize, minimumCountToStabilize))
       guardFunctions.put(id, guardFuns zip optional map (g => new GuardFunction(g._1, g._2)))
       dsl
     } else dslInstance.classCode).asInstanceOf[Ret]
   }
 
-  @inline
-  final private def createAndStoreInitialVariant(id: Long, refs: Seq[Any], recompile: Set[Int] => Any,
-                                                 guardFuns: Seq[GuardFunction]): ProgramVariant = {
-    val refCounts = guardFuns map {
-      case GuardFunction(_, -1) => REQUIRED_COUNT
-      case _                    => if (DSLInstances.get(id).optionalInitiallyStable) STABLE_COUNT else UNSTABLE_COUNT
-    }
-    createAndStoreVariant(id, refs, refCounts.toArray, recompile, guardFuns)
-  }
-
+  /**
+   * Compiles a new variant using the stability information from the refCounts
+   * and stores it using an LRU cache eviction policy.
+   */
   @inline
   final private def createAndStoreVariant(id: Long, refs: Seq[Any], refCounts: Array[Int],
                                           recompile: Set[Int] => Any, guardFuns: Seq[GuardFunction]): ProgramVariant = {
     runtimeCompileCount += 1
 
     val unstableSet = refCounts zip guardFuns collect {
-      case (1, GuardFunction(_, id)) => id
+      case (count, GuardFunction(_, id)) if (!isGuarded(count)) => assert(id != REQUIRED_ID); id
     } toSet
     val variant = new ProgramVariant(recompile(unstableSet),
       refs.asInstanceOf[Seq[AnyRef]].map(new WeakReference[AnyRef](_)).toArray, refCounts)
@@ -97,60 +94,69 @@ object YYStorage {
   }
 
   @inline
-  final private def recompileVariant(id: Long, refs: Seq[Any], recompile: Set[Int] => Any,
-                                     guardFuns: Seq[GuardFunction], headVariant: ProgramVariant): ProgramVariant = {
-    val refCounts = headVariant.refCounts.zip(headVariant.refs.zip(refs).zip(guardFuns)) map {
-      case (count, _) if count == REQUIRED_COUNT => REQUIRED_COUNT
-      case (count, ((weakRef1, ref2), eq)) if count == STABLE_COUNT => weakRef1.get match {
-        case Some(ref1) if (eq.fun(ref1, ref2)) => STABLE_COUNT
-        case _                                  => UNSTABLE_COUNT
-      }
-      case (count, ((weakRef1, ref2), eq)) if count > MIN_COUNT_TO_PROMOTE_TO_STABLE => weakRef1.get match {
-        case Some(ref1) if (eq.fun(ref1, ref2)) => STABLE_COUNT
-        case _                                  => UNSTABLE_COUNT
-      }
-      case (count, ((weakRef1, ref2), eq)) => weakRef1.get match {
-        case Some(ref1) if (eq.fun(ref1, ref2)) => count + 1 // Inherit unstable count from previous head
-        case _                                  => UNSTABLE_COUNT
-      }
-      case _ => UNSTABLE_COUNT
+  final private def compileInitialVariant(id: Long, refs: Seq[Any], recompile: Set[Int] => Any,
+                                          guardFuns: Seq[GuardFunction]): ProgramVariant = {
+    val optionalCount = if (DSLInstances.get(id).optionalInitiallyStable) STABLE_COUNT else UNSTABLE_COUNT
+    val refCounts = guardFuns map {
+      case GuardFunction(_, REQUIRED_ID) => REQUIRED_COUNT
+      case _                             => optionalCount
     }
     createAndStoreVariant(id, refs, refCounts.toArray, recompile, guardFuns)
   }
 
-  @inline /** 
-   * Computes the next unstable counts of the chosen variant. If the variant
-   * was at the head already, counts are either incremented or reset depending
-   * on the guard check. Otherwise the previousHead has to be provided and the
-   * variant inherits the counts from it if the values are equivalent, else
-   * they are reset.
+  @inline
+  final private def recompileVariant(id: Long, refs: Seq[Any], recompile: Set[Int] => Any,
+                                     guardFuns: Seq[GuardFunction], headVariant: ProgramVariant): ProgramVariant = {
+    val minimumCountToStabilize = DSLInstances.get(id).minimumCountToStabilize
+    val refCounts = headVariant.refCounts.zip(headVariant.refs.zip(refs).zip(guardFuns)) map {
+      case (count, _) if count == REQUIRED_COUNT => REQUIRED_COUNT
+      case (count, ((weakRef1, ref2), eq)) if (count == STABLE_COUNT || count >= minimumCountToStabilize) =>
+        weakRef1.get match {
+          case Some(ref1) if (eq.fun(ref1, ref2)) => STABLE_COUNT
+          case _                                  => UNSTABLE_COUNT
+        }
+      case (count, ((weakRef1, ref2), eq)) => weakRef1.get match {
+        case Some(ref1) if (eq.fun(ref1, ref2)) => count + 1 // Inherit unstable count from previous head
+        case _                                  => UNSTABLE_COUNT
+      }
+    }
+    createAndStoreVariant(id, refs, refCounts.toArray, recompile, guardFuns)
+  }
+
+  /**
+   * Computes the next unstable counts of the chosen existing variant. If the
+   * variant was just promoted to the head, the previous head needs to be
+   * provided, and if the values match the old count is inherited. Otherwise,
+   * counts are either incremented if the value matches the current one, or the
+   * new value is stored with a reset count.
    */
-  final private def incrementUnstableCounts(variant: ProgramVariant,
-                                            zipped: Seq[(((WeakReference[AnyRef], Any), GuardFunction), Int)],
-                                            previousHead: Option[ProgramVariant]) = {
+  @inline
+  final private def updateVariant(variant: ProgramVariant,
+                                  zipped: Seq[(((WeakReference[AnyRef], Any), GuardFunction), Int)],
+                                  previousHead: Option[ProgramVariant]) = {
     zipped.zipWithIndex.foreach({
       case ((((oldWeakRef, newRef), guard), count), i) if !isGuarded(count) =>
-        variant.refCounts(i) = oldWeakRef.get match {
-          case None                                       => UNSTABLE_COUNT
-          case Some(oldRef) if !guard.fun(oldRef, newRef) => UNSTABLE_COUNT // TODO could update unstable value?
-          case Some(oldRef) => previousHead match {
-            case None => count + 1
-            case Some(prevVariant) => prevVariant.refCounts(i) match {
-              case REQUIRED_COUNT | STABLE_COUNT => count + 1
-              case prevCount => prevVariant.refs(i).get match {
-                case None => count + 1
-                case Some(prevRef) =>
-                  val eq = zipped(i)._1._2
-                  if (eq.fun(prevRef, newRef)) {
-                    prevCount + 1
-                  } else {
-                    UNSTABLE_COUNT
-                  }
-              }
+
+        val inheritedCount = if (!previousHead.isEmpty) {
+          previousHead.get.refCounts(i) match {
+            case REQUIRED_COUNT | STABLE_COUNT => None
+            case prevCount => previousHead.get.refs(i).get match {
+              case Some(prevRef) if guard.fun(prevRef, newRef) => Some(prevCount + 1)
+              case _ => None
             }
           }
-        }
-      case _ =>
+        } else None
+
+        variant.refCounts(i) = inheritedCount.getOrElse({
+          oldWeakRef.get match {
+            case Some(oldRef) if guard.fun(oldRef, newRef) => count + 1
+            case _ => {
+              variant.refs(i) = new WeakReference[AnyRef](newRef.asInstanceOf[AnyRef])
+              UNSTABLE_COUNT
+            }
+          }
+        })
+      case _ => // Not unstable
     })
   }
 
@@ -158,14 +164,14 @@ object YYStorage {
   final def check[Ret](id: Long, refs: Seq[Any], recompile: Set[Int] => Any): Ret = {
     val guardFuns = guardFunctions.get(id)
     (programVariants.get(id) match {
-      case null => createAndStoreInitialVariant(id, refs, recompile, guardFuns)
+      case null => compileInitialVariant(id, refs, recompile, guardFuns)
       case variants => checkHead(id, refs, recompile, guardFuns, variants(0)) match {
         case Some(variant) => variant
         case None => checkAll(id, refs, recompile, guardFuns, variants) match {
           case Some(variant) => variant
           case None => programVariants.get(id) match {
             case Nil => // All have been GC'ed, start from zero
-              createAndStoreInitialVariant(id, refs, recompile, guardFuns)
+              compileInitialVariant(id, refs, recompile, guardFuns)
             case x :: _ => recompileVariant(id, refs, recompile, guardFuns, x)
           }
         }
@@ -188,7 +194,7 @@ object YYStorage {
     if (hasKO) {
       None
     } else {
-      incrementUnstableCounts(headVariant, zipped, None)
+      updateVariant(headVariant, zipped, None)
       Some(headVariant)
     }
   }
@@ -235,7 +241,7 @@ object YYStorage {
       } else {
         (nonGCedVariants, None)
       }
-      incrementUnstableCounts(variant, variant.refs.toSeq.zip(refs).zip(guardFuns).zip(variant.refCounts), oldHead)
+      updateVariant(variant, variant.refs.toSeq.zip(refs).zip(guardFuns).zip(variant.refCounts), oldHead)
       reshuffledVariants.foreach(programVariants.put(id, _)) // Update the cache
       Some(variant)
     }

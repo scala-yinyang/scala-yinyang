@@ -14,8 +14,8 @@ object `package` {
   def liftEvenOddOptimizedPrint[T](block: => T): T = macro _liftEvenOddOptimizedPrint[T]
   def liftStagedPrint[T](block: => T): T = macro _liftStagedPrint[T]
   def liftReturningPrint[T](block: => T): T = macro _liftReturningPrint[T]
-  def liftVarTypePrint[T](block: => T): T = macro _liftVarTypePrint[T]
-  def liftVarTypeInitiallyUnstablePrint[T](block: => T): T = macro _liftVarTypeInitiallyUnstablePrint[T]
+  def liftVarTypeStab10Print[T](block: => T): T = macro _liftVarTypeStab10Print[T]
+  def liftVarTypeInitiallyUnstableStab10Print[T](block: => T): T = macro _liftVarTypeInitiallyUnstableStab10Print[T]
 
   def _liftUnstagedPrint[T](c: Context)(block: c.Expr[T]): c.Expr[T] =
     YYTransformer[c.type, T](c)(
@@ -52,19 +52,19 @@ object `package` {
       None,
       Map("shallow" -> false))(block)
 
-  def _liftVarTypePrint[T](c: Context)(block: c.Expr[T]): c.Expr[T] =
+  def _liftVarTypeStab10Print[T](c: Context)(block: c.Expr[T]): c.Expr[T] =
     YYTransformer[c.type, T](c)(
       "dsl.print.VarTypePrintDSL",
       new PolyTransformer[c.type](c),
       None,
-      Map("shallow" -> false))(block)
+      Map("shallow" -> false, "minimumCountToStabilize" -> 10))(block)
 
-  def _liftVarTypeInitiallyUnstablePrint[T](c: Context)(block: c.Expr[T]): c.Expr[T] =
+  def _liftVarTypeInitiallyUnstableStab10Print[T](c: Context)(block: c.Expr[T]): c.Expr[T] =
     YYTransformer[c.type, T](c)(
       "dsl.print.VarTypePrintDSL",
       new PolyTransformer[c.type](c),
       None,
-      Map("shallow" -> false, "optionalInitiallyStable" -> false))(block)
+      Map("shallow" -> false, "optionalInitiallyStable" -> false, "minimumCountToStabilize" -> 10))(block)
 
   // Shallow embedding:
   def print(x: Int): Unit = scala.Predef.print("shallow: " + x + " ")

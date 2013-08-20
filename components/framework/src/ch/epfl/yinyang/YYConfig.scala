@@ -14,4 +14,5 @@ trait YYConfig {
   val liftTypes: List[Context#Type] = config("liftTypes").asInstanceOf[List[Context#Type]] // SI-7234  prevents us from having it as a field to YYTransformers
   val optionalInitiallyStable: Boolean = config("optionalInitiallyStable").asInstanceOf[Boolean]
   val codeCacheSize: Int = config("codeCacheSize").asInstanceOf[Int]
+  val minimumCountToStabilize: Int = config("minimumCountToStabilize").asInstanceOf[Int]
 }
