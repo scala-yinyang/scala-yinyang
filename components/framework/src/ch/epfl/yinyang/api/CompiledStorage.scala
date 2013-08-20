@@ -4,6 +4,53 @@ import java.util.concurrent.ConcurrentHashMap
 import scala.ref.WeakReference
 
 object YYStorage {
+  /* DESIGN of recompilation and stabilization of optional variables:
+   * 
+   * Each DSL instance has several compilation variables, each with a guard
+   * function and marked as optional or required. Optional variables are marked
+   * as stable or unstable (producing generic code) at runtime. For unstable
+   * variables, a count indicates how many matching values have been seen. Two
+   * values "match" if both weak references are still valid and they're
+   * equivalent w.r.t. the guard.
+   *
+   * DSL instances are compiled to variants, which are characterized by the
+   * values they were compiled for, and the stability decisions for the
+   * optional variables. Every check with new values returns either an existing
+   * variant or causes recompilation. A variant "matches" if all required and
+   * stable variables match, the unstable variables are ignored. The size of
+   * the cache is defined by the codeCacheSize attribute of the DSL instance,
+   * using an LRU eviction policy. The returned variant is always moved to the
+   * head.
+   *
+   * When no variants have been compiled yet, optional variables are designated
+   * as stable or unstable depending on the optionalInitiallyStable attribute
+   * of the DSL instance.
+   *
+   * When no matching variants are available, a new variant is compiled based
+   * on the previous head variant. If an optional variable matches the previous
+   * value, it inherits the stability and count, but possibly gets promoted to
+   * a stable variable if it was unstable before but has reached the DSL
+   * instance attribute minimumCountToStabilize. If it doesn't match, it is
+   * marked as unstable with a reset count.
+   *
+   * When the head variant matches, the counts of matching unstable variables
+   * are incremented, and the new value is stored with a reset count if an
+   * unstable variable doesn't match.
+   *
+   * When a variant from the tail matches, it can inherit values and counts
+   * from the previous head. So for each unstable variable, we have three
+   * tuples (value, count) to consider: the previous head, the chosen variant
+   * and the new value being checked. The decision tree looks as follows:
+   * if (new matches prev) (prev_val, prev_count + 1)
+   * else if (new matches chosen) (keep chosen_val, chosen_count + 1)
+   * else (new_val, 1)
+   *
+   * The result of this algorithm is that we keep traces of both per-variant
+   * history to detect correlation and recent history to adapt to the current
+   * situation. Priority is given to absolute counts since we deem that
+   * locality is more important than co-locality.
+   */
+
   // Debugging information
   private var runtimeCompileCount = 0
   private var compileTimeCompileCount = 0
