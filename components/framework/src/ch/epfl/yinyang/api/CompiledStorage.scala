@@ -1,6 +1,7 @@
 package ch.epfl.yinyang.runtime
 
 import java.util.concurrent.ConcurrentHashMap
+import scala.collection.mutable.{ DoubleLinkedList, HashSet }
 import scala.ref.WeakReference
 
 object YYStorage {
@@ -72,11 +73,12 @@ object YYStorage {
   /**
    * Each DSL program is represented by a singleton instance of the transformed
    * DSL class and attributes controlling cache behavior and stability. It also
-   * stores the guards for all compilation variables and the holeIds for
-   * optional variables resp. REQUIRED_ID for required variables.
+   * stores the guards for all compilation variables, the holeIds for optional
+   * variables resp. REQUIRED_ID for required variables and the variant cache.
    */
   final private case class DSLInstance(classInstance: Any, optionalInitiallyStable: Boolean, codeCacheSize: Int,
-                                       minimumCountToStabilize: Int, guards: Seq[GuardFun], optionalHoleIds: Seq[Int])
+                                       minimumCountToStabilize: Int, guards: Seq[GuardFun], optionalHoleIds: Seq[Int],
+                                       variantCache: DoubleLinkedList[ProgramVariant])
 
   /** DSL instances are stored and retrieved by their UID. */
   final private val DSLs = new ConcurrentHashMap[Long, DSLInstance]
@@ -97,9 +99,6 @@ object YYStorage {
   private val STABLE_COUNT = -1
   private val UNSTABLE_COUNT = 1
 
-  /** For each DSL instance, a maximum of dslInstance.codeCacheSize compiled variants are cached. */
-  final private val programVariants = new ConcurrentHashMap[Long, Seq[ProgramVariant]]()
-
   @inline
   final def lookup[Ret](id: Long, dsl: => Ret, guardFuns: => Seq[GuardFun],
                         optional: Seq[Int], optionalInitiallyStable: Boolean,
@@ -109,7 +108,7 @@ object YYStorage {
     (if (dslInstance == null) {
       // Null check because we don't want to eval dsl and guardFuns unless necessary.
       val d = DSLInstance(dsl, optionalInitiallyStable, codeCacheSize,
-        minimumCountToStabilize, guardFuns, optional)
+        minimumCountToStabilize, guardFuns, optional, new DoubleLinkedList[ProgramVariant]())
       DSLs.putIfAbsent(id, d)
       d
     } else dslInstance).classInstance.asInstanceOf[Ret]
@@ -130,10 +129,17 @@ object YYStorage {
     val variant = new ProgramVariant(recompile(unstableSet),
       refs.asInstanceOf[Seq[AnyRef]].map(new WeakReference[AnyRef](_)).toArray, refCounts)
 
-    programVariants.put(id, programVariants.get(id) match {
-      case null => Seq(variant)
-      case vs   => variant +: (vs.take(DSLs.get(id).codeCacheSize - 1))
-    })
+    val cache = DSLs.get(id).variantCache
+    cache.synchronized {
+      if (cache.isEmpty) {
+        cache.next = DoubleLinkedList()
+        cache.next.prev = cache
+      } else {
+        cache.insert(DoubleLinkedList(cache.elem))
+      }
+      cache.elem = variant
+      cache.take(DSLs.get(id).codeCacheSize)
+    }
     variant
   }
 
@@ -177,7 +183,7 @@ object YYStorage {
   @inline
   final private def updateVariant(variant: ProgramVariant,
                                   zipped: Seq[(((WeakReference[AnyRef], Any), GuardFun), Int)],
-                                  previousHead: Option[ProgramVariant]) = {
+                                  previousHead: Option[ProgramVariant]): ProgramVariant = {
     zipped.zipWithIndex.foreach({
       case ((((oldWeakRef, newRef), guard), count), i) if !isGuarded(count) =>
 
@@ -202,23 +208,20 @@ object YYStorage {
         })
       case _ => // Not unstable
     })
+    variant
   }
 
   @inline
   final def check[Ret](id: Long, refs: Seq[Any], recompile: Set[Int] => Any): Ret = {
     val dsl = DSLs.get(id)
-    (programVariants.get(id) match {
-      case null => compileInitialVariant(id, refs, recompile, dsl)
-      case variants => checkHead(id, refs, recompile, dsl, variants(0)) match {
+    val cache = dsl.variantCache.synchronized {
+      dsl.variantCache.toList
+    }
+    (cache match {
+      case Nil => compileInitialVariant(id, refs, recompile, dsl)
+      case head :: _ => checkHead(id, refs, recompile, dsl, head) match {
         case Some(variant) => variant
-        case None => checkAll(id, refs, recompile, dsl, variants) match {
-          case Some(variant) => variant
-          case None => programVariants.get(id) match {
-            case Nil => // All have been GC'ed, start from zero
-              compileInitialVariant(id, refs, recompile, dsl)
-            case x :: _ => recompileVariant(id, refs, recompile, dsl, x)
-          }
-        }
+        case None          => checkAll(id, refs, recompile, dsl, cache)
       }
     }).function.asInstanceOf[Ret]
   }
@@ -245,7 +248,7 @@ object YYStorage {
 
   @inline
   final private def checkAll(id: Long, refs: Seq[Any], recompile: Set[Int] => Any,
-                             dsl: DSLInstance, variants: Seq[ProgramVariant]): Option[ProgramVariant] = {
+                             dsl: DSLInstance, variants: Seq[ProgramVariant]): ProgramVariant = {
 
     val GCed = new Array[Boolean](variants.length)
 
@@ -265,29 +268,36 @@ object YYStorage {
         (variant, variant.refCounts.count(_ == STABLE_COUNT))
     })
 
-    // remove program variants for which some guarded values have been GC'ed
-    val nonGCedVariants: Option[Seq[ProgramVariant]] =
-      if (GCed.contains(true)) {
-        Some(variants zip GCed filter (!_._2) map (_._1))
-      } else None
-
-    // Use the variant with the most stable variables or need to recompile.
-    if (possibleVariantsWithStableCount.isEmpty) {
-      // No variant found, update the cache if some variants were GC'ed
-      nonGCedVariants.foreach(programVariants.put(id, _))
-      None
+    // Use the variant with the most stable variables or recompile.
+    val (variant, needsInsert) = if (possibleVariantsWithStableCount.isEmpty) {
+      (recompileVariant(id, refs, recompile, dsl, variants.head), false)
     } else {
-      // Use the best variant (most stable variables) and promote it to the head (LRU eviction)
       val variant = possibleVariantsWithStableCount.maxBy(t => t._2)._1
-      val vars = nonGCedVariants.getOrElse(variants)
-      val (reshuffledVariants, oldHead) = if (vars.head != variant) {
-        (Some(variant +: vars.diff(Seq(variant))), Some(vars.head))
-      } else {
-        (nonGCedVariants, None)
-      }
-      updateVariant(variant, variant.refs.toSeq.zip(refs).zip(dsl.guards).zip(variant.refCounts), oldHead)
-      reshuffledVariants.foreach(programVariants.put(id, _)) // Update the cache
-      Some(variant)
+      (updateVariant(variant, variant.refs.toSeq.zip(refs).zip(dsl.guards).zip(variant.refCounts), Some(variants.head)), true)
     }
+
+    val variantsToRemove = HashSet(variants zip GCed filter (_._2) map (_._1): _*)
+
+    // Update cache
+    if (!variantsToRemove.isEmpty || needsInsert) {
+      val cache = dsl.variantCache
+      cache.synchronized {
+        if (needsInsert) {
+          cache.insert(DoubleLinkedList(cache.head))
+          cache.elem = variant
+          variantsToRemove += variant
+        }
+        var c = cache.next // Ignore head since that's the chosen variant
+        while (!c.isEmpty && !variantsToRemove.isEmpty) {
+          if (variantsToRemove.contains(c.elem)) {
+            c.remove
+            variantsToRemove -= c.elem
+          }
+          c = c.next
+        }
+      }
+    }
+
+    variant
   }
 }
