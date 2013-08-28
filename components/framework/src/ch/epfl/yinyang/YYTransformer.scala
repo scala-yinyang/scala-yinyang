@@ -179,16 +179,16 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
           log("Guard function strings: " + guards.map(_.getGuardFunction), 3)
           log("Guard function trees: " + guards.map((g: Guard) => c parse g.getGuardFunction), 3)
 
-          val optional = varTypes.zipWithIndex.map(v => v._1._2 match {
-            case _: Optional => v._2
-            case _           => -1
-          })
+          val guardString = guards map (_.getGuardFunction) mkString ("scala.Array((", "), (", "))")
+          val optional = varTypes.collect({
+            case (s, _: Optional) => holeTable.indexOf(symbolId(s))
+            case (_, _: CompVar)  => -1
+          }) mkString ("scala.Array((", "), (", "))")
 
           val dslInit = s"""
             val dslInstance = ch.epfl.yinyang.runtime.YYStorage.lookup(${programId}L, new $className(), 
-              List(${guards map (_.getGuardFunction) mkString ("(", "), (", ")")}), $optional,
-              $optionalInitiallyStable, $codeCacheSize, $minimumCountToStabilize);
-            val compilVars: Seq[Any] = Seq(${compilVars map (_.name.decoded) mkString ", "})
+              $guardString, $optional, $optionalInitiallyStable, $codeCacheSize, $minimumCountToStabilize);
+            val compilVars: scala.Array[Any] = scala.Array(${compilVars map (_.name.decoded) mkString ", "})
             ${compilVars.map({ k => "dslInstance.captured$" + k.name.decoded + " = " + k.name.decoded }) mkString "\n"}
           """
 
