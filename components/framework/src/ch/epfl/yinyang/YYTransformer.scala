@@ -155,6 +155,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
       def args(holes: List[Symbol]): String =
         holes.map({ y: Symbol => y.name.decoded }).mkString("", ",", "")
 
+      val programId = new scala.util.Random().nextLong
       val dslTree = dslType match {
         case tpe if tpe <:< typeOf[CodeGenerator] && compilVars.isEmpty =>
           log("COMPILE TIME COMPILED", 2)
@@ -162,17 +163,16 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
            * If DSL does not require run-time data it can be completely
            * generated at compile time and wired for execution.
            */
-          c parse s"""
-            ch.epfl.yinyang.runtime.YYStorage.incrementCompileTimeCompileCount($classUID)
+          c parse (s"""
+            ch.epfl.yinyang.runtime.YYStorage.incrementCompileTimeCompileCount(${programId}L)
             ${reflInstance[CodeGenerator](dsl) generateCode className}
             new $className().apply(${args(allCaptured)})
-          """
+          """)
         case _ =>
           /*
            * If DSL need run-time info send it to run-time and install recompilation guard.
            */
           log("RUNTIME COMPILED with guards", 2)
-          val programId = new scala.util.Random().nextLong
           val retType = block.tree.tpe.toString
           val functionType = s"""${(0 until sortedHoles.length).map(y => "scala.Any").mkString("(", ", ", ")")} => ${retType}"""
 
@@ -180,35 +180,32 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
           log("Guard function trees: " + guards.map((g: Guard) => c parse g.getGuardFunction), 3)
 
           val guardString = guards map (_.getGuardFunction) mkString ("scala.Array((", "), (", "))")
-          val optional = varTypes.collect({
+          val optionalHoleIds = varTypes.collect({
             case (s, _: Optional) => holeTable.indexOf(symbolId(s))
             case (_, _: CompVar)  => -1
           }) mkString ("scala.Array((", "), (", "))")
 
-          val dslInit = s"""
-            val dslInstance = ch.epfl.yinyang.runtime.YYStorage.lookup(${programId}L, new $className(), 
-              $guardString, $optional, $optionalInitiallyStable, $codeCacheSize, $minimumCountToStabilize);
-            val compilVars: scala.Array[Any] = scala.Array(${compilVars map (_.name.decoded) mkString ", "})
-            ${compilVars.map({ k => "dslInstance.captured$" + k.name.decoded + " = " + k.name.decoded }) mkString "\n"}
-          """
+          val YYCacheString = YYStorageFactory.getYYStorageString(className, functionType, retType, guardString,
+            optionalHoleIds, optionalInitiallyStable, codeCacheSize, minimumCountToStabilize, compilVars.asInstanceOf[List[reflect.runtime.universe.Symbol]])
 
-          val guardedExecute = c parse dslInit + (dslType match {
+          val guardedExecute = c parse (dslType match {
             case t if t <:< typeOf[CodeGenerator] =>
               s"""
-              def recompile(unstableMixed: scala.collection.immutable.Set[scala.Int]): Any = dslInstance.compile[$retType, $functionType](unstableMixed)
-              val program = ch.epfl.yinyang.runtime.YYStorage.check[$functionType](
-                ${programId}L, compilVars, recompile
-              )
+              val compilVars: scala.Array[Any] = scala.Array(${compilVars map (_.name.decoded) mkString ", "})
+              val program = ch.epfl.yinyang.runtime.YYStorage.guardedLookup[$functionType](${programId}L,
+                $YYCacheString, compilVars)
               program.apply(${args(sortedHoles)})
             """
             // TODO(vsalvis) How do optional variables interact with interpretation?
-            case t if t <:< typeOf[Interpreted] => s"""
-              def invalidate(): () => Any = () => dslInstance.reset
-              ch.epfl.yinyang.runtime.YYStorage.check[Any](
-                ${programId}L, compilVars, invalidate
-              )
-              dslInstance.interpret[${retType}](${args(sortedHoles)})
-            """
+            // FIXME: this is not tested! Types probably wrong
+            // case t if t <:< typeOf[Interpreted] => YYCacheString + s"""
+            //   val dslInstance = $YYStorageName.classInstance;
+            //   val compilVars: scala.Array[Any] = scala.Array(${compilVars map (_.name.decoded) mkString ", "})
+            //   ${compilVars.map({ k => "dslInstance.captured$" + k.name.decoded + " = " + k.name.decoded }) mkString "\n"}
+            //   def invalidate(): () => Any = () => dslInstance.reset
+            //   $YYStorageName.check(compilVars, invalidate)
+            //   dslInstance.interpret[${retType}](${args(sortedHoles)})
+            // """
           })
 
           Block(dsl, guardedExecute)

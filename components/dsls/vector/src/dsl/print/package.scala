@@ -17,54 +17,56 @@ object `package` {
   def liftVarTypeStab10Print[T](block: => T): T = macro _liftVarTypeStab10Print[T]
   def liftVarTypeInitiallyUnstableStab10Print[T](block: => T): T = macro _liftVarTypeInitiallyUnstableStab10Print[T]
 
+  val debug = 0
+
   def _liftUnstagedPrint[T](c: Context)(block: c.Expr[T]): c.Expr[T] =
     YYTransformer[c.type, T](c)(
       "dsl.print.UnstagedPrintDSL",
       new PolyTransformer[c.type](c),
       None,
-      Map("shallow" -> false))(block)
+      Map("shallow" -> false, "debug" -> debug))(block)
 
   def _liftOptimizedPrint[T](c: Context)(block: c.Expr[T]): c.Expr[T] =
     YYTransformer[c.type, T](c)(
       "dsl.print.OptimizedPrintDSL",
       new PolyTransformer[c.type](c),
       None,
-      Map("shallow" -> false))(block)
+      Map("shallow" -> false, "debug" -> debug))(block)
 
   def _liftEvenOddOptimizedPrint[T](c: Context)(block: c.Expr[T]): c.Expr[T] =
     YYTransformer[c.type, T](c)(
       "dsl.print.EvenOddOptimizedPrintDSL",
       new PolyTransformer[c.type](c),
       None,
-      Map("shallow" -> false))(block)
+      Map("shallow" -> false, "debug" -> debug))(block)
 
   def _liftStagedPrint[T](c: Context)(block: c.Expr[T]): c.Expr[T] =
     YYTransformer[c.type, T](c)(
       "dsl.print.StagedPrintDSL",
       new PolyTransformer[c.type](c),
       None,
-      Map("shallow" -> false))(block)
+      Map("shallow" -> false, "debug" -> debug))(block)
 
   def _liftReturningPrint[T](c: Context)(block: c.Expr[T]): c.Expr[T] =
     YYTransformer[c.type, T](c)(
       "dsl.print.ReturningPrintDSL",
       new PolyTransformer[c.type](c),
       None,
-      Map("shallow" -> false))(block)
+      Map("shallow" -> false, "debug" -> debug))(block)
 
   def _liftVarTypeStab10Print[T](c: Context)(block: c.Expr[T]): c.Expr[T] =
     YYTransformer[c.type, T](c)(
       "dsl.print.VarTypePrintDSL",
       new PolyTransformer[c.type](c),
       None,
-      Map("shallow" -> false, "minimumCountToStabilize" -> 10))(block)
+      Map("shallow" -> false, "debug" -> debug, "minimumCountToStabilize" -> 10))(block)
 
   def _liftVarTypeInitiallyUnstableStab10Print[T](c: Context)(block: c.Expr[T]): c.Expr[T] =
     YYTransformer[c.type, T](c)(
       "dsl.print.VarTypePrintDSL",
       new PolyTransformer[c.type](c),
       None,
-      Map("shallow" -> false, "optionalInitiallyStable" -> false, "minimumCountToStabilize" -> 10))(block)
+      Map("shallow" -> false, "debug" -> debug, "optionalInitiallyStable" -> false, "minimumCountToStabilize" -> 10))(block)
 
   // Shallow embedding:
   def print(x: Int): Unit = scala.Predef.print("shallow: " + x + " ")

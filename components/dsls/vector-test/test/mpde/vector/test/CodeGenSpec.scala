@@ -76,7 +76,7 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
       val comp2 = YYStorage.getCompileTimeCompileCount() - comp
       assert(comp2 == compileTimeCompileCount && run2 == runtimeCompileCount,
         s"$dlsType: DSL compilation counts don't agree, should be $compileTimeCompileCount at compile time " +
-          s"and $runtimeCompileCount at runtimeCompileCount, but was $comp2 and $run2.")
+          s"and $runtimeCompileCount at runtime, but was $comp2 and $run2.")
     }
 
     // Check guard execution counts
@@ -162,6 +162,33 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
   //    28µs (15 checks,  5 initial compilCount,  0 minimal compilCount) <- (a)
   //    39µs ( 7 checks,  3 initial compilCount,  0 minimal compilCount)
   //  5969µs ( 7 checks,  6 initial compilCount,  4 minimal compilCount) <--- (b)
+
+  // Generated caches
+  //    73?s ( 2 checks,  2 initial compilCount,  0 minimal compilCount, ht/dc:  2?s, hash/check:   3%)
+  //    55?s ( 3 checks,  2 initial compilCount,  0 minimal compilCount, ht/dc:  1?s, hash/check:   2%)
+  //    30?s ( 1 checks,  1 initial compilCount,  0 minimal compilCount, ht/dc:  2?s, hash/check:   7%)
+  //    16?s ( 3 checks,  1 initial compilCount,  0 minimal compilCount, ht/dc:  1?s, hash/check:   6%)
+  //    71?s ( 3 checks,  3 initial compilCount,  0 minimal compilCount, ht/dc:  1?s, hash/check:   1%)
+  //    55?s ( 4 checks,  2 initial compilCount,  0 minimal compilCount, ht/dc:  2?s, hash/check:   4%)
+  //    34?s ( 4 checks,  2 initial compilCount,  0 minimal compilCount, ht/dc:  1?s, hash/check:   3%)
+  //    18?s ( 1 checks,  1 initial compilCount,  0 minimal compilCount, ht/dc:  1?s, hash/check:   6%)
+  //    51?s ( 4 checks,  2 initial compilCount,  0 minimal compilCount, ht/dc:  1?s, hash/check:   2%)
+  // 19767?s ( 4 checks,  4 initial compilCount,  4 minimal compilCount, ht/dc:  4?s, hash/check:   0%)
+  //    70?s ( 4 checks,  2 initial compilCount,  0 minimal compilCount, ht/dc:  1?s, hash/check:   1%)
+  //    32?s ( 2 checks,  2 initial compilCount,  0 minimal compilCount, ht/dc:  2?s, hash/check:   6%)
+  //    27?s ( 2 checks,  1 initial compilCount,  0 minimal compilCount, ht/dc:  2?s, hash/check:   7%)
+  //    17?s ( 2 checks,  1 initial compilCount,  0 minimal compilCount, ht/dc:  1?s, hash/check:   6%)
+  //    20?s ( 2 checks,  2 initial compilCount,  0 minimal compilCount, ht/dc:  1?s, hash/check:   5%)
+  //    23?s ( 2 checks,  1 initial compilCount,  0 minimal compilCount, ht/dc:  1?s, hash/check:   4%)
+  //    19?s ( 2 checks,  1 initial compilCount,  0 minimal compilCount, ht/dc:  1?s, hash/check:   5%)
+  //    27?s ( 4 checks,  2 initial compilCount,  0 minimal compilCount, ht/dc:  1?s, hash/check:   4%)
+  //    19?s (20 checks,  2 initial compilCount,  0 minimal compilCount, ht/dc:  1?s, hash/check:   5%)
+  //    33?s (20 checks,  4 initial compilCount,  0 minimal compilCount, ht/dc:  1?s, hash/check:   3%)
+  // 38510?s (13 checks, 12 initial compilCount, 12 minimal compilCount, ht/dc:  4?s, hash/check:   0%)
+  // 29642?s (14 checks, 13 initial compilCount, 13 minimal compilCount, ht/dc:  4?s, hash/check:   0%)
+  //    33?s (15 checks,  5 initial compilCount,  0 minimal compilCount, ht/dc:  1?s, hash/check:   3%)
+  //    50?s ( 7 checks,  3 initial compilCount,  0 minimal compilCount, ht/dc:  1?s, hash/check:   2%)
+  //  5708?s ( 7 checks,  6 initial compilCount,  4 minimal compilCount, ht/dc:  2?s, hash/check:   0%)
 
   def evenOdd(i: Int) = if (i % 2 == 0) s"Even: $i " else s"Odd: $i "
   def stringEvenOdd(l: List[Int]): String = l.map(evenOdd).mkString
@@ -552,4 +579,25 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
       }, "recompile", "")
   }
 
+  "VarTypes" should "compose correctly" in {
+    checkCounts(0, 4, 4, () =>
+      for (i ← List(0, 1, 2, 3)) {
+        liftVarTypeStab10Print {
+          reqStaticPrint(i)
+          reqDynamicPrint(i)
+        }
+      }, "recompile", "Even: 0 Even: 0 Odd: 1 Odd: 1 Even: 2 Even: 2 Odd: 3 Odd: 3 ")
+  }
+
+  "Optional" should "be traversed" in {
+    checkCounts(0, 2, 6, () =>
+      for (j ← List(0, 1, 3)) {
+        for (k ← List(0, 2)) {
+          liftVarTypeStab10Print {
+            optionalStaticPrint(j)
+            reqDynamicPrint(k)
+          }
+        }
+      }, "recompile", "Even: 0 Even: 0 Even: 0 Even: 2 Odd: 1 Even: 0 Odd: 1 Even: 2 Odd: 3 Even: 0 Odd: 3 Even: 2 ")
+  }
 }
