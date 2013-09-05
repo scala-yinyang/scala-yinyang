@@ -105,14 +105,10 @@ trait PrintCodeGenerator { self: CodeGenerator =>
   val holes: mutable.ArrayBuffer[BaseHole[_]] = new mutable.ArrayBuffer()
 }
 
-trait MiniIntDSL extends BaseYinYang { self: BooleanOps with PrintCodeGenerator =>
+trait MiniIntDSL extends BaseYinYang with VirtualAny {
+  self: BooleanOps with PrintCodeGenerator =>
 
   type Int = IntOps
-
-  def infix_==(x1: IntOps, x2: IntOps): BooleanOps = x1.__==(x2)
-  def infix_!=(x1: IntOps, x2: IntOps): BooleanOps = x1.__!=(x2)
-  def infix_hashCode(x: IntOps): IntOps = x.__hashCode()
-  def infix_##(x: IntOps): IntOps = x.__##()
 
   trait IntOps {
     def +(that: Int): Int = IntPlus(IntOps.this, that)
