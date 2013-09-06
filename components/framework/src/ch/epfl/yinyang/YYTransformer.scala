@@ -110,7 +110,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
 
       val varTypes: List[(Symbol, VarType)] = dslType match {
         case tpe if tpe <:< typeOf[FullyStaged] =>
-          allCaptured.map(s => (s, RequiredStaticCompVar(defaultGuard(s))))
+          allCaptured.map(s => (s, defaultCompVar(s)))
 
         case tpe if tpe <:< typeOf[FullyUnstaged] =>
           allCaptured.map(s => (s, NonCompVar()))
@@ -118,7 +118,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
         case tpe if tpe <:< typeOf[HoleTypeAnalyser] => {
           allCaptured.foreach { s => log(s.typeSignature.typeConstructor.toString, 3) }
           allCaptured.map(s => (s,
-            if (liftTypes.exists(l => s.typeSignature <:< l.asInstanceOf[Type])) RequiredStaticCompVar(defaultGuard(s))
+            if (liftTypes.exists(l => s.typeSignature <:< l.asInstanceOf[Type])) defaultCompVar(s)
             else NonCompVar()))
         }
 
@@ -176,16 +176,14 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
           val retType = block.tree.tpe.toString
           val functionType = s"""${(0 until sortedHoles.length).map(y => "scala.Any").mkString("(", ", ", ")")} => ${retType}"""
 
-          log("Guard function strings: " + guards.map(_.getGuardFunction), 3)
-          log("Guard function trees: " + guards.map((g: Guard) => c parse g.getGuardFunction), 3)
+          log("Guard function strings: " + guards, 3)
 
-          val guardString = guards map (_.getGuardFunction) mkString ("scala.Array((", "), (", "))")
           val optionalHoleIds = varTypes.collect({
             case (s, _: Optional) => holeTable.indexOf(symbolId(s))
             case (_, _: CompVar)  => -1
           }) mkString ("scala.Array((", "), (", "))")
 
-          val YYCacheString = YYStorageFactory.getYYStorageString(className, functionType, retType, guardString,
+          val YYCacheString = YYStorageFactory.getYYStorageString(className, functionType, retType, guards,
             optionalHoleIds, optionalInitiallyStable, codeCacheSize, minimumCountToStabilize, compilVars.asInstanceOf[List[reflect.runtime.universe.Symbol]])
 
           val guardedExecute = c parse (dslType match {
@@ -375,8 +373,8 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
   def constructTypeTree(tctx: TypeContext, inType: Type): Tree =
     typeTransformer transform (tctx, inType)
 
-  def defaultGuard(s: Symbol): Guard = {
-    Guard.defaultGuard
+  def defaultCompVar(s: Symbol): CompVar = {
+    CompVar.equality(s.typeSignature.toString)
   }
 
   private lazy val dslTrait = {

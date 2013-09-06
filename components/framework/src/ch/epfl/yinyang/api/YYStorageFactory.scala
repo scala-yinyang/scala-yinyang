@@ -1,7 +1,9 @@
 package ch.epfl.yinyang.api
 
+import scala.collection.Iterator
+
 object YYStorageFactory {
-  def getYYStorageString(className: String, functionType: String, retType: String, guardString: String,
+  def getYYStorageString(className: String, functionType: String, retType: String, allGuards: List[Guard],
                          optionalHoleIds: String, optionalInitiallyStable: Boolean, codeCacheSize: Int,
                          minimumCountToStabilize: Int, refSymbols: List[reflect.runtime.universe.Symbol]): String = {
 
@@ -9,10 +11,165 @@ object YYStorageFactory {
     val capturedUpdate = refSymbols.zipWithIndex.map({
       case (sym, index) => // TODO can we get rid of this asInstanceOf?
         "classInstance.captured$" + sym.name.decoded + " = refs(" + index + ").asInstanceOf[" + sym.typeSignature + "]"
-    }) mkString "\n"
+    }) mkString "\n    "
 
-    s"""
+    val NON_COMP = 0
+    val ONLY_REQ = 1
+    val MIXED = 2
+    val ONLY_OPT = 3
+
+    val guards: Map[Int, List[(List[(String => String, String)], List[(String => String, String)], Int)]] =
+      allGuards.zipWithIndex
+        .map(g => (g._1.getReqKeys, g._1.getOptKeys, g._2))
+        .groupBy({
+          case (Nil, Nil, _) => NON_COMP
+          case (_, Nil, _)   => ONLY_REQ
+          case (Nil, _, _)   => ONLY_OPT
+          case _             => MIXED
+        })
+
+    def getTypes(guardType: Int): List[String] = {
+      guards.getOrElse(guardType, Nil).flatMap(l => (l._1 ++ l._2).map(_._2))
+    }
+
+    def getHashMapsType(typeList: List[String], inner: String): String = typeList.foldRight(inner)({
+      (tpe, innerString) => "Map[" + tpe + ", " + innerString + "]"
+    })
+    def getMixedOptType(typeList: List[String]): String = {
+      assert(typeList.length > 0) // otherwise don't call me
+      val maps = typeList.foldRight("ProgramVariant")({
+        (tpe, innerString) => s"(Map[$tpe, $innerString], Option[$innerString])"
+      })
+      s"SortedSet[(Int, $maps)]"
+    }
+    val (variantCacheType, variantCacheInit, variantCachePrefix) =
+      (getTypes(ONLY_REQ), getTypes(MIXED) ++ getTypes(ONLY_OPT)) match {
+        case (Nil, Nil)      => assert(false)
+        case (req, Nil)      => (getHashMapsType(req, "ProgramVariant"), "HashMap()", "")
+        case (Nil, o :: Nil) => (s"(Map[$o, ProgramVariant], Option[ProgramVariant])", "(HashMap(), None)", "")
+        case (Nil, opt) =>
+          val optTpe = getMixedOptType(opt)
+          (optTpe, "emptySortedSet", s"val emptySortedSet = $optTpe()(Ordering.by(_._1))\n  ")
+        case (req, o :: Nil) =>
+          val optTpe = s"(Map[$o, ProgramVariant], Option[ProgramVariant])"
+          (getHashMapsType(req, optTpe), "HashMap()", "")
+        case (req, opt) =>
+          val optTpe = getMixedOptType(opt)
+          (getHashMapsType(req, optTpe), "HashMap()", s"val emptySortedSet = $optTpe()(Ordering.by(_._1))\n  ")
+      }
+    val variantCacheDecl = s"${variantCachePrefix}private var variantCache: $variantCacheType = $variantCacheInit"
+
+    def getGuards(guardType: Int): List[(String => String, String, Int)] =
+      guards.getOrElse(guardType, Nil).flatMap(l => (l._1 ++ l._2).map(ss => (ss._1, ss._2, l._3)))
+
+    def guardToString(g: (String => String, String, Int)): String = g match {
+      case (gfun, tpe, i) => s"{ val v = refs($i).asInstanceOf[" + refSymbols(i).typeSignature + "]; " + gfun("v") + s" }: $tpe"
+    }
+
+    // TODO handle opt properly, this should be just getGuards(ONLY_REQ)
+    val lookupReqString = getGuards(ONLY_REQ).grouped(10).toList.zipWithIndex match {
+      case Nil => "val lookupReq = variantCache"
+      case list =>
+        val reqLookup = list.map({
+          case (Nil, _) => assert(false)
+          case (guards, lookupI) => s"val lookup${lookupI + 1} = lookup${lookupI}" +
+            guards.map(guardToString(_)).mkString("\n      .flatMap(_.get(", "))\n      .flatMap(_.get(", "))") +
+            s"\n    if (lookup${lookupI + 1}.isEmpty) return None"
+        }).mkString("\n    ")
+        s"""val lookup0 = Some(variantCache)
+    $reqLookup
+    val lookupReq = lookup${list.length}.get
+    """
+    }
+
+    val lookupOptString = (getGuards(MIXED) ++ getGuards(ONLY_OPT)).zipWithIndex match {
+      case Nil               => "Some(lookupReq)"
+      case (guard, _) :: Nil => s"lookupReq._1.get(${guardToString(guard)}).orElse(lookupReq._2)"
+      case guards =>
+        val optLookup = guards.init.foldRight(
+          s"""val p = map.get(${guardToString(guards.last._1)}).orElse(option); if (!p.isEmpty) return p
+      """)({
+            case ((guard, i), inner) =>
+              val indent = " " * i * 2
+              s"""List(map.get(${guardToString(guard)}), option).collect({ case Some((map, option)) => 
+        ${indent}$inner})"""
+          })
+        s"""lookupReq.foreach({ case (_, (map, option)) => 
+      $optLookup 
+    })
+    None
+    """
+    }
+
+    val storeString = (getGuards(ONLY_REQ) ++ getGuards(MIXED) ++ getGuards(ONLY_OPT)).zipWithIndex match {
+      case Nil               => ???
+      case (guard, _) :: Nil => s"""variantCache += ((${guardToString(guard)}, variant))"""
+      case list => """val nextMap0 = variantCache
+    variantCache = """ + list.init.foldRight(list.last match {
+        case (guard, hashI) => s"""nextMap${hashI} + ((${guardToString(guard)}, variant))
+    """
+      })({
+        case ((guard, hashI), inner) =>
+          val indent = " " * hashI * 2
+          s"""{
+      ${indent}val H${hashI} = ${guardToString(guard)}
+      ${indent}nextMap${hashI}.get(H${hashI}) match {
+       ${indent}case None => nextMap${hashI} + ((H${hashI}, ${
+            list.drop(hashI + 1).foldRight("variant")({
+              case ((guard, hashI), inner) => s"HashMap((${guardToString(guard)}, $inner))"
+            })
+          }))
+       ${indent}case Some(nextMap${hashI + 1}) => nextMap${hashI} + ((H${hashI}, $inner))}}"""
+      })
+    }
+
+    val theCache = s"""
 new ch.epfl.yinyang.runtime.YYCache() {
+  import scala.collection.immutable.{ HashMap, SortedSet }
+
+  final private case class ProgramVariant(val function: $functionType)
+
+  private val classInstance: $className = new $className()
+  
+  @inline
+  private def recompile(refs: Array[Any], unstableSet: scala.collection.immutable.Set[scala.Int]): $functionType = {
+    ch.epfl.yinyang.runtime.YYStorage.incrementRuntimeCompileCount()
+    $capturedUpdate
+    classInstance.compile[$retType, $functionType](unstableSet)
+  }
+
+  $variantCacheDecl
+
+  @inline
+  private def lookup(refs: Array[Any]): Option[ProgramVariant] = {
+    $lookupReqString
+    $lookupOptString
+  }
+
+// TODO unstableSet, store
+  @inline
+  private def createAndStoreVariant(refs: Array[Any]): ProgramVariant = {
+    val variant = ProgramVariant(recompile(refs, Set()))
+    $storeString
+    variant
+  }
+
+  @inline
+  override def guardedLookup[FunctionT](refs: Array[Any]): FunctionT = {
+    lookup(refs).getOrElse(createAndStoreVariant(refs)).function.asInstanceOf[FunctionT]
+  }
+
+
+}"""
+
+    println(s"""=========
+$theCache
+=======""")
+    theCache
+  }
+}
+
+/*
   import java.util.concurrent.ConcurrentHashMap
   import scala.collection.mutable.{ DoubleLinkedList, HashSet }
   import scala.ref.WeakReference
@@ -26,7 +183,7 @@ new ch.epfl.yinyang.runtime.YYCache() {
    * variables resp. REQUIRED_ID for required variables and the variant cache.
    */
   private val classInstance: $className = new $className()
-  private val guards: Array[GuardFun] = $guardString
+  private val guards: Array[GuardFun] = null
   private val optionalHoleIds: Array[Int] = $optionalHoleIds
   private val variantCache: DoubleLinkedList[ProgramVariant] = new DoubleLinkedList[ProgramVariant]()
 
@@ -48,9 +205,9 @@ new ch.epfl.yinyang.runtime.YYCache() {
 
   @inline
   override def guardedLookup[FunctionT](refs: Array[Any]): FunctionT = {
-    def recompile(unstableMixed: scala.collection.immutable.Set[scala.Int]): $functionType = {
+    def recompile(unstableSet: scala.collection.immutable.Set[scala.Int]): $functionType = {
       $capturedUpdate
-      classInstance.compile[$retType, $functionType](unstableMixed)
+      classInstance.compile[$retType, $functionType](unstableSet)
     }
 
     val cache = variantCache.synchronized {
@@ -291,7 +448,4 @@ new ch.epfl.yinyang.runtime.YYCache() {
 
     variant // For chaining
   }
-}
-"""
-  }
-}
+  */

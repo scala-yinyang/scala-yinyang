@@ -22,7 +22,16 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
   val noGuardCountAssertFlag = false
   // Set this to 1 for a summary of guard execution times, 2 for details, 3 for
   // full output of all runs
-  val guardCountPrintDetails = 0
+  val guardCountPrintDetails = 1
+
+  if (noOutputAssertFlag)
+    scala.Predef.println("==== WARING! noOutputAssertFlag is set to true! ====")
+  if (printAllOutputFlag)
+    scala.Predef.println("==== WARING! printAllOutputFlag is set to true! ====")
+  if (noCompilationCountAssertFlag)
+    scala.Predef.println("==== WARING! noCompilationCountAssertFlag is set to true! ====")
+  if (noGuardCountAssertFlag)
+    scala.Predef.println("==== WARING! noGuardCountAssertFlag is set to true! ====")
 
   def captureOutput(func: => Unit): String = {
     if (printAllOutputFlag) {
@@ -60,7 +69,7 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
       expectedOutput map { exp =>
         assert(exp == output, {
           val prefix = (output, exp).zipped.takeWhile(t => t._1 == t._2).map(_._1).mkString
-          val suffix = (output.reverse, exp.reverse).zipped.takeWhile(t => t._1 == t._2).map(_._1).mkString.reverse
+          val suffix = (output.drop(prefix.length).reverse, exp.drop(prefix.length).reverse).zipped.takeWhile(t => t._1 == t._2).map(_._1).mkString.reverse
           val diffExp = exp.drop(prefix.length).dropRight(suffix.length)
           val diffAct = output.drop(prefix.length).dropRight(suffix.length)
           s"$dlsType: DSL output doesn't match expected output.\nExpected: $exp\nActual: $output\n" +
@@ -599,5 +608,30 @@ class CodeGenSpec extends FlatSpec with ShouldMatchers {
           }
         }
       }, "recompile", "Even: 0 Even: 0 Even: 0 Even: 2 Odd: 1 Even: 0 Odd: 1 Even: 2 Odd: 3 Even: 0 Odd: 3 Even: 2 ")
+  }
+
+  "Big CodeCache" should "work" in {
+    checkCounts(0, 1, 1, () => {
+      val a, b, c, d, e, f, g, gg, h, i, j, k, l, m, n: Int = 0
+      liftVarTypeStab10Print {
+        reqDynamicPrint(a)
+        reqDynamicPrint(b)
+        reqDynamicPrint(c)
+        reqDynamicPrint(d)
+        reqDynamicPrint(e)
+        reqDynamicPrint(f)
+        reqDynamicPrint(g)
+        optionalStaticPrint(gg)
+        reqDynamicPrint(h)
+        reqDynamicPrint(i)
+        reqDynamicPrint(j)
+        reqDynamicPrint(k)
+        reqDynamicPrint(l)
+        reqDynamicPrint(m)
+        optionalStaticPrint(m)
+        optionalStaticPrint(n)
+
+      }
+    }, "big", "Even: 0 Even: 0 Even: 0 Even: 0 Even: 0 Even: 0 Even: 0 Even: 0 Even: 0 Even: 0 Even: 0 Even: 0 Even: 0 Even: 0 Even: 0 Even: 0 ")
   }
 }

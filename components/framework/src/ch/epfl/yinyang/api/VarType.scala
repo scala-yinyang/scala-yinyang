@@ -55,6 +55,9 @@ trait CompVar extends VarType {
   def guard: Guard
   def and(guard: Guard): VarType
 }
+object CompVar {
+  def equality(tpe: String) = RequiredStaticCompVar(List(({ v: String => v }, tpe)))
+}
 
 trait Optional
 trait Required
@@ -68,6 +71,10 @@ case class OptionalStaticCompVar(val guard: Guard) extends CompVar with Optional
     case o: CompVar   => o.and(guard)
   }
 }
+object OptionalStaticCompVar {
+  def apply(optKeys: List[(String => String, String)]): OptionalStaticCompVar = OptionalStaticCompVar(Guard(Nil, optKeys))
+  def equality(tpe: String) = OptionalStaticCompVar(List(({ v: String => v }, tpe)))
+}
 
 case class OptionalDynamicCompVar(val guard: Guard) extends CompVar with Optional with Dynamic {
   def and(guard: Guard) = OptionalDynamicCompVar(guard.and(this.guard))
@@ -76,6 +83,10 @@ case class OptionalDynamicCompVar(val guard: Guard) extends CompVar with Optiona
     case OptionalStaticCompVar(g) => OptionalDynamicCompVar(guard.and(g))
     case o: CompVar               => o.and(guard)
   }
+}
+object OptionalDynamicCompVar {
+  def apply(optKeys: List[(String => String, String)]): OptionalDynamicCompVar = OptionalDynamicCompVar(Guard(Nil, optKeys))
+  def equality(tpe: String) = OptionalDynamicCompVar(List(({ v: String => v }, tpe)))
 }
 
 case class RequiredStaticCompVar(val guard: Guard) extends CompVar with Required with Static {
@@ -87,7 +98,10 @@ case class RequiredStaticCompVar(val guard: Guard) extends CompVar with Required
     case o: CompVar                => o.and(guard)
   }
 }
-object DefaultCompVar extends RequiredStaticCompVar(Guard.defaultGuard)
+object RequiredStaticCompVar {
+  def apply(reqKeys: List[(String => String, String)]): RequiredStaticCompVar = RequiredStaticCompVar(Guard(reqKeys, Nil))
+  def equality(tpe: String) = RequiredStaticCompVar(List(({ v: String => v }, tpe)))
+}
 
 case class RequiredDynamicCompVar(val guard: Guard) extends CompVar with Required with Dynamic {
   def and(guard: Guard) = RequiredDynamicCompVar(guard.and(this.guard))
@@ -98,46 +112,9 @@ case class RequiredDynamicCompVar(val guard: Guard) extends CompVar with Require
     case o: CompVar => o.and(guard)
   }
 }
-
-/** This object provides a set of operations to create `Guard` values. */
-object Guard {
-  private val trueTree = "true"
-  private val eqTree = "t1.equals(t2)"
-  private val eqeqTree = "t1 == t2"
-  private val eqeqeqTree = s"$eqTree && $eqeqTree"
-  private val eqeq = new Guard(Nil, false, true) {
-    override def getGuardBody(): String = eqeqTree
-  }
-
-  /** This is the neutral element for guard composition and should not be used otherwise. */
-  val always_true: Guard = new Guard(Nil, false, false) {
-    override def and(other: Guard): Guard = other
-    override def getGuardBody(): String = trueTree
-  }
-
-  /** The default guard compares values based on ==. */
-  val defaultGuard = eqeq
-
-  /** The equals guard compares values based on .equals. */
-  val equals: Guard = new Guard(Nil, true, false) {
-    override def getGuardBody(): String = eqTree
-  }
-
-  /** The == guard compares values based on ==. */
-  def ==(): Guard = eqeq
-
-  /**
-   * A custom guard is defined by code that compares values t1 and t2 of type
-   * Any and produces a Boolean indicating whether they are equivalent
-   * (otherwise the code will be recompiled). As an example, the following
-   * String would be used when only integer parity matters for compilation:
-   * "t1.asInstanceOf[scala.Int] % 2 == t2.asInstanceOf[scala.Int] % 2"
-   */
-  def custom(t1Equivalentt2: String) = new Guard(List(t1Equivalentt2), false, false) {
-    override def and(other: Guard): Guard = other match {
-      case Guard(cust, eq, eqeq) => new Guard(t1Equivalentt2 :: (cust.filter(_ != t1Equivalentt2)), eq, eqeq)
-    }
-  }
+object RequiredDynamicCompVar {
+  def apply(reqKeys: List[(String => String, String)]): RequiredDynamicCompVar = RequiredDynamicCompVar(Guard(reqKeys, Nil))
+  def equality(tpe: String) = RequiredDynamicCompVar(List(({ v: String => v }, tpe)))
 }
 
 /**
@@ -147,32 +124,18 @@ object Guard {
  * equivalent as far as the DSL optimizations are concerned, or whether the
  * program has to be recompiled.
  */
-case class Guard private (custom: List[String], equals: Boolean, equalsEquals: Boolean) {
-
+case class Guard(private val reqKeys: List[(String => String, String)],
+                 private val optKeys: List[(String => String, String)]) {
   /** Composes two guards. */
   def and(other: Guard): Guard = other match {
-    case Guard(cust, eq, eqeq) => new Guard(custom ++ (cust diff custom), equals || eq, equalsEquals || eqeq)
+    case Guard(rk, ok) => new Guard(reqKeys ++ rk, optKeys ++ ok)
+  }
+  override def toString = {
+    val req = getReqKeys.map({ case (fun, tpe) => s"{ v => (" + fun("v") + s"): $tpe }" }).mkString("(", ", ", ")")
+    val opt = getOptKeys.map({ case (fun, tpe) => s"{ v => (" + fun("v") + s"): $tpe }" }).mkString("(", ", ", ")")
+    s"Guard(req: $req, opt: $opt)"
   }
 
-  protected def getGuardBody(): String = {
-    import Guard._
-
-    // We optimize the guard function at compile time to get max performance at runtime
-    val initTree = this match {
-      case Guard(_, false, false) => trueTree
-      case Guard(_, true, false)  => eqTree
-      case Guard(_, false, true)  => eqeqTree
-      case Guard(_, true, true)   => eqeqeqTree
-    }
-    def reduce(exprs: List[String]): String = {
-      exprs.tail.foldRight(exprs.head)((ex: String, tr: String) => s"($ex) && ($tr)")
-    }
-    this match {
-      case Guard(Nil, _, _)          => initTree
-      case Guard(funs, false, false) => reduce(funs)
-      case Guard(funs, _, _)         => reduce(initTree :: funs)
-    }
-  }
-
-  def getGuardFunction(): String = s"(t1: Any, t2: Any) => ($getGuardBody)"
+  lazy val getReqKeys = reqKeys.distinct
+  lazy val getOptKeys = optKeys.distinct diff reqKeys
 }

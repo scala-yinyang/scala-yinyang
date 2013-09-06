@@ -49,6 +49,8 @@ abstract class BasePrintDSL
   }
 
   var compiledCode: () => Any = _
+
+  val mod2GuardKey = List(({ v: String => s"$v % 2 == 0" }, "Boolean"))
 }
 
 /**
@@ -87,8 +89,14 @@ abstract class OptimizedPrintDSL extends BasePrintDSL {
     main()
 
     // Since we want to generate a new version of the print code for each value
-    // we mark the holes encountered in optimizingPrint as DefaultCompVar.
-    List.range(0, symbols.length).map(i => if (compilationHoles.contains(i)) DefaultCompVar else NonCompVar())
+    // we mark the holes encountered in optimizingPrint as default CompVar.
+    symbols.zipWithIndex.map({
+      case (sym, i) =>
+        if (compilationHoles.contains(i))
+          CompVar.equality(sym.typeSignature.toString)
+        else
+          NonCompVar()
+    })
   }
 }
 
@@ -120,7 +128,7 @@ abstract class EvenOddOptimizedPrintDSL extends BasePrintDSL {
         val varType: VarType = compilationHoles.getOrElse(id, NonCompVar())
         // Compose previous type with the new type:
         // required dynamic type with custom guard function.
-        compilationHoles.put(id, RequiredDynamicCompVar(Guard.custom("t1.asInstanceOf[scala.Int] % 2 == t2.asInstanceOf[scala.Int] % 2")).and(varType))
+        compilationHoles.put(id, RequiredDynamicCompVar(mod2GuardKey).and(varType))
       case IntConst(value) =>
         sb.append("scala.Predef.print(\"" + (value % 2 match {
           case 0 => "Even: "
@@ -157,9 +165,7 @@ abstract class EvenOddOptimizedPrintDSL extends BasePrintDSL {
  */
 abstract class StagedPrintDSL extends BasePrintDSL with FullyStaged {}
 
-abstract class ReturningPrintDSL extends BasePrintDSL {
-  val compilationHoles = mutable.Set[scala.Int]()
-
+abstract class ReturningPrintDSL extends OptimizedPrintDSL {
   def returningIncrementedPrint(x: Int): Int = {
     sb.append("scala.Predef.print(\"inc: " + x.toString + " \");\n " + x.toString + " + 1;\n")
     x match {
@@ -170,18 +176,6 @@ abstract class ReturningPrintDSL extends BasePrintDSL {
     // TODO this hack doesn't work for nesting calls, need AST instead of manual emission to buffer,
     // but how to get AST from type-checking main function?
     CodeGeneratingStatement()
-  }
-
-  override def reset(): Unit = {
-    compilationHoles.clear
-    super.reset()
-  }
-
-  override def compilationVars(symbols: List[Symbol]): List[VarType] = {
-    reset()
-    main()
-
-    List.range(0, symbols.length).map(i => if (compilationHoles.contains(i)) DefaultCompVar else NonCompVar())
   }
 }
 
@@ -200,7 +194,7 @@ abstract class VarTypePrintDSL extends BasePrintDSL {
     x match {
       case Hole(tpe, id) =>
         val varType: VarType = compilationHoles.getOrElse(id, NonCompVar())
-        compilationHoles.put(id, RequiredDynamicCompVar(Guard.custom("t1.asInstanceOf[scala.Int] % 2 == t2.asInstanceOf[scala.Int] % 2")).and(varType))
+        compilationHoles.put(id, RequiredDynamicCompVar(mod2GuardKey).and(varType))
       case _ =>
     }
 
@@ -223,7 +217,7 @@ abstract class VarTypePrintDSL extends BasePrintDSL {
     x match {
       case Hole(tpe, id) =>
         val varType: VarType = compilationHoles.getOrElse(id, NonCompVar())
-        compilationHoles.put(id, RequiredStaticCompVar(Guard.defaultGuard).and(varType))
+        compilationHoles.put(id, CompVar.equality("Int").and(varType))
       case _ =>
     }
 
@@ -242,7 +236,7 @@ abstract class VarTypePrintDSL extends BasePrintDSL {
     x match {
       case Hole(tpe, id) =>
         val varType: VarType = compilationHoles.getOrElse(id, NonCompVar())
-        compilationHoles.put(id, OptionalDynamicCompVar(Guard.custom("t1.asInstanceOf[scala.Int] % 2 == t2.asInstanceOf[scala.Int] % 2")).and(varType))
+        compilationHoles.put(id, OptionalDynamicCompVar(mod2GuardKey).and(varType))
       case _ =>
     }
 
@@ -269,7 +263,7 @@ abstract class VarTypePrintDSL extends BasePrintDSL {
     x match {
       case Hole(tpe, id) =>
         val varType: VarType = compilationHoles.getOrElse(id, NonCompVar())
-        compilationHoles.put(id, OptionalStaticCompVar(Guard.defaultGuard).and(varType))
+        compilationHoles.put(id, OptionalStaticCompVar.equality("Int").and(varType))
       case _ =>
     }
 
