@@ -61,13 +61,17 @@ object YYStorageFactory {
 
     def getGuards(guardType: Int): List[(String => String, String, Int)] =
       guards.getOrElse(guardType, Nil).flatMap(l => (l._1 ++ l._2).map(ss => (ss._1, ss._2, l._3)))
+    val onlyReq = getGuards(ONLY_REQ)
+    val mixed = getGuards(MIXED)
+    val onlyOpt = getGuards(ONLY_OPT)
+    val allOpt = mixed ++ onlyOpt
 
     def guardToString(g: (String => String, String, Int)): String = g match {
       case (gfun, tpe, i) => s"{ val v = refs($i).asInstanceOf[" + refSymbols(i).typeSignature + "]; " + gfun("v") + s" }: $tpe"
     }
 
-    // TODO handle opt properly, this should be just getGuards(ONLY_REQ)
-    val lookupReqString = getGuards(ONLY_REQ).grouped(10).toList.zipWithIndex match {
+    // TODO handle opt properly, this should be just onlyReq
+    val lookupReqString = onlyReq.grouped(10).toList.zipWithIndex match {
       case Nil => "val lookupReq = variantCache"
       case list =>
         val reqLookup = list.map({
@@ -82,7 +86,7 @@ object YYStorageFactory {
     """
     }
 
-    val lookupOptString = (getGuards(MIXED) ++ getGuards(ONLY_OPT)).zipWithIndex match {
+    val lookupOptString = allOpt.zipWithIndex match {
       case Nil               => "Some(lookupReq)"
       case (guard, _) :: Nil => s"lookupReq._1.get(${guardToString(guard)}).orElse(lookupReq._2)"
       case guards =>
@@ -101,27 +105,75 @@ object YYStorageFactory {
     """
     }
 
-    val storeString = (getGuards(ONLY_REQ) ++ getGuards(MIXED) ++ getGuards(ONLY_OPT)).zipWithIndex match {
-      case Nil               => ???
-      case (guard, _) :: Nil => s"""variantCache += ((${guardToString(guard)}, variant))"""
-      case list => """val nextMap0 = variantCache
-    variantCache = """ + list.init.foldRight(list.last match {
-        case (guard, hashI) => s"""nextMap${hashI} + ((${guardToString(guard)}, variant))
-    """
-      })({
-        case ((guard, hashI), inner) =>
-          val indent = " " * hashI * 2
-          s"""{
-      ${indent}val H${hashI} = ${guardToString(guard)}
-      ${indent}nextMap${hashI}.get(H${hashI}) match {
-       ${indent}case None => nextMap${hashI} + ((H${hashI}, ${
-            list.drop(hashI + 1).foldRight("variant")({
-              case ((guard, hashI), inner) => s"HashMap((${guardToString(guard)}, $inner))"
-            })
-          }))
-       ${indent}case Some(nextMap${hashI + 1}) => nextMap${hashI} + ((H${hashI}, $inner))}}"""
+    def newPath(forGuardIndex: Int, fromEmptySet: Boolean = false): String = {
+      val optPath = allOpt.zipWithIndex.drop(forGuardIndex - onlyReq.length).foldRight("variant")({
+        case ((guard, hashI), inner) => s"(HashMap((${guardToString(guard)}, $inner)), None)"
+      })
+      val optPathSet =
+        if ((forGuardIndex < onlyReq.length || (fromEmptySet && forGuardIndex == onlyReq.length)) && allOpt.length > 1)
+          s"emptySortedSet + ((0, $optPath))"
+        else
+          optPath
+
+      onlyReq.zipWithIndex.drop(forGuardIndex).foldRight(optPathSet)({
+        case ((guard, hashI), inner) => s"HashMap((${guardToString(guard)}, $inner))"
       })
     }
+
+    val optStoreString = allOpt.zipWithIndex match {
+      case Nil      => "variant"
+      case o :: Nil => s"""(nextMap${onlyReq.length}._1 + ((${guardToString(o._1)}, variant)), nextMap${onlyReq.length}._2)"""
+      case list =>
+        val optStore = list.foldRight("variant")({
+          case ((guard, hashI), inner) =>
+            s"""{
+            val H${hashI} = ${guardToString(guard)}
+            nextOMap${hashI} match { case (hm, opt) => hm.get(H${hashI}) match {
+              case None => (hm + ((H${hashI}, ${newPath(onlyReq.length + hashI + 1)})), opt)
+              case Some(nextOMap${hashI + 1}) => (hm + ((H${hashI}, $inner)), opt)
+            }}
+          }
+      """
+        })
+        s"""
+      nextMap${onlyReq.length}.find(_._1 == nrUnstable) match {
+        case None => nextMap${onlyReq.length} + ((nrUnstable, ${newPath(onlyReq.length)}))
+        case Some((_, nextOMap0)) => nextMap${onlyReq.length} + ((nrUnstable, $optStore))
+      }
+    """
+    }
+
+    val storeString = s"""// onlyReq: $onlyReq, allOpt: $allOpt
+    val nextMap0 = variantCache
+    variantCache = """ + (onlyReq.zipWithIndex match {
+      case Nil => optStoreString
+      case list =>
+        val z = if (allOpt.length > 0) {
+          list.last match {
+            case (guard, hashI) =>
+              val indent = " " * hashI * 2
+              s"""{
+      ${indent}val H${hashI} = ${guardToString(guard)}
+      ${indent}nextMap${hashI}.get(H${hashI}) match {
+       ${indent}case None => nextMap${hashI} + ((H${hashI}, ${newPath(hashI + 1, true)}))
+       ${indent}case Some(nextMap${hashI + 1}) => nextMap${hashI} + ((H${hashI}, $optStoreString))}}"""
+          }
+        } else {
+          list.last match {
+            case (guard, hashI) =>
+              s"nextMap${hashI} + ((${guardToString(guard)}, $optStoreString))\n    "
+          }
+        }
+        list.init.foldRight(z)({
+          case ((guard, hashI), inner) =>
+            val indent = " " * hashI * 2
+            s"""{
+      ${indent}val H${hashI} = ${guardToString(guard)}
+      ${indent}nextMap${hashI}.get(H${hashI}) match {
+       ${indent}case None => nextMap${hashI} + ((H${hashI}, ${newPath(hashI + 1, true)}))
+       ${indent}case Some(nextMap${hashI + 1}) => nextMap${hashI} + ((H${hashI}, $inner))}}"""
+        })
+    })
 
     val theCache = s"""
 new ch.epfl.yinyang.runtime.YYCache() {
@@ -150,6 +202,7 @@ new ch.epfl.yinyang.runtime.YYCache() {
   @inline
   private def createAndStoreVariant(refs: Array[Any]): ProgramVariant = {
     val variant = ProgramVariant(recompile(refs, Set()))
+    val nrUnstable = 0
     $storeString
     variant
   }
