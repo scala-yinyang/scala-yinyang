@@ -49,13 +49,13 @@ object YYStorageFactory {
         case (Nil, o :: Nil) => (s"(Map[$o, ProgramVariant], Option[ProgramVariant])", "(HashMap(), None)", "")
         case (Nil, opt) =>
           val optTpe = getMixedOptType(opt)
-          (optTpe, "emptySortedSet", s"val emptySortedSet = $optTpe()(Ordering.by(_._1))\n  ")
+          (optTpe, "emptySortedSet", s"private val emptySortedSet = $optTpe()(Ordering.by(_._1))\n  ")
         case (req, o :: Nil) =>
           val optTpe = s"(Map[$o, ProgramVariant], Option[ProgramVariant])"
           (getHashMapsType(req, optTpe), "HashMap()", "")
         case (req, opt) =>
           val optTpe = getMixedOptType(opt)
-          (getHashMapsType(req, optTpe), "HashMap()", s"val emptySortedSet = $optTpe()(Ordering.by(_._1))\n  ")
+          (getHashMapsType(req, optTpe), "HashMap()", s"private val emptySortedSet = $optTpe()(Ordering.by(_._1))\n  ")
       }
     val variantCacheDecl = s"${variantCachePrefix}private var variantCache: $variantCacheType = $variantCacheInit"
 
@@ -70,7 +70,6 @@ object YYStorageFactory {
       case (gfun, tpe, i) => s"{ val v = refs($i).asInstanceOf[" + refSymbols(i).typeSignature + "]; " + gfun("v") + s" }: $tpe"
     }
 
-    // TODO handle opt properly, this should be just onlyReq
     val lookupReqString = onlyReq.grouped(10).toList.zipWithIndex match {
       case Nil => "val lookupReq = variantCache"
       case list =>
@@ -91,7 +90,7 @@ object YYStorageFactory {
       case (guard, _) :: Nil => s"lookupReq._1.get(${guardToString(guard)}).orElse(lookupReq._2)"
       case guards =>
         val optLookup = guards.init.foldRight(
-          s"""val p = map.get(${guardToString(guards.last._1)}).orElse(option); if (!p.isEmpty) return p
+          s"""val p = map.get(${guardToString(guards.last._1)}).orElse(option); if (!p.isEmpty) { p.get.unsafeCounter += 1; return p }
       """)({
             case ((guard, i), inner) =>
               val indent = " " * i * 2
@@ -120,6 +119,91 @@ object YYStorageFactory {
       })
     }
 
+    val optCountReset = allOpt.zipWithIndex.map({ case (guard, i) => (guard, i + onlyReq.length) })
+      .foldRight({
+        val i = onlyReq.length + allOpt.length;
+        val indent = " " * i * 2
+        s"""variantCount += 1
+      ${indent}if (next${i}.unsafeCounter < minCount) { 
+        ${indent}hashes.copyToArray(minHashes); minCount = next${i}.unsafeCounter; next${i}.unsafeCounter = 0; minSet = set
+      ${indent}}"""
+      })({
+        case ((guard, hashI), inner) =>
+          val indent = " " * hashI * 2
+          s"""
+      ${indent}(next${hashI}._2 match { 
+      ${indent}  case Some(ohm) => (null, ohm) :: next${hashI}._1.toList
+      ${indent}  case None => next${hashI}._1.toList
+      ${indent}}).foreach({ case (hash, next${hashI + 1}) => hashes($hashI) = hash; $inner})
+      """
+      })
+    val optCountResetString =
+      if (allOpt.length > 1) s"""next${onlyReq.length}.foreach({ case (i, next${onlyReq.length}) => set = i; $optCountReset })"""
+      else optCountReset
+
+    val reqCountResetString = onlyReq.zipWithIndex.foldRight(optCountResetString)({
+      case ((guard, hashI), inner) =>
+        val indent = " " * hashI * 2
+        s"""${indent}next${hashI}.foreach({ case (hash, next${hashI + 1}) => hashes($hashI) = hash; 
+     ${indent}$inner })"""
+
+    })
+
+    val countResetString = s"""var minCount = Int.MaxValue
+    var variantCount = 0
+    val minHashes = new Array[Any](${onlyReq.length + allOpt.length})
+    var minSet = 0
+    val hashes = new Array[Any](${onlyReq.length + allOpt.length})
+    var set = 0
+    val next0 = variantCache
+    $reqCountResetString
+    """
+
+    val optEvict = (getTypes(MIXED) ++ getTypes(ONLY_OPT)).zipWithIndex
+      .map({ case (tpe, i) => (tpe, i + onlyReq.length) }).foldRight("None: Option[ProgramVariant]")({
+        case ((tpe, i), inner) =>
+          s"""next$i match {
+          case (hm, o) if (hm.size == 0) => assert(!o.isEmpty && minHashes($i) == null); None
+          case (hm, Some(_)) if (minHashes($i) == null && hm.size == 0) => None
+          case (hm, Some(_)) if (minHashes($i) == null) => Some((hm, None))
+          case (hm, opt) => hm.get(minHashes($i).asInstanceOf[$tpe]) match { case None => assert(false); None
+            case Some(next${i + 1}) => val inner = $inner
+              if (inner.isEmpty) Some((hm - minHashes($i).asInstanceOf[$tpe], opt))
+              else Some((hm + ((minHashes($i).asInstanceOf[$tpe], inner.get)), opt))
+          }
+        }"""
+      })
+
+    val optEvictString =
+      if (allOpt.length > 1) s"""{
+      val prev = next${onlyReq.length}.find(_._1 == minSet)
+      prev.map({ case (_, next${onlyReq.length}) => $optEvict }) match {
+        case None if (next${onlyReq.length}.size == 1) => None
+        case None => Some(next${onlyReq.length} - prev.get)
+        case Some(innerOHM) => Some(next${onlyReq.length} + ((minSet, innerOHM.get)))
+      }}"""
+      else optEvict
+
+    val reqEvictString = getTypes(ONLY_REQ).zipWithIndex.foldRight(optEvictString)({
+      case ((tpe, i), inner) =>
+        s"""next$i.get(minHashes($i).asInstanceOf[$tpe]) match { case None => assert(false); None
+          case Some(next${i + 1}) => val inner = $inner
+            inner match {
+              case None if (next$i.size == 1) => None
+              case None => Some(next$i - (minHashes($i).asInstanceOf[$tpe]))
+              case Some(innerHM) => Some(next$i + ((minHashes($i).asInstanceOf[$tpe], innerHM)))
+            }
+        }"""
+    })
+
+    val evictString = s"""val evictedCache = if(variantCount >= $codeCacheSize) {
+      val next0 = variantCache
+      ($reqEvictString).get
+    } else {
+      variantCache
+    }
+    """
+
     val optStoreString = allOpt.zipWithIndex match {
       case Nil      => "variant"
       case o :: Nil => s"""(nextMap${onlyReq.length}._1 + ((${guardToString(o._1)}, variant)), nextMap${onlyReq.length}._2)"""
@@ -143,8 +227,7 @@ object YYStorageFactory {
     """
     }
 
-    val storeString = s"""// onlyReq: $onlyReq, allOpt: $allOpt
-    val nextMap0 = variantCache
+    val storeString = s"""val nextMap0 = evictedCache
     variantCache = """ + (onlyReq.zipWithIndex match {
       case Nil => optStoreString
       case list =>
@@ -179,7 +262,7 @@ object YYStorageFactory {
 new ch.epfl.yinyang.runtime.YYCache() {
   import scala.collection.immutable.{ HashMap, SortedSet }
 
-  final private case class ProgramVariant(val function: $functionType)
+  final private case class ProgramVariant(function: $functionType, var unsafeCounter: Int)
 
   private val classInstance: $className = new $className()
   
@@ -194,15 +277,29 @@ new ch.epfl.yinyang.runtime.YYCache() {
 
   @inline
   private def lookup(refs: Array[Any]): Option[ProgramVariant] = {
+
+    // Lookup all required variables in their HashMaps
     $lookupReqString
+
+    // Traverse mixed and optional variables ordered by increasing number of
+    // unstable variables per variant
     $lookupOptString
   }
 
-// TODO unstableSet, store
   @inline
   private def createAndStoreVariant(refs: Array[Any]): ProgramVariant = {
-    val variant = ProgramVariant(recompile(refs, Set()))
+    val variant = ProgramVariant(recompile(refs, Set()), 0)
     val nrUnstable = 0
+
+    // Find least frequently used variant and reset all counters
+    $countResetString
+
+    // If cache capacity is reached, evict the least frequently used variant
+    $evictString
+
+    // Store the new variant. Guards: 
+    // onlyReq: ${onlyReq.map(guardToString(_))}
+    // allOpt: ${allOpt.map(guardToString(_))}
     $storeString
     variant
   }
@@ -219,6 +316,205 @@ new ch.epfl.yinyang.runtime.YYCache() {
 $theCache
 =======""")
     theCache
+  }
+
+  class generated$dslprintVarTypePrintDSL1 {
+    var captured$l = 0
+    var captured$m = 0
+    var captured$n = 0
+    def compile[T, U](unstableSet: Set[Int]): (scala.Any, scala.Any, scala.Any) => Unit = null
+  }
+
+  val cache = new ch.epfl.yinyang.runtime.YYCache() {
+    import scala.collection.immutable.{ HashMap, SortedSet }
+
+    final private case class ProgramVariant(function: (scala.Any, scala.Any, scala.Any) => Unit, var unsafeCounter: Int)
+
+    private val classInstance: generated$dslprintVarTypePrintDSL1 = new generated$dslprintVarTypePrintDSL1()
+
+    @inline
+    private def recompile(refs: Array[Any], unstableSet: scala.collection.immutable.Set[scala.Int]): (scala.Any, scala.Any, scala.Any) => Unit = {
+      ch.epfl.yinyang.runtime.YYStorage.incrementRuntimeCompileCount()
+      classInstance.captured$l = refs(0).asInstanceOf[Int]
+      classInstance.captured$m = refs(1).asInstanceOf[Int]
+      classInstance.captured$n = refs(2).asInstanceOf[Int]
+      classInstance.compile[Unit, (scala.Any, scala.Any, scala.Any) => Unit](unstableSet)
+    }
+
+    private val emptySortedSet = SortedSet[(Int, (Map[Boolean, (Map[Int, (Map[Int, ProgramVariant], Option[ProgramVariant])], Option[(Map[Int, ProgramVariant], Option[ProgramVariant])])], Option[(Map[Int, (Map[Int, ProgramVariant], Option[ProgramVariant])], Option[(Map[Int, ProgramVariant], Option[ProgramVariant])])]))]()(Ordering.by(_._1))
+    private var variantCache: Map[Boolean, SortedSet[(Int, (Map[Boolean, (Map[Int, (Map[Int, ProgramVariant], Option[ProgramVariant])], Option[(Map[Int, ProgramVariant], Option[ProgramVariant])])], Option[(Map[Int, (Map[Int, ProgramVariant], Option[ProgramVariant])], Option[(Map[Int, ProgramVariant], Option[ProgramVariant])])]))]] = HashMap()
+
+    @inline
+    private def lookup(refs: Array[Any]): Option[ProgramVariant] = {
+      val lookup0 = Some(variantCache)
+      val lookup1 = lookup0
+        .flatMap(_.get({ val v = refs(0).asInstanceOf[Int]; v % 2 == 0 }: Boolean))
+      if (lookup1.isEmpty) return None
+      val lookupReq = lookup1.get
+
+      lookupReq.foreach({
+        case (_, (map, option)) =>
+          List(map.get({ val v = refs(1).asInstanceOf[Int]; v % 2 == 0 }: Boolean), option).collect({
+            case Some((map, option)) =>
+              List(map.get({ val v = refs(1).asInstanceOf[Int]; v }: Int), option).collect({
+                case Some((map, option)) =>
+                  val p = map.get({ val v = refs(2).asInstanceOf[Int]; v }: Int).orElse(option); if (!p.isEmpty) { p.get.unsafeCounter += 1; return p }
+              })
+          })
+      })
+      None
+
+    }
+
+    // TODO unstableSet, store
+    @inline
+    private def createAndStoreVariant(refs: Array[Any]): ProgramVariant = {
+      val variant = ProgramVariant(recompile(refs, Set()), 0)
+      val nrUnstable = 0
+
+      var minCount = Int.MaxValue
+      var variantCount = 0
+      val minHashes = new Array[Any](4)
+      var minSet = 0
+      val hashes = new Array[Any](4)
+      var set = 0
+      val next0 = variantCache
+      next0.foreach({
+        case (hash, next1) =>
+          hashes(0) = hash;
+          next1.foreach({
+            case (i, next1) =>
+              set = i;
+              (next1._2 match {
+                case Some(ohm) => (null, ohm) :: next1._1.toList
+                case None      => next1._1.toList
+              }).foreach({
+                case (hash, next2) =>
+                  hashes(1) = hash;
+                  (next2._2 match {
+                    case Some(ohm) => (null, ohm) :: next2._1.toList
+                    case None      => next2._1.toList
+                  }).foreach({
+                    case (hash, next3) =>
+                      hashes(2) = hash;
+                      (next3._2 match {
+                        case Some(ohm) => (null, ohm) :: next3._1.toList
+                        case None      => next3._1.toList
+                      }).foreach({
+                        case (hash, next4) =>
+                          hashes(3) = hash; variantCount += 1
+                          if (next4.unsafeCounter < minCount) {
+                            hashes.copyToArray(minHashes); minCount = next4.unsafeCounter; next4.unsafeCounter = 0; minSet = set
+                          }
+                      })
+                  })
+              })
+          })
+      })
+
+      val evictedCache = if (variantCount >= 3) {
+        val next0 = variantCache
+        (next0.get(minHashes(0).asInstanceOf[Boolean]) match {
+          case None => assert(false); None
+          case Some(next1) =>
+            val inner = {
+              val prev = next1.find(_._1 == minSet)
+              prev.map({
+                case (_, next1) => next1 match {
+                  case (hm, o) if (hm.size == 0)                               => assert(!o.isEmpty && minHashes(1) == null); None
+                  case (hm, Some(_)) if (minHashes(1) == null && hm.size == 0) => None
+                  case (hm, Some(_)) if (minHashes(1) == null)                 => Some((hm, None))
+                  case (hm, opt) => hm.get(minHashes(1).asInstanceOf[Boolean]) match {
+                    case None => assert(false); None
+                    case Some(next2) =>
+                      val inner = next2 match {
+                        case (hm, o) if (hm.size == 0)                               => assert(!o.isEmpty && minHashes(2) == null); None
+                        case (hm, Some(_)) if (minHashes(2) == null && hm.size == 0) => None
+                        case (hm, Some(_)) if (minHashes(2) == null)                 => Some((hm, None))
+                        case (hm, opt) => hm.get(minHashes(2).asInstanceOf[Int]) match {
+                          case None => assert(false); None
+                          case Some(next3) =>
+                            val inner = next3 match {
+                              case (hm, o) if (hm.size == 0)                               => assert(!o.isEmpty && minHashes(3) == null); None
+                              case (hm, Some(_)) if (minHashes(3) == null && hm.size == 0) => None
+                              case (hm, Some(_)) if (minHashes(3) == null)                 => Some((hm, None))
+                              case (hm, opt) => hm.get(minHashes(3).asInstanceOf[Int]) match {
+                                case None => assert(false); None
+                                case Some(next4) =>
+                                  val inner = None: Option[ProgramVariant]
+                                  if (inner.isEmpty) Some((hm - minHashes(3).asInstanceOf[Int], opt))
+                                  else Some((hm + ((minHashes(3).asInstanceOf[Int], inner.get)), opt))
+                              }
+                            }
+                            if (inner.isEmpty) Some((hm - minHashes(2).asInstanceOf[Int], opt))
+                            else Some((hm + ((minHashes(2).asInstanceOf[Int], inner.get)), opt))
+                        }
+                      }
+                      if (inner.isEmpty) Some((hm - minHashes(1).asInstanceOf[Boolean], opt))
+                      else Some((hm + ((minHashes(1).asInstanceOf[Boolean], inner.get)), opt))
+                  }
+                }
+              }) match {
+                case None if (next1.size == 1) => None
+                case None                      => Some(next1 - prev.get)
+                case Some(innerOHM)            => Some(next1 + ((minSet, innerOHM.get)))
+              }
+            }
+            inner match {
+              case None if (next0.size == 1) => None
+              case None                      => Some(next0 - (minHashes(0).asInstanceOf[Boolean]))
+              case Some(innerHM)             => Some(next0 + ((minHashes(0).asInstanceOf[Boolean], innerHM)))
+            }
+        }).get
+      } else {
+        variantCache
+      }
+
+      // onlyReq: List((<function1>,Boolean,0)), allOpt: List((<function1>,Boolean,1), (<function1>,Int,1), (<function1>,Int,2))
+      val nextMap0 = evictedCache
+      variantCache = {
+        val H0 = { val v = refs(0).asInstanceOf[Int]; v % 2 == 0 }: Boolean
+        nextMap0.get(H0) match {
+          case None => nextMap0 + ((H0, emptySortedSet + ((0, (HashMap(({ val v = refs(1).asInstanceOf[Int]; v % 2 == 0 }: Boolean, (HashMap(({ val v = refs(1).asInstanceOf[Int]; v }: Int, (HashMap(({ val v = refs(2).asInstanceOf[Int]; v }: Int, variant)), None))), None))), None)))))
+          case Some(nextMap1) => nextMap0 + ((H0,
+            nextMap1.find(_._1 == nrUnstable) match {
+              case None => nextMap1 + ((nrUnstable, (HashMap(({ val v = refs(1).asInstanceOf[Int]; v % 2 == 0 }: Boolean, (HashMap(({ val v = refs(1).asInstanceOf[Int]; v }: Int, (HashMap(({ val v = refs(2).asInstanceOf[Int]; v }: Int, variant)), None))), None))), None)))
+              case Some((_, nextOMap0)) => nextMap1 + ((nrUnstable, {
+                val H0 = { val v = refs(1).asInstanceOf[Int]; v % 2 == 0 }: Boolean
+                nextOMap0 match {
+                  case (hm, opt) => hm.get(H0) match {
+                    case None => (hm + ((H0, (HashMap(({ val v = refs(1).asInstanceOf[Int]; v }: Int, (HashMap(({ val v = refs(2).asInstanceOf[Int]; v }: Int, variant)), None))), None))), opt)
+                    case Some(nextOMap1) => (hm + ((H0, {
+                      val H1 = { val v = refs(1).asInstanceOf[Int]; v }: Int
+                      nextOMap1 match {
+                        case (hm, opt) => hm.get(H1) match {
+                          case None => (hm + ((H1, (HashMap(({ val v = refs(2).asInstanceOf[Int]; v }: Int, variant)), None))), opt)
+                          case Some(nextOMap2) => (hm + ((H1, {
+                            val H2 = { val v = refs(2).asInstanceOf[Int]; v }: Int
+                            nextOMap2 match {
+                              case (hm, opt) => hm.get(H2) match {
+                                case None            => (hm + ((H2, variant)), opt)
+                                case Some(nextOMap3) => (hm + ((H2, variant)), opt)
+                              }
+                            }
+                          })), opt)
+                        }
+                      }
+                    })), opt)
+                  }
+                }
+              }))
+            }))
+        }
+      }
+      variant
+    }
+
+    @inline
+    override def guardedLookup[FunctionT](refs: Array[Any]): FunctionT = {
+      lookup(refs).getOrElse(createAndStoreVariant(refs)).function.asInstanceOf[FunctionT]
+    }
+
   }
 }
 
