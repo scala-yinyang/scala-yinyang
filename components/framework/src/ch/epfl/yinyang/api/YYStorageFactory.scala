@@ -7,6 +7,8 @@ object YYStorageFactory {
                          optionalHoleIds: String, optionalInitiallyStable: Boolean, codeCacheSize: Int,
                          minimumCountToStabilize: Int, refSymbols: List[reflect.runtime.universe.Symbol]): String = {
 
+    val indent = "      "
+
     val capturedUpdate = refSymbols.zipWithIndex.map({
       case (sym, index) => // TODO can we get rid of this asInstanceOf?
         "classInstance.captured$" + sym.name.decoded + " = refs(" + index + ").asInstanceOf[" + sym.typeSignature + "]"
@@ -33,6 +35,7 @@ object YYStorageFactory {
     val mixed = getGuards(MIXED)
     val onlyOpt = getGuards(ONLY_OPT)
     val allOpt = mixed ++ onlyOpt
+    val hasOpt = allOpt.length > 0
 
     def getTypes(guardType: Int): List[String] = {
       guards.getOrElse(guardType, Nil).flatMap(l => (l._1 ++ l._2).map(_._2))
@@ -69,10 +72,38 @@ object YYStorageFactory {
     }
     val variantCacheDecl = s"${variantCachePrefix}private var variantCache: $variantCacheType = $variantCacheInit"
 
-    val AllOptCounterDecl =
-      (getTypes(MIXED) ++ getTypes(ONLY_OPT)).zipWithIndex.map({ case (tpe, i) => (tpe, i + onlyReq.length) })
-        .map({ case (tpe, i) => s"var g$i: ($tpe, Int)" })
-        .mkString("final private class AllOptCounters(", ", ", ") {}")
+    val AllOptCounterDecl = """@inline
+  final private def isUnstable(count: Int) = count > 0
+  private val STABLE_COUNT = -1
+  private val UNSTABLE_COUNT = 1
+  """ + (getTypes(MIXED) ++ getTypes(ONLY_OPT)).zipWithIndex.map({ case (tpe, i) => (tpe, i + onlyReq.length) })
+      .map({ case (tpe, i) => s"var g$i: ($tpe, Int)" })
+      .mkString("final private class AllOptCounters(", ", ", ") {}") + """
+  private var headVariant: (ProgramVariant, AllOptCounters) = null"""
+
+    val updateCtsString = {
+      val newCtr = List.range(onlyReq.length, onlyReq.length + allOpt.length)
+        .map(i => s"g$i = (hash$i, if (unstable$i) UNSTABLE_COUNT else STABLE_COUNT)").mkString(", ")
+      val incrementCtr = List.range(onlyReq.length, onlyReq.length + allOpt.length)
+        .map(i => s"oldCounts.g$i = oldCounts.g$i match { case (hash, count) if (hash == hash$i && isUnstable(count)) => (hash$i, count + 1);" +
+          s" case (_, count) if isUnstable(count) => (hash$i, UNSTABLE_COUNT); case stable => stable }")
+        .mkString(s"\n${indent}    ")
+      val updatedCtr = List.range(onlyReq.length, onlyReq.length + allOpt.length)
+        .map(i => s"g$i = (hash$i, if (!unstable$i) STABLE_COUNT else oldCounts.g$i match { " +
+          s"case (hash, count) if (hash == hash$i && isUnstable(count)) => count + 1; case _ => UNSTABLE_COUNT } )")
+        .mkString("new AllOptCounters(", ", ", ")")
+
+      s"""@inline def updateCts(variant: ProgramVariant): ProgramVariant = {
+${indent}variant.unsafeCounter += 1
+${indent}headVariant match {
+${indent}  case null => headVariant = (variant, new AllOptCounters($newCtr))
+${indent}  case (sameVariant, oldCounts) if (variant == sameVariant) => 
+${indent}    $incrementCtr
+${indent}  case (oldVariant, oldCounts) => headVariant = (variant, $updatedCtr)
+${indent}}
+${indent}variant
+    }"""
+    }
 
     def guardToString(g: (String => String, String, Int)): String = g match {
       case (gfun, tpe, i) => s"{ val v = refs($i).asInstanceOf[" + refSymbols(i).typeSignature + "]; " + gfun("v") + s" }: $tpe"
@@ -82,8 +113,6 @@ object YYStorageFactory {
       .map({ case (value, i) => s"""val hash$i = $value""" }).mkString("\n    ") + "\n    " +
       allOpt.zipWithIndex.map({ case (g, i) => (guardToString(g), i + onlyReq.length) })
       .map({ case (value, i) => s"""val hash$i = $value; var unstable$i = false""" }).mkString("\n    ")
-
-    var indent = "      "
 
     val lookupReqString = List.range(0, onlyReq.length).grouped(10).toList.zipWithIndex match {
       case Nil => "val lookupReq = variantCache"
@@ -123,29 +152,28 @@ ${indent}})
 ${indent}None"""
     }
 
-    val variantCtrUpdate = """variant => {
-${indent}variant.unsafeCounter += 1
-${indent}
-      }"""
+    val optRefs = allOpt.map(_._3)
 
-    val unstableSet =
-      List.range(onlyReq.length, onlyReq.length + allOpt.length).map("unstable" + _ + " = false").mkString("", s"\n${indent}", s"\n${indent}") +
-        "val (unstableSet, nrUnstable) = " + (if (optionalInitiallyStable || allOpt.length == 0) {
-          "(Set[Int](), 0)"
-        } else {
-          val set = (guards.getOrElse(MIXED, Nil) ++ guards.getOrElse(ONLY_OPT, Nil)).map(_._3).distinct
-          val setStr = List.range(onlyReq.length, onlyReq.length + allOpt.length).map("unstable" + _ + " = true")
-            .mkString("", s"\n${indent}  ", s"\n${indent}  ") + set.mkString("(Set[Int](", ", ", "), " + set.length + s")")
-          s"""if (headVariant == null) {
-${indent}  $setStr
-${indent}}
-${indent}else (Set[Int](), 0)"""
-        })
-
-    if (optionalInitiallyStable) "(Set[Int](), 0)" else {
-      val set = (guards.getOrElse(MIXED, Nil) ++ guards.getOrElse(ONLY_OPT, Nil)).map(_._3).distinct
-      set.mkString("(Set[Int](", ", ", "), " + set.length + ")")
-    }
+    val unstableSet = (if (!hasOpt) "val unstableSet = Set[Int]()"
+    else
+      s"val unstableSet = if (headVariant == null) {\n${indent}  " +
+        (if (optionalInitiallyStable)
+          List.range(onlyReq.length, onlyReq.length + allOpt.length)
+          .map("unstable" + _ + " = false").mkString("", s"\n${indent}  ", s"\n${indent}  ") + "Set[Int]()"
+        else {
+          List.range(onlyReq.length, onlyReq.length + allOpt.length).map("unstable" + _ + " = true")
+            .mkString("", s"\n${indent}  ", s"\n${indent}  ") + optRefs.distinct.mkString("Set[Int](", ", ", ")")
+        }) + s"""
+${indent}} else {
+${indent}  val prefCounts = headVariant._2
+${indent}  val builder = Set.newBuilder[Int]""" +
+        List.range(onlyReq.length, onlyReq.length + allOpt.length).map(i => s"""
+${indent}  prefCounts.g$i match {
+${indent}    case (hash, count) if (hash == hash$i && (count == STABLE_COUNT || count > $minimumCountToStabilize)) => unstable$i = false
+${indent}    case _ => unstable$i = true; builder += ${optRefs(i - onlyReq.length)}
+${indent}  }""").mkString + s"""
+${indent}  builder.result
+${indent}}""")
 
     def newPath(forGuardIndex: Int, fromEmptySet: Boolean = false): String = {
       val optPath = List.range(Math.max(onlyReq.length, forGuardIndex), onlyReq.length + allOpt.length).foldRight("variant")({
@@ -288,6 +316,12 @@ ${ind}case Some(nextMap${hashI + 1}: ${getCacheType(hashI + 1)}) => nextMap${has
 
     val theCache = s"""
 new ch.epfl.yinyang.runtime.YYCache() {
+
+  // Guards: 
+  // onlyReq: ${onlyReq.map(guardToString(_))}
+  // mixed: ${mixed.map(guardToString(_))}
+  // onlyOpt: ${onlyOpt.map(guardToString(_))}
+
   import scala.collection.immutable.{ HashMap, SortedSet, Set }
 
   final private case class ProgramVariant(function: $functionType, var unsafeCounter: Int)
@@ -301,9 +335,8 @@ new ch.epfl.yinyang.runtime.YYCache() {
     classInstance.compile[$retType, $functionType](unstableSet)
   }
 
-  $AllOptCounterDecl
+  ${if (hasOpt) AllOptCounterDecl else ""}
 
-  private val headVariant: (ProgramVariant, AllOptCounters) = null
   $variantCacheDecl
 
   @inline
@@ -322,9 +355,12 @@ new ch.epfl.yinyang.runtime.YYCache() {
       $lookupOptString
     }
 
+    ${if (hasOpt) updateCtsString else ""}
+    
     @inline
     def createAndStoreVariant(refs: Array[Any]): ProgramVariant = {
       $unstableSet
+      val nrUnstable = unstableSet.size
 
       val variant = ProgramVariant(recompile(refs, unstableSet), 0)
 
@@ -334,21 +370,16 @@ new ch.epfl.yinyang.runtime.YYCache() {
       // If cache capacity is reached, evict the least frequently used variant
       $evictString
 
-      // Store the new variant. Guards: 
-      // onlyReq: ${onlyReq.map(guardToString(_))}
-      // allOpt: ${allOpt.map(guardToString(_))}
+      // Store the new variant
       $storeString
       variant
     }
-    lookup(refs).getOrElse(createAndStoreVariant(refs)).function.asInstanceOf[FunctionT]
+
+    val variant = lookup(refs).getOrElse(createAndStoreVariant(refs))
+    ${if (hasOpt) "updateCts(variant)" else ""}
+    variant.function.asInstanceOf[FunctionT]
   }
 }"""
-
-    println(s"""=========
-      $theCache
-=======""")
     theCache
   }
-
-  val cache = null
 }
