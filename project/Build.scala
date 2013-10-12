@@ -26,7 +26,6 @@ object YinYangBuild extends Build {
   )
 
   lazy val defaults = scalaSettings ++ formatSettings ++ Seq(
-    resolvers in ThisBuild += ScalaToolsSnapshots,
     resolvers +=  "OSSH" at "https://oss.sonatype.org/content/groups/public",
     resolvers += Resolver.sonatypeRepo("snapshots"),
 
@@ -48,8 +47,6 @@ object YinYangBuild extends Build {
       "junit" % "junit" % "4.8.1" % "test" // we need JUnit explicitly
     )),
 
-    // add the macro paradise compiler plugin
-    addCompilerPlugin("org.scala-lang.plugins" % "macro-paradise_2.10.2" % "2.0.0-SNAPSHOT"),
 
     // add scalac options (verbose deprecation warnings)
     scalacOptions ++= Seq("-deprecation", "-feature"),
@@ -59,8 +56,13 @@ object YinYangBuild extends Build {
     organization := "ch.epfl.lamp"
   )
 
-  lazy val _yinyang        = Project(id = "root",                     base = file("."), settings = Project.defaultSettings ++ Seq(publishArtifact := false)) aggregate (framework, vector_dsl, vector_dsl_test)
-  lazy val framework       = Project(id = "yinyang",                  base = file("components/framework"), settings = defaults ++ Seq(name := "yinyang"))
-  lazy val vector_dsl      = Project(id = "yinyang-vector-dsl",       base = file("components/dsls/vector"), settings = defaults) dependsOn(framework)
-  lazy val vector_dsl_test = Project(id = "yinyang-vector-dsl-test",  base = file("components/dsls/vector-test"), settings = defaults) dependsOn(framework, vector_dsl)
+  // add the macro paradise compiler plugin
+  lazy val paradise = Seq(addCompilerPlugin("org.scala-lang.plugins" % "macro-paradise_2.10.3" % "2.0.0-SNAPSHOT"))
+
+  lazy val _yinyang        = Project(id = "root",                      base = file("."), settings = Project.defaultSettings ++ Seq(publishArtifact := false)) aggregate (yinyang, yy_core, yy_paradise, vector_dsl, vector_dsl_test)
+  lazy val yy_core         = Project(id = "yy-core",                   base = file("components/core"), settings = defaults ++ Seq(name := "yy-core"))
+  lazy val yy_paradise     = Project(id = "yy-paradise",               base = file("components/paradise"), settings = defaults ++ paradise ++ Seq(name := "yy-paradise")) dependsOn(yy_core)
+  lazy val yinyang         = Project(id = "yin-yang",                  base = file("components/yin-yang"), settings = defaults ++ Seq(name := "yin-yang")) dependsOn(yy_core)
+  lazy val vector_dsl      = Project(id = "yy-vector-dsl",             base = file("components/dsls/vector"), settings = defaults) dependsOn(yinyang)
+  lazy val vector_dsl_test = Project(id = "yy-vector-dsl-test",        base = file("components/dsls/vector-test"), settings = defaults) dependsOn(yinyang, vector_dsl)
 }

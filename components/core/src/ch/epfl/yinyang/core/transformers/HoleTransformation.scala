@@ -17,7 +17,7 @@ import scala.collection.mutable.ArrayBuffer
  *   - no parameter methods (TODO)
  *   - no parameter functions (TODO)
  */
-trait HoleTransformation extends MacroModule with TransformationUtils with YYConfig {
+trait HoleTransformation extends MacroModule with TransformationUtils {
 
   def holeMethod: String
 
