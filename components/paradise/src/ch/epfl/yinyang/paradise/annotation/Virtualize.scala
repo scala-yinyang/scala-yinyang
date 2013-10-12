@@ -28,9 +28,18 @@ private object virtualize {
      */
     val inputs = annottees.map(_.tree).toList
     val (annottee, rest) = inputs match {
-      case (_: ValDef | _: TypeDef) :: as => (None, as)
-      case a :: as                        => (Some(a), as)
-      case Nil                            => (None, Nil)
+      case (a: ValDef) :: as => {
+        c.warning(c.enclosingPosition,
+          "virtualization of parameters is not supported.")
+        (None, inputs)
+      }
+      case (a: TypeDef) :: as => {
+        c.warning(c.enclosingPosition,
+          "virtualization of type parameters is not supported.")
+        (None, inputs)
+      }
+      case a :: as => (Some(a), as)
+      case Nil     => (None, Nil)
     }
 
     /* Virtualize the annottee. */
@@ -39,7 +48,7 @@ private object virtualize {
       case None    => rest
     }
 
-    c.Expr[Any](Block(expandees, Literal(Constant(()))))
+    c.Expr(Block(expandees, Literal(Constant(()))))
   }
 
   private final class Virtualizer[C <: Context](val c: C)

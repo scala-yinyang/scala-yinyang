@@ -49,7 +49,7 @@ object YinYangBuild extends Build {
 
 
     // add scalac options (verbose deprecation warnings)
-    scalacOptions += "-deprecation",
+    scalacOptions ++= Seq("-deprecation", "-feature"),
 
     // testing
     parallelExecution in Test := false,
