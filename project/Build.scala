@@ -62,7 +62,7 @@ object YinYangBuild extends Build {
   lazy val _yinyang        = Project(id = "root",                      base = file("."), settings = Project.defaultSettings ++ Seq(publishArtifact := false)) aggregate (yinyang, yy_core, yy_paradise, vector_dsl, vector_dsl_test)
   lazy val yy_core         = Project(id = "yy-core",                   base = file("components/core"), settings = defaults ++ Seq(name := "yy-core"))
   lazy val yy_paradise     = Project(id = "yy-paradise",               base = file("components/paradise"), settings = defaults ++ paradise ++ Seq(name := "yy-paradise")) dependsOn(yy_core)
-  lazy val yinyang         = Project(id = "yin-yang",                  base = file("components/yin-yang"), settings = defaults ++ Seq(name := "yin-yang")) dependsOn(yy_core)
+  lazy val yinyang         = Project(id = "yin-yang",                  base = file("components/yin-yang"), settings = defaults ++ paradise ++ Seq(name := "yin-yang")) dependsOn(yy_core)
   lazy val vector_dsl      = Project(id = "yy-vector-dsl",             base = file("components/dsls/vector"), settings = defaults) dependsOn(yinyang)
   lazy val vector_dsl_test = Project(id = "yy-vector-dsl-test",        base = file("components/dsls/vector-test"), settings = defaults) dependsOn(yinyang, vector_dsl)
 }
