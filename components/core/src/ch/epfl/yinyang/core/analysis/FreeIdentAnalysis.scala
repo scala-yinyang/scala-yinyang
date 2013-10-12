@@ -14,7 +14,7 @@ import mutable.{ ListBuffer, HashMap }
  * TODO either here or at hole transformer support the fields and methods without params.
  *
  */
-trait FreeIdentAnalysis extends MacroModule with TransformationUtils with YYConfig {
+trait FreeIdentAnalysis extends MacroModule with TransformationUtils {
   import c.universe._
 
   // Symbol tracking.
