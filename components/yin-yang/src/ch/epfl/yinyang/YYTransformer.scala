@@ -44,13 +44,13 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
   with FreeIdentAnalysis
   with AscriptionTransformation
   with LiftLiteralTransformation
+  with TypeTreeTransformation
   with DataDefs
   with TransformationUtils
   with YYConfig {
 
   type Ctx = C
   import c.universe._
-  val typeTransformer: TypeTransformer[c.type]
   val postProcessor: PostProcessing[c.type]
   import typeTransformer._
   import postProcessor._
@@ -316,46 +316,46 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
     res
   }
 
-  object TypeTreeTransformer extends (Tree => Tree) {
-    def apply(tree: Tree) = {
-      val t = new TypeTreeTransformer().transform(tree)
-      log("typeTreeTransformed: " + shortenNames(t), 2)
-      t
-    }
-  }
+  // object TypeTreeTransformer extends (Tree => Tree) {
+  //   def apply(tree: Tree) = {
+  //     val t = new TypeTreeTransformer().transform(tree)
+  //     log("typeTreeTransformed: " + shortenNames(t), 2)
+  //     t
+  //   }
+  // }
 
-  private final class TypeTreeTransformer extends Transformer {
+  // private final class TypeTreeTransformer extends Transformer {
 
-    var typeCtx: TypeContext = OtherCtx
-    var ident = 0
+  //   var typeCtx: TypeContext = OtherCtx
+  //   var ident = 0
 
-    override def transform(tree: Tree): Tree = {
-      log(" " * ident + " ::> " + tree, 3)
-      ident += 1
-      val result = tree match {
-        case typTree: TypTree if typTree.tpe != null =>
-          log(s"TypeTree for ${showRaw(typTree)}", 3)
-          constructTypeTree(typeCtx, typTree.tpe)
+  //   override def transform(tree: Tree): Tree = {
+  //     log(" " * ident + " ::> " + tree, 3)
+  //     ident += 1
+  //     val result = tree match {
+  //       case typTree: TypTree if typTree.tpe != null =>
+  //         log(s"TypeTree for ${showRaw(typTree)}", 3)
+  //         constructTypeTree(typeCtx, typTree.tpe)
 
-        case TypeApply(mth, targs) =>
-          // TypeApply params need special treatment
-          typeCtx = TypeApplyCtx
-          val liftedArgs = targs map (transform(_))
-          typeCtx = OtherCtx
-          TypeApply(transform(mth), liftedArgs)
+  //       case TypeApply(mth, targs) =>
+  //         // TypeApply params need special treatment
+  //         typeCtx = TypeApplyCtx
+  //         val liftedArgs = targs map (transform(_))
+  //         typeCtx = OtherCtx
+  //         TypeApply(transform(mth), liftedArgs)
 
-        case _ =>
-          super.transform(tree)
-      }
+  //       case _ =>
+  //         super.transform(tree)
+  //     }
 
-      ident -= 1
-      log(" " * ident + " <:: " + result, 3)
-      result
-    }
-  }
+  //     ident -= 1
+  //     log(" " * ident + " <:: " + result, 3)
+  //     result
+  //   }
+  // }
 
-  def constructTypeTree(tctx: TypeContext, inType: Type): Tree =
-    typeTransformer transform (tctx, inType)
+  // def constructTypeTree(tctx: TypeContext, inType: Type): Tree =
+  //   typeTransformer transform (tctx, inType)
 
   def isPrimitive(s: Symbol): Boolean = false
   val guardType = "checkRef"
