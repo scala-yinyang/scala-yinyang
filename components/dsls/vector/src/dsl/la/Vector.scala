@@ -92,16 +92,16 @@ final private class DenseVector[T: Numeric: ClassTag](val x: Array[T]) extends V
       mas(i) = x
       mas
     })
-  } toList
+  }.toList
 
   def partition(fun: T => Boolean): (Vector[T], Vector[T]) = underlying partition (fun) match {
-    case (head, tail) => (new DenseVector(head toArray), new DenseVector(tail toArray))
+    case (head, tail) => (new DenseVector(head.toArray), new DenseVector(tail.toArray))
   }
 
-  def splice(vs: Vector[T]*): Vector[T] = new DenseVector(vs flatMap (_.underlying) toArray)
+  def splice(vs: Vector[T]*): Vector[T] = new DenseVector(vs.flatMap(_.underlying).toArray)
 
   //warning very ineffective
-  def spliceT(v: (Vector[T], Vector[T])): Vector[T] = new DenseVector[T](v._1.underlying ++ v._2.underlying toArray)
+  def spliceT(v: (Vector[T], Vector[T])): Vector[T] = new DenseVector[T]((v._1.underlying ++ v._2.underlying).toArray)
 
   def transform[U: Numeric: ClassTag](fn: Vector[T] => Vector[U]): Vector[U] = {
     fn(this)
@@ -178,15 +178,15 @@ final private class SparseVector[T: Numeric: ClassTag](val x: List[T]) extends V
       listBuffer(i) = x
       listBuffer.toList
     })
-  } toList
+  }.toList
 
   def partition(fun: T => Boolean): (Vector[T], Vector[T]) = underlying partition (fun) match {
-    case (head, tail) => (new SparseVector(head toList), new SparseVector(tail toList))
+    case (head, tail) => (new SparseVector(head.toList), new SparseVector(tail.toList))
   }
 
-  def splice(vs: Vector[T]*): Vector[T] = new SparseVector(vs flatMap (_.underlying) toList)
+  def splice(vs: Vector[T]*): Vector[T] = new SparseVector(vs.flatMap(_.underlying).toList)
 
-  def spliceT(v: (Vector[T], Vector[T])): Vector[T] = new SparseVector[T](v._1.underlying ++ v._2.underlying toList)
+  def spliceT(v: (Vector[T], Vector[T])): Vector[T] = new SparseVector[T]((v._1.underlying ++ v._2.underlying).toList)
 
   //TODO change implementation
   def transform[U: Numeric: ClassTag](fn: Vector[T] => Vector[U]): Vector[U] = {
