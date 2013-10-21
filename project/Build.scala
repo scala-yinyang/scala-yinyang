@@ -72,5 +72,5 @@ object YinYangBuild extends Build {
     libraryDependencies += "EPFL" % "lms_2.10" % "0.3-SNAPSHOT"
   )
 
-  lazy val delite_test = Project(id = "delite-test",  base = file("components/delite-test"), settings = deliteSettings) dependsOn(framework)
+  lazy val delite_test = Project(id = "delite-test",  base = file("components/delite-test"), settings = deliteSettings) dependsOn(yinyang)
 }
