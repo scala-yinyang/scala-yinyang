@@ -8,7 +8,7 @@ import scala.tools.nsc.io._
 import scala.tools.nsc.interpreter.AbstractFileClassLoader
 import reflect.runtime.universe.TypeTag
 import reflect.ClassTag
-
+import scala.reflect.internal.util.BatchSourceFile
 import java.io._
 
 trait ScalaCompile { this: CodeGenerator =>
@@ -59,7 +59,7 @@ trait ScalaCompile { this: CodeGenerator =>
     compiler.settings.outputDirs.setSingleOutput(fileSystem)
     //      compiler.genJVM.outputDir = fileSystem
 
-    run.compileSources(List(new util.BatchSourceFile("<stdin>", source.toString)))
+    run.compileSources(List(new BatchSourceFile("<stdin>", source.toString)))
     reporter.printSummary()
 
     if (reporter.hasErrors)

@@ -19,10 +19,12 @@ object YinYangBuild extends Build {
     .setPreference(AlignParameters, true)
     .setPreference(AlignSingleLineCaseStatements, true)
   }
+  lazy val defaultScalacOptions = Seq("-deprecation", "-feature", "-language:higherKinds", "-language:implicitConversions")
   lazy val scalaOrg = "org.scala-lang"
   lazy val scalaSettings = Defaults.defaultSettings ++ Seq(
     scalaOrganization := scalaOrg,
-    scalaVersion := "2.10.2"
+    scalaVersion := "2.10.3",
+    scalacOptions := defaultScalacOptions :+ "-Xfatal-warnings"
   )
 
   lazy val defaults = scalaSettings ++ formatSettings ++ Seq(
@@ -47,17 +49,16 @@ object YinYangBuild extends Build {
       "junit" % "junit" % "4.8.1" % "test" // we need JUnit explicitly
     )),
 
-
-    // add scalac options (verbose deprecation warnings)
-    scalacOptions ++= Seq("-deprecation", "-feature"),
-
     // testing
     parallelExecution in Test := false,
     organization := "ch.epfl.lamp"
   )
 
   // add the macro paradise compiler plugin
-  lazy val paradise = Seq(addCompilerPlugin("org.scala-lang.plugins" % "macro-paradise_2.10.3" % "2.0.0-SNAPSHOT"))
+  lazy val paradise = Seq(
+    addCompilerPlugin("org.scala-lang.plugins" % "macro-paradise_2.10.3" % "2.0.0-SNAPSHOT"),
+    scalacOptions := defaultScalacOptions
+  )
 
   lazy val _yinyang        = Project(id = "root",                      base = file("."), settings = Project.defaultSettings ++ Seq(publishArtifact := false)) aggregate (yinyang, yy_core, yy_paradise, vector_dsl, vector_dsl_test)
   lazy val yy_core         = Project(id = "yy-core",                   base = file("components/core"), settings = defaults ++ Seq(name := "yy-core"))
