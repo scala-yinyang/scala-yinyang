@@ -23,7 +23,7 @@ object YinYangBuild extends Build {
   lazy val defaultScalacOptions = Seq("-deprecation", "-feature", "-language:higherKinds", "-language:implicitConversions")
   lazy val scalaSettings = Defaults.defaultSettings ++ Seq(
     scalaOrganization := scalaOrg,
-    scalaVersion := "2.10.2-RC1"
+    scalaVersion := "2.10.2-RC1",
     scalacOptions := defaultScalacOptions :+ "-Xfatal-warnings"
   )
 
@@ -54,22 +54,21 @@ object YinYangBuild extends Build {
     organization := "ch.epfl.lamp"
   )
 
-
   // add the macro paradise compiler plugin
   lazy val paradise = Seq(
     addCompilerPlugin("org.scala-lang.plugins" % "macro-paradise_2.10.3" % "2.0.0-SNAPSHOT"),
     scalacOptions := defaultScalacOptions
   )
 
-  lazy val _yinyang        = Project(id = "root",                      base = file("."), settings = Project.defaultSettings ++ Seq(publishArtifact := false)) aggregate (yinyang, yy_core, yy_paradise, vector_dsl, vector_dsl_test)
+  lazy val _yinyang        = Project(id = "root",                      base = file("."), settings = Project.defaultSettings ++ Seq(publishArtifact := false)) aggregate (yinyang, yy_core, vector_dsl, vector_dsl_test)
   lazy val yy_core         = Project(id = "yy-core",                   base = file("components/core"), settings = defaults ++ Seq(name := "yy-core"))
-  lazy val yy_paradise     = Project(id = "yy-paradise",               base = file("components/paradise"), settings = defaults ++ paradise ++ Seq(name := "yy-paradise")) dependsOn(yy_core)
+// quaziquotes not working  lazy val yy_paradise     = Project(id = "yy-paradise",               base = file("components/paradise"), settings = defaults ++ paradise ++ Seq(name := "yy-paradise")) dependsOn(yy_core)
   lazy val yinyang         = Project(id = "yin-yang",                  base = file("components/yin-yang"), settings = defaults ++ paradise ++ Seq(name := "yin-yang")) dependsOn(yy_core)
   lazy val vector_dsl      = Project(id = "yy-vector-dsl",             base = file("components/dsls/vector"), settings = defaults) dependsOn(yinyang)
   lazy val vector_dsl_test = Project(id = "yy-vector-dsl-test",        base = file("components/dsls/vector-test"), settings = defaults) dependsOn(yinyang, vector_dsl)
 
 
-  // Delite stuff  
+  // Delite stuff
   lazy val deliteSettings = defaults ++ Seq(
     libraryDependencies += "EPFL" % "lms_2.10" % "0.3-SNAPSHOT"
   )

@@ -97,9 +97,8 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
 
       lazy val unboundDSL = {
         val t = transform(allCaptured map symbolId, Nil)(block.tree)
-        log("FIRST TRANSFORM DONE (prettyPrinting in Caps):\n" + shortenNames(t) + "\n", 2)
+        log("FIRST TRANSFORM DONE (prettyPrinting in Caps):\n" + show(t) + "\n", 2)
         log(showRaw(t, printTypes = true), 3)
-        // c.typeCheck()
         t
       }
 

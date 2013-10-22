@@ -13,7 +13,16 @@ import scala.tools.nsc.reporters._
 import scala.tools.nsc.io._
 import scala.tools.nsc.interpreter.AbstractFileClassLoader
 import scala.reflect.internal.util.BatchSourceFile
+import scala.reflect.SourceContext
 import java.io._
+
+class generated$lmsScalaDSL2 extends ScalaDSL {
+  def main(): Any = {
+    var x: Rep[Int] = __newVar((this.lift(1): Rep[Int]));
+    var i: Rep[Int] = __newVar((this.lift(0): Rep[Int]));
+    val bla: Rep[Boolean] = ((i.$less((x: Rep[Int])): Rep[Boolean]): Rep[Boolean])
+  }
+}
 
 trait LMSYinYang extends BaseYinYangManifest with FullyStaged with BaseExp with Expressions with Effects { self =>
   case class Hole[+T: Manifest](symId: Long) extends Def[T]
@@ -112,5 +121,12 @@ trait ScalaDSL extends ScalaOpsPkg with ScalaOpsPkgExp with LMSYinYang with YinY
   type Float = scala.Float
   type Char = scala.Char
   type Boolean = scala.Boolean
+  type Unit = scala.Unit
+
+  // For YY virtualization
+  def infix_==[A: Manifest, B: Manifest](a: Rep[A], b: Rep[B])(implicit sc: SourceContext): Rep[Boolean] = equals(a, b)
+  object `package` {
+    def __whileDo(cond: => Rep[Boolean], body: => Rep[Unit])(implicit pos: SourceContext): Rep[Unit] = ScalaDSL.this.__whileDo(cond, body)
+  }
   val codegen = new ScalaCodeGenPkg with YinYangGenerator { val IR: self.type = self }
 }
