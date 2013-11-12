@@ -15,3 +15,9 @@ To use Eclipse in sbt type the command *eclipse* to create Eclipse project files
     > eclipse
     
 In Eclipse use the *Import Wizard* to import *Existing Projects into Workspace*
+
+## Delite-Test
+
+This branch is intended to test OptiML. To test it, you have to use `delite-develop` branch of LMS, 
+and `shallow` branch of Forge. Then, you have to build the make the AutoOptiML in Forge, and then
+publish-local it. Also, you have to use `master` branch of Forge_Provider.

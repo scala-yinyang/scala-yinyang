@@ -55,6 +55,34 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
   import typeTransformer._
   import postProcessor._
 
+  val typeClasses = List("Manifest", "Numeric", "Fractional", "Ordering", "scala.reflect.AnyValManifest", "scala.reflect.Manifest", "ClassTag", "scala.reflect.ClassTag")
+
+  object PreProcess extends Transformer with (Tree => Tree) {
+    def apply(tree: Tree): Tree = transform(tree)
+
+    def isImplicitType(tpe: Type): Boolean = {
+      val str = tpe.toString
+      // println(tpe)
+      typeClasses.exists(tc => str.startsWith(tc))
+    }
+
+    override def transform(tree: Tree): Tree = {
+      tree match {
+        case Apply(app, params) if ({ params exists (p => (p.tpe != null && isImplicitType(p.tpe)) || (p.symbol != null && p.symbol.isImplicit)) } || {
+
+          app match {
+            case TypeApply(sel, List(tparam)) if sel.toString == "implicitly" || sel.toString == "scala.this.Predef.implicitly" => true
+            case _ => false
+
+          }
+        }) =>
+          transform(app)
+        case _ => super.transform(tree)
+      }
+    }
+
+  }
+
   /**
    * Main YinYang method. Transforms the body of the DSL, makes the DSL cake out
    * of the body and then executes the DSL code. If the DSL supports static
@@ -86,7 +114,8 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
        *     `lift("captured$" + sym)`
        */
       def transform(toHoles: List[Int], toLift: List[Symbol])(block: Tree): Tree =
-        (AscriptionTransformer andThen
+        (PreProcess andThen
+          AscriptionTransformer andThen
           LiftLiteralTransformer(toLift) andThen
           (x => VirtualizationTransformer(x)._1) andThen
           ScopeInjectionTransformer andThen
@@ -204,7 +233,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
   def interpretMethod = "interpret"
   val holeMethod = "hole"
   val classUID = YYTransformer.uID.incrementAndGet
-  val className =
+  override val className =
     s"generated$$${dslName.filter(_ != '.') + classUID}"
   val dslType = c.mirror.staticClass(dslName).toType
   def debugLevel: Int = debug
@@ -384,8 +413,10 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
     if (_reflInstance == None) {
       log("Reflectively instantiating and memoizing DSL.", 2)
       val st = System.currentTimeMillis()
+      val expr = c.Expr(c.resetAllAttrs(Block(List(dslDef), constructor)))
+      log(s"Evaluating for ${show(expr)}", 3)
       _reflInstance = Some(c.eval(
-        c.Expr(c.resetAllAttrs(Block(List(dslDef), constructor)))))
+        expr))
       log(s"Eval time: ${(System.currentTimeMillis() - st)}", 2)
     } else {
       log("Retrieving memoized reflective DSL instance.", 2)

@@ -70,7 +70,9 @@ object YinYangBuild extends Build {
 
   // Delite stuff
   lazy val deliteSettings = defaults ++ Seq(
-    libraryDependencies += "EPFL" % "lms_2.10" % "0.3-SNAPSHOT"
+    libraryDependencies += "EPFL" % "lms_2.10" % "0.3-SNAPSHOT",
+    libraryDependencies += "stanford-ppl" % "autooptiml-comp_2.10" % "0.1-SNAPSHOT",
+    libraryDependencies += "ch.epfl.lamp" %% "forge-provider" % "0.1"
   )
 
   lazy val delite_test = Project(id = "delite-test",  base = file("components/delite-test"), settings = deliteSettings) dependsOn(yinyang)
