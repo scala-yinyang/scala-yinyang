@@ -13,12 +13,13 @@ abstract class TpchBase
   with LiftBoolean
   with LiftNumeric
   with LiftString
-  with MoreHashMapOpsExp
+  // with MoreHashMapOpsExp
   with MoreIterableOpsExp
   with MoreListOpsExpOpt
   with MoreTupleOpsExp
   with NumericOpsExpOpt
   with StringOpsExp
+  with PrimitiveOpsExp
   with CompileScala { self =>
 
   /** Method to be compiled by LMS. */
@@ -35,7 +36,7 @@ abstract class TpchBase
 
   /** Code generator. */
   override val codegen =
-    new ScalaGenBooleanOps with ScalaGenDateOps with ScalaGenEqual with ScalaGenHashMapOps with ScalaGenIfThenElse with ScalaGenMoreHashMapOps with ScalaGenMoreIterableOps with ScalaGenMoreListOps with ScalaGenMoreTupleOps with ScalaGenNumericOps with ScalaGenStringOps {
+    new ScalaGenBooleanOps with ScalaGenDateOps with ScalaGenEqual /*with ScalaGenHashMapOps */ with ScalaGenIfThenElse /*with ScalaGenMoreHashMapOps*/ with ScalaGenMoreIterableOps with ScalaGenMoreListOps with ScalaGenMoreTupleOps with ScalaGenNumericOps with ScalaGenStringOps {
       val IR: self.type = self
     }
 }
