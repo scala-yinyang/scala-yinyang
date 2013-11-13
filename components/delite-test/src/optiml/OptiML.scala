@@ -30,6 +30,7 @@ trait OptiMLDSL extends AutoOptiMLApplicationCompiler with LMSDelite with YinYan
   type Seq[T] = scala.Seq[T]
   type Tuple3[T1, T2, T3] = scala.Tuple3[T1, T2, T3]
   // type Tuple6[T1, T2, T3, T4, T5, T6] = scala.Tuple6[T1, T2, T3, T4, T5, T6]
+  type Tuple5[T1, T2, T3, T4, T5] = scala.Tuple5[T1, T2, T3, T4, T5]
   type Tuple6[T1, T2, T3, T4, T5, T6] = Tup6[T1, T2, T3, T4, T5, T6]
 
   implicit class RepSeq[T](v: Rep[Seq[T]]) {
@@ -58,6 +59,10 @@ trait OptiMLDSL extends AutoOptiMLApplicationCompiler with LMSDelite with YinYan
     // def unapply[T1, T2, T3](x: Rep[Tuple3[T1, T2, T3]]): Option[Tuple3[Rep[T1], Rep[T2], Rep[T3]]] = ???
   }
 
+  object Tuple5 {
+    def apply[T1, T2, T3, T4, T5](_1: Rep[T1], _2: Rep[T2], _3: Rep[T3], _4: Rep[T4], _5: Rep[T5]): Rep[Tuple5[T1, T2, T3, T4, T5]] = ???
+  }
+
   object Tuple6 {
     // def apply[T1, T2, T3](_1: Rep[T1], _2: Rep[T2], _3: Rep[T3]): Tuple3[Rep[T1], Rep[T2], Rep[T3]] = (_1, _2, _3)
     // FIXME wh
@@ -68,6 +73,7 @@ trait OptiMLDSL extends AutoOptiMLApplicationCompiler with LMSDelite with YinYan
   def infix_!=[A: Manifest, B: Manifest](a: Rep[A], b: Rep[B])(implicit sc: SourceContext): Rep[Boolean] = equals(a, b)
 
   implicit def tup3ToRep[T1, T2, T3](x: Rep[Tuple3[T1, T2, T3]]): Tuple3[Rep[T1], Rep[T2], Rep[T3]] = ???
+  implicit def tup5ToRep[T1, T2, T3, T4, T5](x: Rep[Tuple5[T1, T2, T3, T4, T5]]): Tuple5[Rep[T1], Rep[T2], Rep[T3], Rep[T4], Rep[T5]] = ???
 
   class AString(v: Rep[String]) {
     // def toDouble(implicit pos: SourceContext): Rep[Double] = infix_toDouble(v)(pos, Overload3)

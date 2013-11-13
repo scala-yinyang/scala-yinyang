@@ -9,7 +9,11 @@ package object ops {
     def ::(o: Int): IndexVector = ???
   }
   def max(v1: Int, v2: Int): Int = math.max(v1, v2)
+  def max(v1: Double, v2: Double): Double = math.max(v1, v2)
+  def min(v1: Double, v2: Double): Double = math.min(v1, v2)
   def ceil(v: Double): Int = math.ceil(v).toInt
+  def shuffle(__arg0: IndexVector): IndexVector = ???
+  def diag[T: Manifest](__arg0: DenseMatrix[T]): DenseVector[T] = ???
 
   implicit class IndexVectorTuple2IndexVectorIndexVectorOpsCls(val self: Tuple2[IndexVector, IndexVector]) {
     def apply[T: Manifest](__arg1: (Int, Int) => T) = IndexVector.apply[T](self, __arg1)
