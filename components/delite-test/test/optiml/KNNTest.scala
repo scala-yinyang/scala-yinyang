@@ -11,7 +11,7 @@ import optiml.shallow.ops._
 class KNNTest extends FlatSpec with ShouldMatchers {
 
   "KNN" should "work" in {
-    val res = optiMLDebug {
+    val res = optiML {
       def createDataSet = {
         val group = DenseMatrix(VarSeq[DenseVector[Double]]((1.0, 1.1), (1.0, 1.0), (0.0, 0.0), (0.0, 0.1)))
         val labels = DenseVector(VarSeq("A", "A", "B", "B"))
@@ -32,9 +32,9 @@ class KNNTest extends FlatSpec with ShouldMatchers {
         val minVals = data.minCols
         val ranges = maxVals - minVals
         // TODO
-        // val data1 = (0 :: data.numRows - 1, *)(i => (data(i) - minVals) / ranges)
+        val data1 = (0 :: data.numRows - 1, *)(i => (data(i) - minVals) / ranges)
         // val data1 = data.mapRows(row => (row - minVals) / ranges)
-        val data1 = matrixIn.slice(0, matrixIn.numRows, 0, matrixIn.numCols - 1).map(x => x.toDouble)
+        // val data1 = matrixIn.slice(0, matrixIn.numRows, 0, matrixIn.numCols - 1).map(x => x.toDouble)
         val labels = matrixIn.getCol(matrixIn.numCols - 1)
         TrainingSet(data1, labels)
       }

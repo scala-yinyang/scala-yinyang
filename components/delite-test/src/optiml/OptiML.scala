@@ -28,6 +28,9 @@ trait OptiMLDSL extends AutoOptiMLApplicationCompiler with LMSDelite with YinYan
   type Unit = scala.Unit
   type String = scala.Predef.String
   type Seq[T] = scala.Seq[T]
+  type Tuple3[T1, T2, T3] = scala.Tuple3[T1, T2, T3]
+  // type Tuple6[T1, T2, T3, T4, T5, T6] = scala.Tuple6[T1, T2, T3, T4, T5, T6]
+  type Tuple6[T1, T2, T3, T4, T5, T6] = Tup6[T1, T2, T3, T4, T5, T6]
   implicit class RepSeq[T](v: Rep[Seq[T]]) {
     def apply(index: Rep[Int]) = ???
   }
@@ -44,15 +47,40 @@ trait OptiMLDSL extends AutoOptiMLApplicationCompiler with LMSDelite with YinYan
 
   object Tuple2 {
     def apply[T1, T2](_1: Rep[T1], _2: Rep[T2]): Tuple2[Rep[T1], Rep[T2]] = (_1, _2)
+    // def apply[T1, T2](_1: Rep[T1], _2: Rep[T2]): Rep[Tuple2[T1, T2]] = ???
   }
+
+  object Tuple3 {
+    // def apply[T1, T2, T3](_1: Rep[T1], _2: Rep[T2], _3: Rep[T3]): Tuple3[Rep[T1], Rep[T2], Rep[T3]] = (_1, _2, _3)
+    // FIXME wh
+    def apply[T1, T2, T3](_1: Rep[T1], _2: Rep[T2], _3: Rep[T3]): Rep[Tuple3[T1, T2, T3]] = ???
+    // def unapply[T1, T2, T3](x: Rep[Tuple3[T1, T2, T3]]): Option[Tuple3[Rep[T1], Rep[T2], Rep[T3]]] = ???
+  }
+
+  object Tuple6 {
+    // def apply[T1, T2, T3](_1: Rep[T1], _2: Rep[T2], _3: Rep[T3]): Tuple3[Rep[T1], Rep[T2], Rep[T3]] = (_1, _2, _3)
+    // FIXME wh
+    def apply[T1, T2, T3, T4, T5, T6](_1: Rep[T1], _2: Rep[T2], _3: Rep[T3], _4: Rep[T4], _5: Rep[T5], _6: Rep[T6]): Rep[Tuple6[T1, T2, T3, T4, T5, T6]] = ???
+    // def unapply[T1, T2, T3](x: Rep[Tuple3[T1, T2, T3]]): Option[Tuple3[Rep[T1], Rep[T2], Rep[T3]]] = ???
+  }
+
+  def infix_!=[A: Manifest, B: Manifest](a: Rep[A], b: Rep[B])(implicit sc: SourceContext): Rep[Boolean] = equals(a, b)
+
+  implicit def tup3ToRep[T1, T2, T3](x: Rep[Tuple3[T1, T2, T3]]): Tuple3[Rep[T1], Rep[T2], Rep[T3]] = ???
 
   class AString(v: Rep[String]) {
     // def toDouble(implicit pos: SourceContext): Rep[Double] = infix_toDouble(v)(pos, Overload3)
     def toDouble: Rep[Double] = ???
+    def toInt: Rep[Int] = ???
   }
+
+  implicit def liftIndexWildcard(v: *.type): IndexWildcard with Rep[*.type] = ???
+  // implicit def unliftIndexWildcard(v: Rep[*.type]): IndexWildcard = *
+  implicit def liftToIndexVectorTuple2IndexVectorIndexWildcardOpsClsYY(x: Tuple2[Rep[IndexVector], Rep[IndexWildcard]]): IndexVectorTuple2IndexVectorIndexWildcardOpsCls = ???
 
   implicit def tupleToDense2yy[T: Manifest](t: Tuple2[Rep[T], Rep[T]]): Rep[DenseVector[T]] = DenseVector[T]((t._1), (t._2))
   def augmentString(v: Rep[String]): AString = new AString(v)
+  def toForgeExtras[T](x: Rep[T]): Rep[T] = x
 
   override def main(): Unit = ???
 }
