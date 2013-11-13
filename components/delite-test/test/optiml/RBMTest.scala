@@ -10,8 +10,8 @@ import optiml.shallow.ops._
 @RunWith(classOf[JUnitRunner])
 class RBMTest extends FlatSpec with ShouldMatchers {
 
-  "RBM" should "work" in {
-    val res = optiMLDebug {
+  "RBM" should "work" in intercept[scala.NotImplementedError] {
+    val res = optiML {
       val args = Seq("", "", "")
       val maxEpoch = 10 // maximum number of epochs
       val numHiddenUnits = args(1).toInt

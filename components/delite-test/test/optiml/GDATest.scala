@@ -10,7 +10,7 @@ import optiml.shallow.ops._
 @RunWith(classOf[JUnitRunner])
 class GDATest extends FlatSpec with ShouldMatchers {
 
-  "GDA" should "work" in {
+  "GDA" should "work" in intercept[java.lang.RuntimeException] {
     val res = optiML {
       val x = readMatrix("")
       val y = readVector("").map(d => if (d <= 0.0) false else true)

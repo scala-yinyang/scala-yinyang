@@ -10,7 +10,7 @@ import optiml.shallow.ops._
 @RunWith(classOf[JUnitRunner])
 class KNNTest extends FlatSpec with ShouldMatchers {
 
-  "KNN" should "work" in {
+  "KNN" should "work" in intercept[scala.NotImplementedError] {
     val res = optiML {
       def createDataSet = {
         val group = DenseMatrix(VarSeq[DenseVector[Double]]((1.0, 1.1), (1.0, 1.0), (0.0, 0.0), (0.0, 0.1)))

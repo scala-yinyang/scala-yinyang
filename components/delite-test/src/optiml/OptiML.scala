@@ -31,6 +31,7 @@ trait OptiMLDSL extends AutoOptiMLApplicationCompiler with LMSDelite with YinYan
   type Tuple3[T1, T2, T3] = scala.Tuple3[T1, T2, T3]
   // type Tuple6[T1, T2, T3, T4, T5, T6] = scala.Tuple6[T1, T2, T3, T4, T5, T6]
   type Tuple6[T1, T2, T3, T4, T5, T6] = Tup6[T1, T2, T3, T4, T5, T6]
+
   implicit class RepSeq[T](v: Rep[Seq[T]]) {
     def apply(index: Rep[Int]) = ???
   }

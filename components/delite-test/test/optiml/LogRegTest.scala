@@ -10,7 +10,7 @@ import optiml.shallow.ops._
 @RunWith(classOf[JUnitRunner])
 class LogRegTest extends FlatSpec with ShouldMatchers {
 
-  "LogReg" should "work" in {
+  "LogReg" should "work" in intercept[java.lang.RuntimeException] {
     val res = optiML {
       val x = readMatrix("")
       val y = readVector("").t

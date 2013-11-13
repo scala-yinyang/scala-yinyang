@@ -2,7 +2,7 @@ package optiml.shallow
 
 package object ops {
   case class force() extends scala.annotation.StaticAnnotation
-
+  trait Record
   def random[T]: T = ???
   def randomGaussian: Double = ???
   implicit class IntOps(i: Int) {
