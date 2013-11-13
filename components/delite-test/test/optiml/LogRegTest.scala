@@ -11,7 +11,7 @@ import optiml.shallow.ops._
 class LogRegTest extends FlatSpec with ShouldMatchers {
 
   "LogReg" should "work" in {
-    val res = optiMLDebug {
+    val res = optiML {
       val x = readMatrix("")
       val y = readVector("").t
 

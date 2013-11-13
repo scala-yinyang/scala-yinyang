@@ -27,8 +27,32 @@ trait OptiMLDSL extends AutoOptiMLApplicationCompiler with LMSDelite with YinYan
   type Boolean = scala.Boolean
   type Unit = scala.Unit
   type String = scala.Predef.String
+  type Seq[T] = scala.Seq[T]
+  implicit class RepSeq[T](v: Rep[Seq[T]]) {
+    def apply(index: Rep[Int]) = ???
+  }
+  object Seq {
+    def apply[T](args: Rep[T]*): Rep[Seq[T]] = ???
+  }
+  // type Array[T] = scala.Array[T]
+
+  // val Array = scala.Array
 
   def IntOps(v: Rep[Int]): Rep[Int] = v
+
+  def VarSeq[T](v: Rep[T]*): Seq[Rep[T]] = v.toSeq
+
+  object Tuple2 {
+    def apply[T1, T2](_1: Rep[T1], _2: Rep[T2]): Tuple2[Rep[T1], Rep[T2]] = (_1, _2)
+  }
+
+  class AString(v: Rep[String]) {
+    // def toDouble(implicit pos: SourceContext): Rep[Double] = infix_toDouble(v)(pos, Overload3)
+    def toDouble: Rep[Double] = ???
+  }
+
+  implicit def tupleToDense2yy[T: Manifest](t: Tuple2[Rep[T], Rep[T]]): Rep[DenseVector[T]] = DenseVector[T]((t._1), (t._2))
+  def augmentString(v: Rep[String]): AString = new AString(v)
 
   override def main(): Unit = ???
 }

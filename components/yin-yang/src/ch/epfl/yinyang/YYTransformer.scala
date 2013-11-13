@@ -68,7 +68,8 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
 
     override def transform(tree: Tree): Tree = {
       tree match {
-        case Apply(app, params) if ({ params exists (p => (p.tpe != null && isImplicitType(p.tpe)) || (p.symbol != null && p.symbol.isImplicit)) } || {
+        case Apply(app1, List(Apply(TypeApply(app, _), params))) if app.toString == "optiml.shallow.ops.`package`.VarSeq" => Apply(app1, params map transform)
+        case Apply(app, params) if ({ params exists (p => (p.tpe != null && isImplicitType(p.tpe)) || (p.symbol != null && p.symbol.isImplicit && !p.symbol.annotations.exists(ann => ann.tpe.typeSymbol.name.toString == "force"))) } || {
 
           app match {
             case TypeApply(sel, List(tparam)) if sel.toString == "implicitly" || sel.toString == "scala.this.Predef.implicitly" => true
