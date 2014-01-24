@@ -30,6 +30,10 @@ object YinYangBuild extends Build {
   lazy val defaults = scalaSettings ++ formatSettings ++ Seq(
     resolvers +=  "OSSH" at "https://oss.sonatype.org/content/groups/public",
     resolvers += Resolver.sonatypeRepo("snapshots"),
+    resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots",
+
+
+    testFrameworks += new TestFramework("org.scalameter.ScalaMeterFramework"),
 
     // paths - so we don't need to have src/main/scala ... just src/ test/ and resources/
     scalaSource in Compile <<= baseDirectory(_ / "src"),
@@ -46,6 +50,7 @@ object YinYangBuild extends Build {
       scalaOrg % "scala-reflect" % ver,
       scalaOrg % "scala-compiler" % ver,
       "org.scalatest" % "scalatest_2.10" % "2.0.M6-SNAP7" % "test",
+      "com.github.axel22" %% "scalameter" % "0.3",
       "junit" % "junit" % "4.8.1" % "test" // we need JUnit explicitly
     )),
 

@@ -9,15 +9,15 @@ trait BaseYinYang {
    */
   type TypeRep[T]
   def runtimeType[T: TypeRep]: TypeRep[T]
-
   /**
-   * Returns the holes required for run-time optimizations.
-   * Compile-time optimized DSLs should return `Nil`.
-   *   @param symbols Maps from hole ids to symbols.
-   *   @return list of hole symbols required for run-time optimizations. Holes will be promoted
-   *           to constants in the next stage of compilation (at runtime).
+   * Returns whether and how each hole is needed for compilation.
+   *   @see [[VarType]] for details about the different types.
+   *   @see [[FullyStaged]] and [[FullyUnstaged]] traits.
+   *   @param symbols Maps from hole ids to symbols, useful for generating
+   *     debugging output.
+   *   @return the type of each hole in the symbols list, in the same order.
    */
-  def requiredHoles(symbols: List[Symbol]): List[Symbol]
+  def compilationVars(symbols: List[Symbol]): List[VarType]
 
   /**
    * Abstract super class for implicit lifters that the DSL author needs to provide.
@@ -26,17 +26,25 @@ trait BaseYinYang {
     /**
      * Constructs the DSL internal IR node that will represent a hole.
      *   @param tpe Represents the run-time type information for this hole.
-     *   @param symbolId informs the DSL about the unique identifier of this hole.
-     *          This information can be passed back to Yin-Yang byt the `requiredHoles` method.
+     *   @param symbolId informs the DSL about the unique identifier of this
+     *     hole. This information can be passed back to Yin-Yang by the
+     *     `compilationVars` method.
      *   @return DSL internal representation of a hole for type T.
      */
     def hole(tpe: TypeRep[T], symbolId: Int): Ret
 
     /**
      * Constructs the DSL internal IR node that will represent a constant.
-     *
      */
     def lift(v: T): Ret
+
+    /**
+     * Constructs the DSL internal IR node that will represent a mixed variable
+     * that carries both an initial value available at code generation time and
+     * a hole that can be used in the generated code. Only DSLs with dynamic or
+     * optional compilation variables need to override this method.
+     */
+    def mixed(v: T, hole: Ret): Ret = ???
   }
 
   /**
@@ -46,11 +54,18 @@ trait BaseYinYang {
     liftEv hole (tpe, symbolId)
 
   /**
-   * Method that replaces constants and captured identifiers requried for run-time
+   * Method that replaces constants and captured identifiers required for run-time
    * optimizations in the DSL body.
    */
   def lift[T, Ret](v: T)(implicit liftEv: LiftEvidence[T, Ret]): Ret =
-    liftEv lift (v)
+    liftEv.lift(v)
+
+  /**
+   * Method that replaces constants and captured identifiers required for run-time
+   * optimizations in the DSL body.
+   */
+  def mixed[T, Ret](v: T, hole: Ret)(implicit liftEv: LiftEvidence[T, Ret]): Ret =
+    liftEv.mixed(v, hole)
 
 }
 
