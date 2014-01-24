@@ -1,4 +1,4 @@
-# Yin-Yang: Transparent Embedding of Deep DSLs
+# Yin-Yang: Transparent Embedding of Deep DSLs [![Build Status](https://travis-ci.org/vjovanov/yin-yang.png?branch=master)](https://travis-ci.org/vjovanov/yin-yang)#
 
 Yin-Yang is a macro library that provides the infrastructure for easy development of deeply embedded DSLs.
 
