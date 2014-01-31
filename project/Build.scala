@@ -53,9 +53,9 @@ object YinYangBuild extends Build {
       scalaOrg % "scala-library" % ver,
       scalaOrg % "scala-reflect" % ver,
       scalaOrg % "scala-compiler" % ver,
-      "org.scalatest" % "scalatest_2.10" % "2.0.M6-SNAP7" % "test",
-      "com.github.axel22" %% "scalameter" % "0.3",
-      "junit" % "junit" % "4.8.1" % "test" // we need JUnit explicitly
+      "org.scalatest" % "scalatest_2.10" % "2.0" % "test",
+      "com.github.axel22" %% "scalameter" % "0.4",
+      "junit" % "junit" % "4.11" % "test" // we need JUnit explicitly
     )),
 
     // testing
