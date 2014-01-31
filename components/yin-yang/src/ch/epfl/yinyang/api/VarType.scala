@@ -47,7 +47,7 @@ abstract class VarType {
   def and(other: VarType): VarType
 }
 
-case class NonCompVar extends VarType {
+case class NonCompVar() extends VarType {
   override def and(other: VarType) = other
 }
 

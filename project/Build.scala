@@ -6,6 +6,10 @@ import com.typesafe.sbt.SbtScalariform
 import com.typesafe.sbt.SbtScalariform.ScalariformKeys
 
 object YinYangBuild extends Build {
+  lazy val projectSettings = Seq[Setting[_]](
+    version      := "0.1-SNAPSHOT", 
+    organization := "ch.epfl.lamp"
+  )
 
   lazy val formatSettings = SbtScalariform.scalariformSettings ++ Seq(
     ScalariformKeys.preferences in Compile := formattingPreferences,
@@ -27,7 +31,7 @@ object YinYangBuild extends Build {
     scalacOptions := defaultScalacOptions :+ "-Xfatal-warnings"
   )
 
-  lazy val defaults = scalaSettings ++ formatSettings ++ Seq(
+  lazy val defaults = projectSettings ++ scalaSettings ++ formatSettings ++ Seq(
     resolvers +=  "OSSH" at "https://oss.sonatype.org/content/groups/public",
     resolvers += Resolver.sonatypeRepo("snapshots"),
     resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots",
