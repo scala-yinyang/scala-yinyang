@@ -1,4 +1,4 @@
-package mpde.vector.test
+package ch.epfl.yinyang.vector.test
 
 import dsl.la.norep._
 import dsl.la._

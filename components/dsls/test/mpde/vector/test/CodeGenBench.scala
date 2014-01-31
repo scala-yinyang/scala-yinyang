@@ -1,4 +1,4 @@
-// package mpde.vector.test
+// package ch.epfl.yinyang.vector.test
 
 // import org.scalameter.api.{ PerformanceTest, Gen }
 // import reflect.runtime.universe._

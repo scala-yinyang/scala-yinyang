@@ -1,4 +1,4 @@
-package mpde.vector.test
+package ch.epfl.yinyang.vector.test
 
 import dsl.la.rep._
 import org.scalatest._

@@ -1,4 +1,4 @@
-package mpde.vector.test
+package ch.epfl.yinyang.vector.test
 
 import org.scalatest._
 import collection.mutable.Stack
