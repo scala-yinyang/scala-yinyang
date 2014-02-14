@@ -40,7 +40,16 @@ trait FreeIdentAnalysis extends MacroModule with TransformationUtils {
           !(sym.isMethod || sym.isPackage || sym.isModule) &&
           isFree(sym)) collected append sym
       }
-      case _ => super.traverse(tree)
+      // TODO method with zero arguments but defined outside (not covered for now)
+      case i @ Apply(Select(x, y), z) =>
+        traverse(x)
+        z.foreach(traverse)
+      // TODO objects are not supported for now in DSL blocks. This must come from outside
+      case i @ Select(This(_), _) => // field selection        
+        collected append i.symbol
+      case _ =>
+        println(s"The missed tree is: ${showRaw(tree)}")
+        super.traverse(tree)
     }
 
     def collect(tree: Tree): List[Symbol] = {

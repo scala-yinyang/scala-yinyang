@@ -56,6 +56,7 @@ object YinYangBuild extends Build {
     // sbteclipse needs some info on source directories:
     unmanagedSourceDirectories in Compile <<= (scalaSource in Compile)(Seq(_)),
     unmanagedSourceDirectories in Test <<= (scalaSource in Test)(Seq(_)),
+    sources in Test <<= (sources in Test).map(_ filter(_.name == "CapturedVariablesSpec.scala")),
     parallelExecution in Test := false
   )
 

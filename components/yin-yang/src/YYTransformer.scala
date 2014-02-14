@@ -71,7 +71,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
   def apply[T](block: c.Expr[T]): c.Expr[T] = {
     log("-------- YYTransformer STARTED for block: " + showRaw(block.tree), 2)
     if (featureAnalysing) {
-      FeatureAnalyzer(block.tree) // ABORTS compilation if not all features present in deep embedding
+      // FeatureAnalyzer(block.tree) // ABORTS compilation if not all features present in deep embedding
     }
     if (shallow) { block }
     else {
