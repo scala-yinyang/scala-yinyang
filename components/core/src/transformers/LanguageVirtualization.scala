@@ -3,7 +3,7 @@ package transformers
 
 import ch.epfl.yinyang._
 import ch.epfl.yinyang.transformers._
-import scala.reflect.macros.Context
+import scala.reflect.macros.blackbox.Context
 import language.experimental.macros
 import scala.collection.mutable
 
@@ -67,10 +67,6 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
     }
   }
 
-  object TermName { // TODO remove with 2.11
-    def unapply(t: TermName): Option[String] = Some(t.toString)
-  }
-
   private class VirtualizationTransformer extends Transformer {
     val lifted = mutable.ArrayBuffer[DSLFeature]()
 
@@ -100,11 +96,11 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
           liftFeature(None, "__assign", List(lhs, rhs))
 
         case LabelDef(sym, List(), If(cond, Block(body :: Nil, Apply(Ident(label),
-          List())), Literal(Constant()))) if label == sym => // while(){}
+          List())), Literal(Constant(())))) if label == sym => // while(){}
           liftFeature(None, "__whileDo", List(cond, body))
 
         case LabelDef(sym, List(), Block(body :: Nil, If(cond, Apply(Ident(label),
-          List()), Literal(Constant())))) if label == sym => // do while(){}
+          List()), Literal(Constant(()))))) if label == sym => // do while(){}
           liftFeature(None, "__doWhile", List(cond, body))
 
         case Apply(Select(qualifier, TermName("$eq$eq")), List(arg)) =>

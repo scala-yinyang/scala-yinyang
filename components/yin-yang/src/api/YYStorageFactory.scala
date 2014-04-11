@@ -11,7 +11,7 @@ object YYStorageFactory {
 
     val capturedUpdate = refSymbols.zipWithIndex.map({
       case (sym, index) => // TODO can we get rid of this asInstanceOf?
-        "classInstance.captured$" + sym.name.decoded + " = refs(" + index + ").asInstanceOf[" + sym.typeSignature + "]"
+        "classInstance.captured$" + sym.name.decodedName.toString + " = refs(" + index + ").asInstanceOf[" + sym.typeSignature + "]"
     }) mkString "\n    "
 
     val NON_COMP = 0

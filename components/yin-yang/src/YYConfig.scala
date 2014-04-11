@@ -1,6 +1,6 @@
 package ch.epfl.yinyang
 
-import scala.reflect.macros.Context
+import scala.reflect.macros.blackbox.Context
 
 trait YYConfig {
   val config: Map[String, Any]

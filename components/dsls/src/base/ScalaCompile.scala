@@ -5,7 +5,7 @@ import scala.tools.nsc._
 import scala.tools.nsc.util._
 import scala.tools.nsc.reporters._
 import scala.tools.nsc.io._
-import scala.tools.nsc.interpreter.AbstractFileClassLoader
+import scala.reflect.internal.util.AbstractFileClassLoader
 import reflect.runtime.universe.TypeTag
 import reflect.ClassTag
 import scala.reflect.internal.util.BatchSourceFile

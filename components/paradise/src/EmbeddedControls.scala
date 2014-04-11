@@ -1,7 +1,7 @@
 package ch.epfl.yinyang
 
 import language.experimental.macros
-import scala.reflect.macros.Context
+import scala.reflect.macros.blackbox.Context
 
 /**
  * Default implementation of virtualized Scala control structures.
@@ -173,7 +173,8 @@ private object EmbeddedControls {
     c.Expr(q"$x.toString()")
   }
 
-  def any_getClass(c: Context)(x: c.Expr[Any]): c.Expr[Class[_]] = {
+  import scala.language.existentials
+  def any_getClass(c: Context)(x: c.Expr[Any]): c.Expr[Class[_$1]] forSome { type _$1 } = {
 
     import c.universe._
     c.Expr(q"$x.getClass()")

@@ -3,7 +3,7 @@ package transformers
 
 import ch.epfl.yinyang._
 import ch.epfl.yinyang.transformers._
-import scala.reflect.macros.Context
+import scala.reflect.macros.blackbox.Context
 import language.experimental.macros
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
@@ -56,10 +56,10 @@ trait HoleTransformation extends MacroModule with TransformationUtils {
           }
         }
         Apply(
-          Select(This(tpnme.EMPTY), newTermName(holeMethod)),
+          Select(This(typeNames.EMPTY), TermName(holeMethod)),
           List(
             TypeApply(
-              Select(This(tpnme.EMPTY), newTermName("runtimeType")), List(TypeTree(i.tpe.widen))),
+              Select(This(typeNames.EMPTY), TermName("runtimeType")), List(TypeTree(i.tpe.widen))),
             Literal(Constant(index))))
       }
       case _ =>

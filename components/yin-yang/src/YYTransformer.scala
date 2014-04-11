@@ -5,7 +5,7 @@ import ch.epfl.yinyang.api._
 import ch.epfl.yinyang.transformers._
 import ch.epfl.yinyang.analysis._
 import scala.collection.immutable.Map
-import scala.reflect.macros.Context
+import scala.reflect.macros.blackbox.Context
 import scala.collection.mutable
 import mutable.{ ListBuffer, HashMap }
 import language.experimental.macros
@@ -53,6 +53,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
 
   type Ctx = C
   import c.universe._
+  import c.universe.TermName
   val typeTransformer: TypeTransformer[c.type]
   val postProcessor: PostProcessing[c.type]
   import typeTransformer._
@@ -153,7 +154,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
       val sortedHoles = (nonCompilVars ++ mixedCompilVars).distinct.sortBy(h => holeTable.indexOf(symbolId(h)))
 
       def args(holes: List[Symbol]): String =
-        holes.map({ y: Symbol => y.name.decoded }).mkString("", ",", "")
+        holes.map({ y: Symbol => y.name.decodedName.toString }).mkString("", ",", "")
 
       val programId = new scala.util.Random().nextLong
       val dslTree = dslType match {
@@ -189,7 +190,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
           val guardedExecute = c parse (dslType match {
             case t if t <:< typeOf[CodeGenerator] =>
               s"""
-              val compilVars: scala.Array[Any] = scala.Array(${compilVars map (_.name.decoded) mkString ", "})
+              val compilVars: scala.Array[Any] = scala.Array(${compilVars map (_.name.decodedName.toString) mkString ", "})
               val program = ch.epfl.yinyang.runtime.YYStorage.guardedLookup[$functionType](${programId}L,
                 $YYCacheString, compilVars)
               program.apply(${args(sortedHoles)})
@@ -198,8 +199,8 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
             // FIXME: this is not tested! Types probably wrong
             // case t if t <:< typeOf[Interpreted] => YYCacheString + s"""
             //   val dslInstance = $YYStorageName.classInstance;
-            //   val compilVars: scala.Array[Any] = scala.Array(${compilVars map (_.name.decoded) mkString ", "})
-            //   ${compilVars.map({ k => "dslInstance.captured$" + k.name.decoded + " = " + k.name.decoded }) mkString "\n"}
+            //   val compilVars: scala.Array[Any] = scala.Array(${compilVars map (_.name.decodedName.toString) mkString ", "})
+            //   ${compilVars.map({ k => "dslInstance.captured$" + k.name.decodedName.toString + " = " + k.name.decodedName.toString }) mkString "\n"}
             //   def invalidate(): () => Any = () => dslInstance.reset
             //   $YYStorageName.check(compilVars, invalidate)
             //   dslInstance.interpret[${retType}](${args(sortedHoles)})
@@ -209,10 +210,10 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
           Block(List(dsl), guardedExecute)
       }
 
-      log(s"Final tree: ${showRaw(c.resetAllAttrs(dslTree))}", 3)
-      log(s"Final untyped: ${show(c.resetAllAttrs(dslTree), printTypes = true)}", 3)
-      log(s"Final typed: ${shortenNames(c.typeCheck(c.resetAllAttrs(dslTree)))}\n-------- YYTransformer DONE ----------\n\n", 2)
-      c.Expr[T](c.resetAllAttrs(dslTree))
+      log(s"Final tree: ${showRaw(c.untypecheck(dslTree))}", 3)
+      log(s"Final untyped: ${show(c.untypecheck(dslTree), printTypes = true)}", 3)
+      log(s"Final typed: ${shortenNames(c.typecheck(c.untypecheck(dslTree)))}\n-------- YYTransformer DONE ----------\n\n", 2)
+      c.Expr[T](c.untypecheck(dslTree))
     }
   }
 
@@ -301,15 +302,14 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
 
       def dummyTree(tpe: Type) = tpe match {
         case typeTag @ ThisType(_) =>
-          This(newTypeName(className))
+          This(TypeName(className))
         case _ =>
-          TypeApply(
-            Select(Literal(Constant(())), newTermName("asInstanceOf")),
-            List(constructTypeTree(typeTransformer.OtherCtx, tpe)))
+          q"().asInstanceOf[${constructTypeTree(typeTransformer.OtherCtx, tpe)}]"
       }
+
       log(s"Args: ${meth.args}", 3)
       val lhs: Tree = typeApply(meth.targs map { x => constructTypeTree(typeTransformer.TypeApplyCtx, x.tpe) })(
-        Select(meth.tpe.map(dummyTree(_)).getOrElse(This(className)), newTermName(meth.name)))
+        Select(meth.tpe.map(dummyTree(_)).getOrElse(This(TypeName(className))), TermName(meth.name)))
       val res = meth.args.foldLeft(lhs)((x, y) => Apply(x, y.map(dummyTree)))
       log(s"${showRaw(res)}", 3)
       res
@@ -323,7 +323,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
           Literal(Constant(()))))), Literal(Constant(())))
       log(s"Block: ${show(block)})", 3)
       log(s"Block raw: ${showRaw(block)})", 3)
-      c.typeCheck(block)
+      c.typecheck(block)
       true
     } catch {
       case e: Throwable =>
@@ -384,11 +384,11 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
     assert(names.length >= 1,
       s"DSL trait name must be in the valid format. DSL trait name is ${dslName}")
 
-    val tpeName = newTypeName(names.head)
+    val tpeName = TypeName(names.head)
     names.tail.reverse match {
       case head :: tail =>
-        Select(tail.foldLeft[Tree](Ident(newTermName(head)))((tree, name) =>
-          Select(tree, newTermName(name))), tpeName)
+        Select(tail.foldLeft[Tree](Ident(TermName(head)))((tree, name) =>
+          Select(tree, TermName(name))), tpeName)
       case Nil =>
         Ident(tpeName)
     }
@@ -404,7 +404,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
       log("Reflectively instantiating and memoizing DSL.", 2)
       val st = System.currentTimeMillis()
       _reflInstance = Some(c.eval(
-        c.Expr(c.resetAllAttrs(Block(List(dslDef), constructor)))))
+        c.Expr(c.untypecheck(Block(List(dslDef), constructor)))))
       log(s"Eval time: ${(System.currentTimeMillis() - st)}", 2)
     } else {
       log("Retrieving memoized reflective DSL instance.", 2)
@@ -412,21 +412,21 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
     _reflInstance.get.asInstanceOf[T]
   }
 
-  private def constructor = Apply(Select(New(Ident(newTypeName(className))),
-    nme.CONSTRUCTOR), List())
+  private def constructor = Apply(Select(New(Ident(TypeName(className))),
+    termNames.CONSTRUCTOR), List())
 
-  def composeDSL(compilVars: List[Symbol])(transformedBody: Tree) =
+  def composeDSL(compilVars: List[Symbol])(transformedBody: Tree): Tree =
     // class MyDSL extends DSL {
-    ClassDef(Modifiers(), newTypeName(className), List(),
-      Template(List(dslTrait), emptyValDef,
-        compilVars.map({ k => ValDef(Modifiers(Flag.MUTABLE), newTermName("captured$" + k.name.decoded), TypeTree(), Ident(k)) }) ++
+    ClassDef(Modifiers(), TypeName(className), List(),
+      Template(List(dslTrait), noSelfType,
+        compilVars.map({ k => ValDef(Modifiers(Flag.MUTABLE), TermName("captured$" + k.name.decodedName.toString), TypeTree(), Ident(k)) }) ++
           List(
-            DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(List()), TypeTree(),
-              Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY),
-                nme.CONSTRUCTOR), List())), Literal(Constant(())))),
+            DefDef(Modifiers(), termNames.CONSTRUCTOR, List(), List(List()), TypeTree(),
+              Block(List(Apply(Select(Super(This(typeNames.EMPTY), typeNames.EMPTY),
+                termNames.CONSTRUCTOR), List())), Literal(Constant(())))),
             // def main = {
-            DefDef(Modifiers(), newTermName(mainMethod), List(), List(List()),
-              Ident(newTypeName("Any")), transformedBody))))
+            DefDef(Modifiers(), TermName(mainMethod), List(), List(List()),
+              Ident(TypeName("Any")), transformedBody))))
   //     }
   // }
 

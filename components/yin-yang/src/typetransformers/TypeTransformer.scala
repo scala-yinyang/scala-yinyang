@@ -1,6 +1,6 @@
 package ch.epfl.yinyang.typetransformers
 
-import scala.reflect.macros.Context
+import scala.reflect.macros.blackbox.Context
 
 /**
  * Base class for all type transformers.

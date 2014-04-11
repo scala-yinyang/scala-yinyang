@@ -1,6 +1,6 @@
 package ch.epfl.yinyang
 package api
-import scala.reflect.macros.Context
+import scala.reflect.macros.blackbox.Context
 
 protected[yinyang] class Reporter(private val c: Context) {
   import c.universe._

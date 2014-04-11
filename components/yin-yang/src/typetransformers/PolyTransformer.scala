@@ -1,6 +1,6 @@
 package ch.epfl.yinyang.typetransformers
 
-import scala.reflect.macros.Context
+import scala.reflect.macros.blackbox.Context
 import scala.reflect.runtime.universe.definitions.FunctionClass
 
 trait PolyTransformerLike[C <: Context] { this: TypeTransformer[C] =>
@@ -9,7 +9,7 @@ trait PolyTransformerLike[C <: Context] { this: TypeTransformer[C] =>
   val MaxFunctionArity = 22
   def toType(s: Symbol) = s.name
 
-  protected def isFunctionType(tp: Type): Boolean = tp.normalize match {
+  protected def isFunctionType(tp: Type): Boolean = tp.dealias match {
     case TypeRef(pre, sym, args) if args.nonEmpty =>
       val arity = args.length - 1
 
@@ -23,34 +23,35 @@ trait PolyTransformerLike[C <: Context] { this: TypeTransformer[C] =>
   def constructPolyTree(typeCtx: TypeContext, inType: Type): Tree = inType match {
 
     case TypeRef(pre, sym, Nil) if rewiredToThis(inType.typeSymbol.name.toString) =>
-      SingletonTypeTree(This(tpnme.EMPTY))
+      SingletonTypeTree(This(typeNames.EMPTY))
 
     case TypeRef(pre, sym, Nil) =>
-      Select(This(newTypeName(className)), toType(inType.typeSymbol))
+      Select(This(TypeName(className)), toType(inType.typeSymbol))
 
     case TypeRef(pre, sym, args) if isFunctionType(inType) =>
-      AppliedTypeTree(Select(Ident(newTermName("scala")), toType(sym)),
+      AppliedTypeTree(Select(Ident(TermName("scala")), toType(sym)),
         args map { x => constructPolyTree(typeCtx, x) })
 
     case TypeRef(pre, sym, args) =>
-      AppliedTypeTree(Select(This(newTypeName(className)), toType(sym)),
+      AppliedTypeTree(Select(This(TypeName(className)), toType(sym)),
         args map { x => constructPolyTree(typeCtx, x) })
 
     case ConstantType(t) =>
-      Select(This(newTypeName(className)), toType(inType.typeSymbol))
+      Select(This(TypeName(className)), toType(inType.typeSymbol))
 
     case SingleType(pre, name) if rewiredToThis(inType.typeSymbol.name.toString) =>
-      SingletonTypeTree(This(tpnme.EMPTY))
+      SingletonTypeTree(This(typeNames.EMPTY))
 
     case SingleType(pre, name) if inType.typeSymbol.isModuleClass =>
-      SingletonTypeTree(Select(This(newTypeName(className)),
-        newTermName(inType.typeSymbol.name.toString)))
+      SingletonTypeTree(Select(This(TypeName(className)),
+        TermName(inType.typeSymbol.name.toString)))
 
     case s @ SingleType(pre, name) if inType.typeSymbol.isClass =>
+      println(s)
       constructPolyTree(typeCtx,
         s.asInstanceOf[scala.reflect.internal.Types#SingleType]
           .underlying.asInstanceOf[c.universe.Type])
-    case annTpe @ AnnotatedType(annotations, underlying, selfsym) =>
+    case annTpe @ AnnotatedType(annotations, underlying) =>
       constructPolyTree(typeCtx, underlying)
     case another @ _ =>
       println(("!" * 10) + s"""Missed: $inType = ${

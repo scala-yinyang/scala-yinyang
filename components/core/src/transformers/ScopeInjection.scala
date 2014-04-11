@@ -3,11 +3,12 @@ package transformers
 
 import ch.epfl.yinyang._
 import ch.epfl.yinyang.transformers._
-import scala.reflect.macros.Context
+import scala.reflect.macros.blackbox.Context
 import language.experimental.macros
 
 trait ScopeInjection extends MacroModule with TransformationUtils {
   import c.universe._
+  import internal.decorators._
 
   // TODO DRY
   def rewiredToThis(s: String) = s == "package" || s == "Predef"
@@ -57,7 +58,7 @@ trait ScopeInjection extends MacroModule with TransformationUtils {
 
         // Added to rewire inherited methods to this class
         case th @ This(_) =>
-          This(tpnme.EMPTY)
+          This(typeNames.EMPTY)
 
         // Removes all import statements (for now).
         case Import(_, _) =>

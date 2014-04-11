@@ -2,7 +2,7 @@ package ch.epfl.yinyang
 
 import ch.epfl.yinyang._
 import ch.epfl.yinyang.transformers._
-import scala.reflect.macros.Context
+import scala.reflect.macros.blackbox.Context
 import language.experimental.macros
 
 trait MacroModule {
@@ -20,10 +20,11 @@ trait DataDefs extends MacroModule {
  */
 trait TransformationUtils extends MacroModule {
   import c.universe._
+  import internal.decorators._
 
   /* These two should be unified */
   def method(recOpt: Option[Tree], methName: String, args: List[List[Tree]], targs: List[Tree] = Nil): Tree = {
-    val calleeName = newTermName(methName)
+    val calleeName = TermName(methName)
     val callee = recOpt match {
       case Some(rec) => Select(rec, calleeName)
       case None      => Ident(calleeName)
@@ -43,10 +44,10 @@ trait TransformationUtils extends MacroModule {
     select
 
   def makeConstructor(classname: String, arguments: List[Tree]): Tree =
-    Apply(Select(newClass(classname), nme.CONSTRUCTOR), arguments)
+    Apply(Select(newClass(classname), termNames.CONSTRUCTOR), arguments)
 
   def newClass(classname: String) =
-    New(Ident(newTypeName(classname)))
+    New(Ident(TypeName(classname)))
 
   def copy(orig: Tree)(nev: Tree): Tree = {
     nev.setSymbol(orig.symbol)

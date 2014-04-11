@@ -2,7 +2,7 @@ package ch.epfl.yinyang
 package analysis
 
 import ch.epfl.yinyang._
-import scala.reflect.macros.Context
+import scala.reflect.macros.blackbox.Context
 import language.experimental.macros
 import scala.collection.mutable
 import mutable.{ ListBuffer, HashMap }

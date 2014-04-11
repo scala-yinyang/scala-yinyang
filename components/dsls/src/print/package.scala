@@ -4,7 +4,7 @@ import ch.epfl.yinyang._
 import ch.epfl.yinyang.typetransformers._
 import scala.collection.mutable.WeakHashMap
 import scala.language.experimental.macros
-import scala.reflect.macros.Context
+import scala.reflect.macros.blackbox.Context
 import scala.tools.reflect.ToolBoxFactory
 
 object `package` {

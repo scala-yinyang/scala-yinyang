@@ -1,7 +1,7 @@
 package reptest
 
 import scala.language.experimental.macros
-import scala.reflect.macros.Context
+import scala.reflect.macros.blackbox.Context
 
 object test {
 
@@ -13,10 +13,10 @@ object test {
       val names = dslName.split("\\.").toList.reverse
       assert(names.length >= 1, "DSL trait name must be in the valid format. DSL trait name is " + dslName)
 
-      val tpeName = newTypeName(names.head)
+      val tpeName = TypeName(names.head)
       names.tail.reverse match {
         case head :: tail =>
-          Select(tail.foldLeft[Tree](Ident(newTermName(head)))((tree, name) => Select(tree, newTermName(name))), tpeName)
+          Select(tail.foldLeft[Tree](Ident(TermName(head)))((tree, name) => Select(tree, TermName(name))), tpeName)
         case Nil =>
           Ident(tpeName)
       }
@@ -24,21 +24,21 @@ object test {
 
     def composeDSL(transformedBody: Tree) =
       // class MyDSL extends DSL {
-      ClassDef(Modifiers(), newTypeName("eval"), List(), Template(
+      ClassDef(Modifiers(), TypeName("eval"), List(), Template(
         List(dslTrait("failure.FailureCake")),
         emptyValDef,
         List(
-          DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(List()), TypeTree(),
-            Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List())), Literal(Constant(())))),
+          DefDef(Modifiers(), termNames.CONSTRUCTOR, List(), List(List()), TypeTree(),
+            Block(List(Apply(Select(Super(This(typeNames.EMPTY), typeNames.EMPTY), termNames.CONSTRUCTOR), List())), Literal(Constant(())))),
           // def main = {
-          DefDef(Modifiers(), newTermName("main"), List(), List(List()), Ident(newTypeName("Any")), transformedBody))))
+          DefDef(Modifiers(), TermName("main"), List(), List(List()), Ident(TypeName("Any")), transformedBody))))
     //     }
     // }
 
-    def constructor = Apply(Select(New(Ident(newTypeName("eval"))), nme.CONSTRUCTOR), List())
+    def constructor = Apply(Select(New(Ident(TypeName("eval"))), termNames.CONSTRUCTOR), List())
 
     c.eval(c.Expr[Any](
-      c.resetAllAttrs(Block(composeDSL(Literal(Constant(1))), constructor))))
+      c.untypecheck(Block(composeDSL(Literal(Constant(1))), constructor))))
 
     c.Expr[Any](Literal(Constant(1)))
   }

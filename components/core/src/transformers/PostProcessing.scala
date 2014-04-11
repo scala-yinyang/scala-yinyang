@@ -1,11 +1,12 @@
 package ch.epfl.yinyang
 package transformers
 
+import language.experimental.macros
+
 import ch.epfl.yinyang._
 import ch.epfl.yinyang.transformers._
-import scala.reflect.macros.Context
+import scala.reflect.macros.blackbox.Context
 import scala.reflect.macros.Universe
-import language.experimental.macros
 import scala.collection.mutable
 
 /**

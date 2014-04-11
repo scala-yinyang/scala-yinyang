@@ -1,6 +1,6 @@
 package ch.epfl.yinyang.typetransformers
 
-import scala.reflect.macros.Context
+import scala.reflect.macros.blackbox.Context
 
 trait RepTransformerLike[C <: Context] { this: TypeTransformer[C] with PolyTransformerLike[C] =>
   import c.universe._
@@ -12,7 +12,7 @@ trait RepTransformerLike[C <: Context] { this: TypeTransformer[C] with PolyTrans
     val universe = c.universe.asInstanceOf[scala.reflect.internal.Types]
 
     def rep(inType: Type): Tree = {
-      AppliedTypeTree(Select(This(newTypeName(className)), newTypeName("Rep")),
+      AppliedTypeTree(Select(This(TypeName(className)), TypeName("Rep")),
         List(constructPolyTree(ctx, inType))) // TypeTree(inType)
     }
 
@@ -23,7 +23,7 @@ trait RepTransformerLike[C <: Context] { this: TypeTransformer[C] with PolyTrans
         //we can't construnct baseTree using TypeTree(pre) - pre is only scala.type not FunctionN
         //val baseTree = TypeTree(pre) //pre = scala.type
         //using such baseTree we get val a: scala.type[Rep[Int], Rep[Int]] = ...
-        val baseTree = Select(Ident(newTermName("scala")), sym.name)
+        val baseTree = Select(Ident(TermName("scala")), sym.name)
         AppliedTypeTree(baseTree, retTyperees)
 
       case SingleType(pre, name) if inType.typeSymbol.isClass && (!inType.typeSymbol.isModuleClass) =>

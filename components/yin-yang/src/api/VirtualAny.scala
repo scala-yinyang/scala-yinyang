@@ -2,7 +2,7 @@ package ch.epfl.yinyang
 package api
 
 import language.experimental.macros
-import scala.reflect.macros.Context
+import scala.reflect.macros.blackbox.Context
 
 /**
  * Member method-based virtualization of the `Any` API.

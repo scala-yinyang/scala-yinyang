@@ -12,7 +12,7 @@ import com.typesafe.sbt.SbtGit.git
 
 object YinYangBuild extends Build {
   lazy val projectSettings = Seq[Setting[_]](
-    version              := "0.1-SNAPSHOT", 
+    version              := "0.1-SNAPSHOT",
     organization         := "ch.epfl.lamp",
     licenses             := Seq("New BSD" -> url("https://raw2.github.com/vjovanov/yin-yang/master/LICENSE")),
     homepage             := Some(url("http://scala-yinyang.org/")),
@@ -22,7 +22,7 @@ object YinYangBuild extends Build {
 
   lazy val scalaSettings = Defaults.defaultSettings ++ Seq(
     scalaOrganization    := scalaOrg,
-    scalaVersion         := "2.10.3",
+    scalaVersion         := "2.11.0-RC3",
     scalacOptions        := defaultScalacOptions :+ "-Xfatal-warnings"
   )
 
@@ -32,8 +32,7 @@ object YinYangBuild extends Build {
       scalaOrg % "scala-library" % ver,
       scalaOrg % "scala-reflect" % ver,
       scalaOrg % "scala-compiler" % ver,
-      "org.scalatest" % "scalatest_2.10" % "2.0" % "test",
-      "com.github.axel22" %% "scalameter" % "0.4",
+      "org.scalatest" % "scalatest_2.11.0-RC3" % "2.1.2" % "test",      
       "junit" % "junit" % "4.11" % "test" // we need JUnit explicitly
   )))
 
@@ -41,7 +40,7 @@ object YinYangBuild extends Build {
   lazy val _yinyang      = Project(id = "root",           base = file(".")                  , settings = Project.defaultSettings ++ Seq(publishArtifact := false)) aggregate (yinyang, yy_core, yy_paradise, example_dsls, backend)
   lazy val yy_core       = Project(id = "yy-core",        base = file("components/core")    , settings = defaults ++ Seq(name := "yy-core"))
   lazy val yy_paradise   = Project(id = "yy-paradise",    base = file("components/paradise"), settings = defaults ++ paradise ++ Seq(name := "yy-paradise")) dependsOn(yy_core)
-  lazy val yinyang       = Project(id = "yin-yang",       base = file("components/yin-yang"), settings = defaults ++ paradise ++ Seq(name := "yin-yang")) dependsOn(yy_core)
+  lazy val yinyang       = Project(id = "yin-yang",       base = file("components/yin-yang"), settings = defaults ++ Seq(name := "yin-yang")) dependsOn(yy_core)
   lazy val backend       = Project(id = "backend",        base = file("components/backend") , settings = defaults ++ Seq(name := "yy-backend")) dependsOn (yinyang)
   lazy val example_dsls  = Project(id = "example-dsls",   base = file("components/dsls")    , settings = defaults) dependsOn(yinyang)  
 
@@ -62,7 +61,7 @@ object YinYangBuild extends Build {
 
   // add the macro paradise compiler plugin
   lazy val paradise = Seq(
-    addCompilerPlugin("org.scala-lang.plugins" % "macro-paradise_2.10.3" % "2.0.0-SNAPSHOT"),
+    addCompilerPlugin("org.scalamacros" % "paradise_2.11.0-RC3" % "2.0.0-M6"),
     scalacOptions := defaultScalacOptions
   )
 

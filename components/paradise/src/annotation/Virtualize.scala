@@ -4,11 +4,11 @@ package annotation
 import ch.epfl.yinyang.transformers.LanguageVirtualization
 import language.experimental.macros
 import scala.annotation.StaticAnnotation
-import scala.reflect.macros.Context
+import scala.reflect.macros.blackbox.Context
 
 /** Annotation class for @virtualize macro annotation. */
 final class virtualize extends StaticAnnotation {
-  def macroTransform(annottees: Any*) = macro virtualize.impl
+  def macroTransform(annottees: Any*): Any = macro virtualize.impl
 }
 
 /** Companion object implementing @virtualize macro annotation. */
