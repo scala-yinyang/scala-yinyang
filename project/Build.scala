@@ -22,7 +22,7 @@ object YinYangBuild extends Build {
 
   lazy val scalaSettings = Defaults.defaultSettings ++ Seq(
     scalaOrganization    := scalaOrg,
-    scalaVersion         := "2.11.0-RC3",
+    scalaVersion         := "2.11.0",
     scalacOptions        := defaultScalacOptions :+ "-Xfatal-warnings"
   )
 
@@ -32,7 +32,7 @@ object YinYangBuild extends Build {
       scalaOrg % "scala-library" % ver,
       scalaOrg % "scala-reflect" % ver,
       scalaOrg % "scala-compiler" % ver,
-      "org.scalatest" % "scalatest_2.11.0-RC3" % "2.1.2" % "test",      
+      "org.scalatest" % "scalatest_2.11" % "2.1.5" % "test",
       "junit" % "junit" % "4.11" % "test" // we need JUnit explicitly
   )))
 
@@ -61,7 +61,7 @@ object YinYangBuild extends Build {
 
   // add the macro paradise compiler plugin
   lazy val paradise = Seq(
-    addCompilerPlugin("org.scalamacros" % "paradise_2.11.0-RC3" % "2.0.0-M6"),
+    addCompilerPlugin("org.scalamacros" % "paradise_2.11.0" % "2.0.0"),
     scalacOptions := defaultScalacOptions
   )
 
