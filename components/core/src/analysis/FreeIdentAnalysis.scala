@@ -18,35 +18,35 @@ trait FreeIdentAnalysis extends MacroModule with TransformationUtils {
   import c.universe._
 
   // Symbol tracking.
-  val symbolIds: mutable.HashMap[Int, Symbol] = new mutable.HashMap()
-  def symbolById(id: Int) = symbolIds(id)
+  // val symbolIds: mutable.HashMap[Int, Symbol] = new mutable.HashMap()
+  // def symbolById(id: Int) = symbolIds(id)
 
-  def freeVariables(tree: Tree): List[Symbol] =
+  def freeVariables(tree: Tree): List[Tree] =
     new FreeVariableCollector().collect(tree)
 
   class FreeVariableCollector extends Traverser {
 
-    private[this] val collected = ListBuffer[Symbol]()
-    private[this] var defined = List[Symbol]()
+    private[this] val collected = ListBuffer[Tree]()
+    private[this] var defined = List[Tree]()
 
-    private[this] final def isFree(id: Symbol) = !defined.contains(id)
+    private[this] final def isFree(id: Tree) = !defined.contains(id)
 
     override def traverse(tree: Tree) = tree match {
       case i @ Ident(s) => {
         val sym = i.symbol
         //store info about idents
-        symbolIds.put(symbolId(sym), sym)
+        // symbolIds.put(symbolId(sym), sym)
         if (sym.isTerm &&
           !(sym.isMethod || sym.isPackage || sym.isModule) &&
-          isFree(sym)) collected append sym
+          isFree(i)) collected append i
       }
       case _ => super.traverse(tree)
     }
 
-    def collect(tree: Tree): List[Symbol] = {
+    def collect(tree: Tree): List[Tree] = {
       collected.clear()
-      defined = new LocalDefCollector().definedSymbols(tree)
-      log(s"FreeIdentAnalysis: Defined (not-free variables): $defined", 2)
+      // defined = new LocalDefCollector().definedSymbols(tree)
+      // log(s"FreeIdentAnalysis: Defined (not-free variables): $defined", 2)
       traverse(tree)
       collected.toList.distinct
     }
