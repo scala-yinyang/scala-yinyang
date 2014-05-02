@@ -77,8 +77,9 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
     if (shallow) { block }
     else {
       // mark captured variables as holes
-      val allCaptured = freeVariables(block.tree)
-      log("Free variables (allCaptured): " + allCaptured, 2)
+      val captured: List[Tree] = freeVariables(block.tree)
+      val capturedSyms: List[Symbol] = captured.map(_.symbol)
+      log("Free variables (capturedSyms): " + capturedSyms, 2)
       log("original: " + block, 2)
 
       /**
@@ -103,46 +104,47 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
           PostProcess)(block)
 
       lazy val unboundDSL = {
-        val t = transform(allCaptured, Nil, Nil)(block.tree)
+        val t = transform(capturedSyms, Nil, Nil)(block.tree)
         log("FIRST TRANSFORM DONE (prettyPrinting in Caps):\n" + shortenNames(t) + "\n", 2)
         log(showRaw(t, printTypes = true), 3)
         t
       }
 
-      val varTypes: List[(Symbol, VarType)] = dslType match {
+      val varTypes: List[(Tree, VarType)] = dslType match {
         case tpe if tpe <:< typeOf[FullyStaged] =>
-          allCaptured.map(s => (s, defaultCompVar(s)))
+          captured.map(t => (t, defaultCompVar(t.symbol)))
 
         case tpe if tpe <:< typeOf[FullyUnstaged] =>
-          allCaptured.map(s => (s, NonCompVar()))
+          captured.map(t => (t, NonCompVar()))
 
         case tpe if tpe <:< typeOf[HoleTypeAnalyser] => {
-          allCaptured.foreach { s => log(s.typeSignature.typeConstructor.toString, 3) }
-          allCaptured.map(s => (s,
-            if (liftTypes.exists(l => s.typeSignature <:< l.asInstanceOf[Type])) defaultCompVar(s)
+          capturedSyms.foreach { s => log(s.typeSignature.typeConstructor.toString, 3) }
+          captured.map(t => (t,
+            if (liftTypes.exists(l => t.symbol.typeSignature <:< l.asInstanceOf[Type]))
+              defaultCompVar(t.symbol)
             else NonCompVar()))
         }
 
         case tpe =>
-          allCaptured.zip(
+          captured.zip(
             reflInstance[BaseYinYang](unboundDSL)
-              .compilationVars(allCaptured.asInstanceOf[List[reflect.runtime.universe.Symbol]]))
+              .compilationVars(capturedSyms.asInstanceOf[List[reflect.runtime.universe.Symbol]]))
       }
 
-      val compilVars: List[Symbol] = varTypes.collect({ case (s, _: CompVar) => s })
-      val nonCompilVars = allCaptured diff compilVars
+      val compilVars: List[Tree] = varTypes.collect({ case (s, _: CompVar) => s })
+      val nonCompilVars = captured diff compilVars
       val guards: List[Guard] = varTypes.collect({ case (_, v: CompVar) => v.guard })
-      val liftedCompilVars: List[Symbol] = varTypes.collect({ case (s, _: RequiredStaticCompVar) => s })
+      val liftedCompilVars: List[Tree] = varTypes.collect({ case (s, _: RequiredStaticCompVar) => s })
       val mixedCompilVars = compilVars diff liftedCompilVars
 
       log(s"VarTypes: $varTypes", 2)
-      log(s"allCaptured: $allCaptured\nnonCompilVars (holes): $nonCompilVars\ncompilVars: $compilVars\nlifted: $liftedCompilVars\nmixed: $mixedCompilVars", 2)
+      log(s"capturedSyms: $capturedSyms\nnonCompilVars (holes): $nonCompilVars\ncompilVars: $compilVars\nlifted: $liftedCompilVars\nmixed: $mixedCompilVars", 2)
 
       // re-transform the tree with new holes if there are required vars
       val dsl = if (compilVars.isEmpty) unboundDSL
       else {
         holeTable.clear()
-        transform(nonCompilVars, mixedCompilVars, liftedCompilVars)(block.tree)
+        transform(nonCompilVars.map(_.symbol), mixedCompilVars.map(_.symbol), liftedCompilVars.map(_.symbol))(block.tree)
       }
 
       // if the DSL inherits the StaticallyChecked trait reflectively do the static analysis
@@ -151,31 +153,48 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
         reflInstance[StaticallyChecked](dsl).staticallyCheck(new Reporter(c))
       }
 
-      val sortedHoles = (nonCompilVars ++ mixedCompilVars).distinct.sortBy(h => holeTable.indexOf(symbolId(h)))
+      val sortedHoles = (nonCompilVars ++ mixedCompilVars)
+        .map(x => (x.symbol, x)).toMap.values.toSeq
+        .sortBy(h => holeTable.indexOf(symbolId(h)))
 
-      def args(holes: List[Symbol]): String =
-        holes.map({ y: Symbol => y.name.decodedName.toString }).mkString("", ",", "")
+      def args(holes: List[Symbol]): List[Symbol] = holes
+      // holes.map({ y: Symbol => y.name.decodedName.toString })
 
       val programId = new scala.util.Random().nextLong
+      val programIdTree = Literal(Constant(programId))
       val dslTree = dslType match {
         case tpe if tpe <:< typeOf[CodeGenerator] && compilVars.isEmpty =>
+          // does not require run-time data => completely generated at compile time and wired for execution.           
           log("COMPILE TIME COMPILED", 2)
-          /*
-           * If DSL does not require run-time data it can be completely
-           * generated at compile time and wired for execution.
-           */
-          c parse (s"""
-            ch.epfl.yinyang.runtime.YYStorage.incrementCompileTimeCompileCount(${programId}L)
-            ${reflInstance[CodeGenerator](dsl) generateCode className}
-            new $className().apply(${args(allCaptured)})
-          """)
+          val compilationCounts = if (true)
+            q"ch.epfl.yinyang.runtime.YYStorage.incrementCompileTimeCompileCount(${programIdTree})"
+          else
+            q"()"
+
+          val x =
+            if (true)
+              c parse (s"""
+                ch.epfl.yinyang.runtime.YYStorage.incrementCompileTimeCompileCount(${programId}L)
+                ${reflInstance[CodeGenerator](dsl) generateCode className}
+                new $className().apply(${capturedSyms.map({ y: Symbol => y.name.decodedName.toString }).mkString(",")})
+              """)
+            else // does not work
+              q"""
+                $compilationCounts
+                ${c parse (reflInstance[CodeGenerator](dsl) generateCode className)}
+                new ${Ident(TermName(className))}().apply(..${captured})
+              """
+          x
         case _ =>
           /*
-           * If DSL need run-time info send it to run-time and install recompilation guard.
+           * Requires run-time variables => execute at run-time and install a recompilation guard.
            */
           log("RUNTIME COMPILED with guards", 2)
+          // TODO do we need exact types? We do if the types are primitive!
+          val retTypeTree = block.tree.tpe
           val retType = block.tree.tpe.toString
-          val functionType = s"""${(0 until sortedHoles.length).map(y => "scala.Any").mkString("(", ", ", ")")} => ${retType}"""
+          val functionTypeString = s"""${sortedHoles.map(_ => "scala.Any").mkString("(", ", ", ")")} => ${retType}"""
+          val functionType = tq"(..${sortedHoles.map(_ => tq"scala.Any")}) => ${retTypeTree}"
 
           log("Guard function strings: " + guards, 3)
 
@@ -184,17 +203,18 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
             case (_, _: CompVar)  => -1
           }) mkString ("scala.Array((", "), (", "))")
 
-          val YYCacheString = YYStorageFactory.getYYStorageString(className, functionType, retType, guards,
-            optionalHoleIds, optionalInitiallyStable, codeCacheSize, minimumCountToStabilize, compilVars.asInstanceOf[List[reflect.runtime.universe.Symbol]])
+          val YYCacheString = YYStorageFactory.getYYStorageString(className, functionTypeString, retType, guards,
+            optionalHoleIds, optionalInitiallyStable, codeCacheSize, minimumCountToStabilize, compilVars.map(_.symbol).asInstanceOf[List[reflect.runtime.universe.Symbol]])
 
-          val guardedExecute = c parse (dslType match {
+          val guardedExecute = dslType match {
             case t if t <:< typeOf[CodeGenerator] =>
-              s"""
-              val compilVars: scala.Array[Any] = scala.Array(${compilVars map (_.name.decodedName.toString) mkString ", "})
-              val program = ch.epfl.yinyang.runtime.YYStorage.guardedLookup[$functionType](${programId}L,
-                $YYCacheString, compilVars)
-              program.apply(${args(sortedHoles)})
-            """
+              q"""
+                val cache = ${c parse YYCacheString}
+                val compilVars: scala.Array[Any] = scala.Array(..$compilVars)
+                val program = ch.epfl.yinyang.runtime.YYStorage.guardedLookup[${functionType}](
+                  ${programId}, cache, compilVars)
+                program.apply(..${sortedHoles})
+              """
             // TODO(vsalvis) How do optional variables interact with interpretation?
             // FIXME: this is not tested! Types probably wrong
             // case t if t <:< typeOf[Interpreted] => YYCacheString + s"""
@@ -205,8 +225,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
             //   $YYStorageName.check(compilVars, invalidate)
             //   dslInstance.interpret[${retType}](${args(sortedHoles)})
             // """
-          })
-
+          }
           Block(List(dsl), guardedExecute)
       }
 
@@ -412,8 +431,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
     _reflInstance.get.asInstanceOf[T]
   }
 
-  private def constructor = Apply(Select(New(Ident(TypeName(className))),
-    termNames.CONSTRUCTOR), List())
+  private def constructor = q"new ${Ident(TypeName(className))}()"
 
   def composeDSL(compilVars: List[Symbol])(transformedBody: Tree): Tree =
     // class MyDSL extends DSL {
@@ -430,6 +448,9 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
   //     }
   // }
 
+  /*
+   * Utility methods for logging.
+   */
   val typeRegex = new scala.util.matching.Regex("(" + className.replace("$", "\\$") + """\.this\.)(\w*)""")
   val typetagRegex = new scala.util.matching.Regex("""(scala\.reflect\.runtime\.[a-zA-Z`]*\.universe\.typeTag\[)(\w*)\]""")
   def shortenNames(tree: Tree): String = {

@@ -35,7 +35,7 @@ object YinYangBuild extends Build {
       "org.scalatest" % "scalatest_2.11" % "2.1.5" % "test",
       "junit" % "junit" % "4.11" % "test" // we need JUnit explicitly
   )))
-
+  
   // modules
   lazy val _yinyang      = Project(id = "root",           base = file(".")                  , settings = Project.defaultSettings ++ Seq(publishArtifact := false)) aggregate (yinyang, yy_core, yy_paradise, example_dsls, backend)
   lazy val yy_core       = Project(id = "yy-core",        base = file("components/core")    , settings = defaults ++ Seq(name := "yy-core"))
@@ -56,7 +56,8 @@ object YinYangBuild extends Build {
     // sbteclipse needs some info on source directories:
     unmanagedSourceDirectories in Compile <<= (scalaSource in Compile)(Seq(_)),
     unmanagedSourceDirectories in Test <<= (scalaSource in Test)(Seq(_)),
-    parallelExecution in Test := false
+    parallelExecution in Test := false,
+    incOptions := incOptions.value.withNameHashing(true)
   )
 
   // add the macro paradise compiler plugin

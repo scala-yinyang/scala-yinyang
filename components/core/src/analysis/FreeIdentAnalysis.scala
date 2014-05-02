@@ -48,7 +48,7 @@ trait FreeIdentAnalysis extends MacroModule with TransformationUtils {
       // defined = new LocalDefCollector().definedSymbols(tree)
       // log(s"FreeIdentAnalysis: Defined (not-free variables): $defined", 2)
       traverse(tree)
-      collected.toList.distinct
+      collected.map(x => (x.symbol, x)).toMap.values.toList
     }
 
   }
