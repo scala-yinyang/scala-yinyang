@@ -166,25 +166,12 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
         case tpe if tpe <:< typeOf[CodeGenerator] && compilVars.isEmpty =>
           // does not require run-time data => completely generated at compile time and wired for execution.           
           log("COMPILE TIME COMPILED", 2)
-          val compilationCounts = if (true)
-            q"ch.epfl.yinyang.runtime.YYStorage.incrementCompileTimeCompileCount(${programIdTree})"
-          else
-            q"()"
 
-          val x =
-            if (true)
-              c parse (s"""
-                ch.epfl.yinyang.runtime.YYStorage.incrementCompileTimeCompileCount(${programId}L)
-                ${reflInstance[CodeGenerator](dsl) generateCode className}
-                new $className().apply(${capturedSyms.map({ y: Symbol => y.name.decodedName.toString }).mkString(",")})
-              """)
-            else // does not work
-              q"""
-                $compilationCounts
-                ${c parse (reflInstance[CodeGenerator](dsl) generateCode className)}
-                new ${Ident(TermName(className))}().apply(..${captured})
-              """
-          x
+          q"""
+            ch.epfl.yinyang.runtime.YYStorage.incrementCompileTimeCompileCount(${programIdTree})
+            ${c parse (reflInstance[CodeGenerator](dsl) generateCode className)}
+            new ${Ident(TypeName(className))}().apply(..${captured})
+          """
         case _ =>
           /*
            * Requires run-time variables => execute at run-time and install a recompilation guard.
