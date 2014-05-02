@@ -420,20 +420,13 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
 
   private def constructor = q"new ${Ident(TypeName(className))}()"
 
-  def composeDSL(compilVars: List[Symbol])(transformedBody: Tree): Tree =
-    // class MyDSL extends DSL {
-    ClassDef(Modifiers(), TypeName(className), List(),
-      Template(List(dslTrait), noSelfType,
-        compilVars.map({ k => ValDef(Modifiers(Flag.MUTABLE), TermName("captured$" + k.name.decodedName.toString), TypeTree(), Ident(k)) }) ++
-          List(
-            DefDef(Modifiers(), termNames.CONSTRUCTOR, List(), List(List()), TypeTree(),
-              Block(List(Apply(Select(Super(This(typeNames.EMPTY), typeNames.EMPTY),
-                termNames.CONSTRUCTOR), List())), Literal(Constant(())))),
-            // def main = {
-            DefDef(Modifiers(), TermName(mainMethod), List(), List(List()),
-              Ident(TypeName("Any")), transformedBody))))
-  //     }
-  // }
+  def composeDSL(compilVars: List[Symbol])(transformedBody: Tree): Tree = q"""
+    class ${TypeName(className)} extends $dslTrait {
+      ..${compilVars.map(k => q"var ${TermName("captured$" + k.name.decodedName.toString)} = $k")}
+
+      def main(): Any = $transformedBody                    
+    }
+  """
 
   /*
    * Utility methods for logging.
