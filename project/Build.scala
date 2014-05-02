@@ -35,14 +35,14 @@ object YinYangBuild extends Build {
       "org.scalatest" % "scalatest_2.11" % "2.1.5" % "test",
       "junit" % "junit" % "4.11" % "test" // we need JUnit explicitly
   )))
-  
+
   // modules
   lazy val _yinyang      = Project(id = "root",           base = file(".")                  , settings = Project.defaultSettings ++ Seq(publishArtifact := false)) aggregate (yinyang, yy_core, yy_paradise, example_dsls, backend)
   lazy val yy_core       = Project(id = "yy-core",        base = file("components/core")    , settings = defaults ++ Seq(name := "yy-core"))
   lazy val yy_paradise   = Project(id = "yy-paradise",    base = file("components/paradise"), settings = defaults ++ paradise ++ Seq(name := "yy-paradise")) dependsOn(yy_core)
   lazy val yinyang       = Project(id = "yin-yang",       base = file("components/yin-yang"), settings = defaults ++ Seq(name := "yin-yang")) dependsOn(yy_core)
   lazy val backend       = Project(id = "backend",        base = file("components/backend") , settings = defaults ++ Seq(name := "yy-backend")) dependsOn (yinyang)
-  lazy val example_dsls  = Project(id = "example-dsls",   base = file("components/dsls")    , settings = defaults) dependsOn(yinyang)  
+  lazy val example_dsls  = Project(id = "example-dsls",   base = file("components/dsls")    , settings = defaults) dependsOn(yinyang)
 
   lazy val defaults = projectSettings ++ scalaSettings ++ formatSettings ++ libraryDeps ++ Seq(
     resolvers +=  "OSSH" at "https://oss.sonatype.org/content/groups/public",

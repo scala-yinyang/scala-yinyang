@@ -11,6 +11,7 @@ import mutable.{ ListBuffer, HashMap }
 import language.experimental.macros
 import java.util.concurrent.atomic.AtomicLong
 import yinyang.typetransformers.TypeTransformer
+import scala.util.matching.Regex
 
 object YYTransformer {
   val defaults = Map[String, Any](
@@ -131,20 +132,23 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
               .compilationVars(capturedSyms.asInstanceOf[List[reflect.runtime.universe.Symbol]]))
       }
 
-      val compilVars: List[Tree] = varTypes.collect({ case (s, _: CompVar) => s })
-      val nonCompilVars = captured diff compilVars
-      val guards: List[Guard] = varTypes.collect({ case (_, v: CompVar) => v.guard })
-      val liftedCompilVars: List[Tree] = varTypes.collect({ case (s, _: RequiredStaticCompVar) => s })
-      val mixedCompilVars = compilVars diff liftedCompilVars
+      val compilVars: List[Tree] = varTypes.collect { case (s, _: CompVar) => s }
+      val nonCompilVars: List[Tree] = captured diff compilVars
+      val guards: List[Guard] = varTypes.collect { case (_, v: CompVar) => v.guard }
+      val liftedCompilVars: List[Tree] = varTypes.collect { case (s, _: RequiredStaticCompVar) => s }
+      val mixedCompilVars: List[Tree] = compilVars diff liftedCompilVars
 
       log(s"VarTypes: $varTypes", 2)
-      log(s"capturedSyms: $capturedSyms\nnonCompilVars (holes): $nonCompilVars\ncompilVars: $compilVars\nlifted: $liftedCompilVars\nmixed: $mixedCompilVars", 2)
+      log(s"capturedSyms: $capturedSyms\nnonCompilVars (holes): $nonCompilVars" +
+        s"compilVars: $compilVars\nlifted: $liftedCompilVars\nmixed: $mixedCompilVars", 2)
 
       // re-transform the tree with new holes if there are required vars
       val dsl = if (compilVars.isEmpty) unboundDSL
       else {
         holeTable.clear()
-        transform(nonCompilVars.map(_.symbol), mixedCompilVars.map(_.symbol), liftedCompilVars.map(_.symbol))(block.tree)
+        transform(
+          nonCompilVars.map(_.symbol), mixedCompilVars.map(_.symbol), liftedCompilVars.map(_.symbol))(
+            block.tree)
       }
 
       // if the DSL inherits the StaticallyChecked trait reflectively do the static analysis
@@ -164,7 +168,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
       val programIdTree = Literal(Constant(programId))
       val dslTree = dslType match {
         case tpe if tpe <:< typeOf[CodeGenerator] && compilVars.isEmpty =>
-          // does not require run-time data => completely generated at compile time and wired for execution.           
+          // does not require run-time data => completely generated at compile.
           log("COMPILE TIME COMPILED", 2)
 
           q"""
@@ -180,7 +184,8 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
           // TODO do we need exact types? We do if the types are primitive!
           val retTypeTree = block.tree.tpe
           val retType = block.tree.tpe.toString
-          val functionTypeString = s"""${sortedHoles.map(_ => "scala.Any").mkString("(", ", ", ")")} => ${retType}"""
+          val functionTypeString =
+            s"""${sortedHoles.map(_ => "scala.Any").mkString("(", ", ", ")")} => ${retType}"""
           val functionType = tq"(..${sortedHoles.map(_ => tq"scala.Any")}) => ${retTypeTree}"
 
           log("Guard function strings: " + guards, 3)
@@ -190,8 +195,9 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
             case (_, _: CompVar)  => -1
           }) mkString ("scala.Array((", "), (", "))")
 
-          val YYCacheString = YYStorageFactory.getYYStorageString(className, functionTypeString, retType, guards,
-            optionalHoleIds, optionalInitiallyStable, codeCacheSize, minimumCountToStabilize, compilVars.map(_.symbol).asInstanceOf[List[reflect.runtime.universe.Symbol]])
+          val YYCacheString = YYStorageFactory.getYYStorageString(className, functionTypeString, retType,
+            guards, optionalHoleIds, optionalInitiallyStable, codeCacheSize, minimumCountToStabilize,
+            compilVars.map(_.symbol.asInstanceOf[reflect.runtime.universe.Symbol]))
 
           val guardedExecute = dslType match {
             case t if t <:< typeOf[CodeGenerator] =>
@@ -218,7 +224,8 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
 
       log(s"Final tree: ${showRaw(c.untypecheck(dslTree))}", 3)
       log(s"Final untyped: ${show(c.untypecheck(dslTree), printTypes = true)}", 3)
-      log(s"Final typed: ${shortenNames(c.typecheck(c.untypecheck(dslTree)))}\n-------- YYTransformer DONE ----------\n\n", 2)
+      log(s"Final typed: ${shortenNames(c.typecheck(c.untypecheck(dslTree)))}\n" +
+        "-------- YYTransformer DONE ----------\n\n", 2)
       c.Expr[T](c.untypecheck(dslTree))
     }
   }
@@ -235,7 +242,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
   def debugLevel: Int = debug
 
   /*
-   * Aborts compilation with a compilation error if any features used are missing in the deep embedding.
+   * Aborts with a compilation error if any features used are restricted in the deep embedding.
    */
   object FeatureAnalyzer extends ((Tree, Seq[DSLFeature]) => Unit) {
     def apply(tree: Tree, lifted: Seq[DSLFeature] = Seq()): Unit = {
@@ -314,7 +321,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
       }
 
       log(s"Args: ${meth.args}", 3)
-      val lhs: Tree = typeApply(meth.targs map { x => constructTypeTree(typeTransformer.TypeApplyCtx, x.tpe) })(
+      val lhs = typeApply(meth.targs map { x => constructTypeTree(typeTransformer.TypeApplyCtx, x.tpe) })(
         Select(meth.tpe.map(dummyTree(_)).getOrElse(This(TypeName(className))), TermName(meth.name)))
       val res = meth.args.foldLeft(lhs)((x, y) => Apply(x, y.map(dummyTree)))
       log(s"${showRaw(res)}", 3)
@@ -410,7 +417,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
       log("Reflectively instantiating and memoizing DSL.", 2)
       val st = System.currentTimeMillis()
       _reflInstance = Some(c.eval(
-        c.Expr(c.untypecheck(Block(List(dslDef), constructor)))))
+        c.Expr(c.untypecheck(Block(List(dslDef), q"new ${Ident(TypeName(className))}()")))))
       log(s"Eval time: ${(System.currentTimeMillis() - st)}", 2)
     } else {
       log("Retrieving memoized reflective DSL instance.", 2)
@@ -418,26 +425,28 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
     _reflInstance.get.asInstanceOf[T]
   }
 
-  private def constructor = q"new ${Ident(TypeName(className))}()"
-
   def composeDSL(compilVars: List[Symbol])(transformedBody: Tree): Tree = q"""
     class ${TypeName(className)} extends $dslTrait {
       ..${compilVars.map(k => q"var ${TermName("captured$" + k.name.decodedName.toString)} = $k")}
 
-      def main(): Any = $transformedBody                    
+      def main(): Any = $transformedBody
     }
   """
 
   /*
    * Utility methods for logging.
    */
-  val typeRegex = new scala.util.matching.Regex("(" + className.replace("$", "\\$") + """\.this\.)(\w*)""")
-  val typetagRegex = new scala.util.matching.Regex("""(scala\.reflect\.runtime\.[a-zA-Z`]*\.universe\.typeTag\[)(\w*)\]""")
+  val typeRegex = new Regex("(" + className.replace("$", "\\$") + """\.this\.)(\w*)""")
+  val typetagRegex = new Regex("""(scala\.reflect\.runtime\.[a-zA-Z`]*\.universe\.typeTag\[)(\w*)\]""")
   def shortenNames(tree: Tree): String = {
     var short = tree.toString
     if (shortenDSLNames) {
-      typeRegex findAllIn short foreach { m => val typeRegex(start, typ) = m; short = short.replace(start + typ, typ.toUpperCase()) }
-      typetagRegex findAllIn short foreach { m => val typetagRegex(start, typ) = m; short = short.replace(start + typ + "]", "TYPETAG[" + typ.toUpperCase() + "]") }
+      typeRegex findAllIn short foreach { m =>
+        val typeRegex(start, typ) = m; short = short.replace(start + typ, typ.toUpperCase())
+      }
+      typetagRegex findAllIn short foreach { m =>
+        val typetagRegex(start, typ) = m; short = short.replace(start + typ + "]", "TYPETAG[" + typ.toUpperCase() + "]")
+      }
     }
     short
   }
