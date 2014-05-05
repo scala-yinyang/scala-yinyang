@@ -436,18 +436,19 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
   /*
    * Utility methods for logging.
    */
-  val typeRegex = new Regex(s"""(${className.replace("$", "\\$")}\.this\.)(\w*)""")
+
+  val typeRegex = new Regex("(" + className.replace("$", "\\$") + """\.this\.)(\w*)""")
   val typetagRegex = new Regex("""(scala\.reflect\.runtime\.[a-zA-Z`]*\.universe\.typeTag\[)(\w*)\]""")
   def shortenNames(tree: Tree): String = {
     var short = tree.toString
     if (shortenDSLNames) {
-      typeRegex findAllIn short foreach {
-        case typeRegex(start, typ) =>
-          short = short.replace(start + typ, typ.toUpperCase())
+      typeRegex findAllIn short foreach { m =>
+        val typeRegex(start, typ) = m
+        short = short.replace(start + typ, typ.toUpperCase())
       }
-      typetagRegex findAllIn short foreach {
-        case typetagRegex(start, typ) =>
-          short = short.replace(start + typ + "]", "TYPETAG[" + typ.toUpperCase() + "]")
+      typetagRegex findAllIn short foreach { m =>
+        val typetagRegex(start, typ) = m
+        short = short.replace(start + typ + "]", "TYPETAG[" + typ.toUpperCase() + "]")
       }
     }
     short
