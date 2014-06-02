@@ -6,7 +6,7 @@ import scala.reflect.macros.blackbox.Context
 /**
  * Default implementation of virtualized Scala control structures.
  *
- * This trait is adapted from the [[scala.EmbeddedControls]] trait in
+ * This trait is adapted from the `EmbeddedControls` trait in
  * Scala Virtualized.  See also
  * [[https://raw.github.com/namin/scala/topic-virt/src/library/scala/EmbeddedControls.scala]]
  *
@@ -26,9 +26,8 @@ import scala.reflect.macros.blackbox.Context
  * not, the call will be left as it is and a staging or interpreting
  * DSL can take over.
  *
- * @NOTE: This is experimental.
- *        None of the above will happen unless you annotate your code
- *        with `@virtualize`.
+ * @note This is feature experimental.
+ * @note None of the above will happen unless you annotate your code with `@virtualize`.
  */
 trait EmbeddedControls {
 

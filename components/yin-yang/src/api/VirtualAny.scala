@@ -12,8 +12,9 @@ import scala.reflect.macros.blackbox.Context
  * calls on the first argument of the infix method.
  *
  * Example: When faced with an expression of the form `x == y`, the
- * [[transformers.LanguageVirtualization]] transformation (or the
- * `@virtualized` macro annotation) will generate a method call:
+ * `ch.epfl.yinyang.transformers.LanguageVirtualization`
+ * transformation (or the `@virtualized` macro annotation)
+ * will generate a method call:
  * `infix_==(x, y)`.  This method call will be bound to an
  * implementation based on normal rules of scoping.  If it binds to
  * the one in this trait, the corresponding macro will rewrite it to
@@ -35,7 +36,7 @@ trait VirtualAny {
   def infix_getClass(x: Any): Any = macro any_getClass
 }
 
-/** VirtualAny companion object containing macro implementations. */
+/* VirtualAny companion object containing macro implementations. */
 private object VirtualAny {
 
   def any_==(c: Context)(

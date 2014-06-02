@@ -8,7 +8,7 @@ import language.experimental.macros
 import scala.collection.mutable
 
 /**
- * Converts Scala features that can not be overriden to method calls that can be given
+ * Converts Scala features that can not be overridden to method calls that can be given
  * arbitrary semantics.
  *
  * ==Features covered are==

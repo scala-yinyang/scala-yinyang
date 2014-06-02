@@ -12,7 +12,7 @@ import scala.reflect.macros.blackbox.Context
  * method calls on the first argument of the infix method.
  *
  * Example: When faced with an expression of the form `x.eq(y)`, the
- * [[transformers.LanguageVirtualization]] transformation (or the
+ * `ch.epfl.yinyang.transformers.LanguageVirtualization` transformation (or the
  * `@virtualized` macro annotation) will generate a method call:
  * `infix_eq(x, y)`.  This method call will be bound to an
  * implementation based on normal rules of scoping.  If it binds to

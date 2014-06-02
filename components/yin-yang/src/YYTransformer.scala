@@ -83,7 +83,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
       log("Free variables (capturedSyms): " + capturedSyms, 2)
       log("original: " + block, 2)
 
-      /**
+      /*
        * Transforms the given DSL program block.
        *   @param toHoles All contained symbolIds will be replaced with
        *     `hole[T](classTag[T], holeId)` and the holeTable will map from
