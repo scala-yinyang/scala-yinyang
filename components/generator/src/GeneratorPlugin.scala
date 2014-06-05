@@ -13,7 +13,7 @@ class BackendGenerator(val global: Global) extends Plugin {
   val description = "Generates the deep DSL embedding based on the direct embedding."
   val components = List[PluginComponent](Component)
 
-  private object Component extends PluginComponent {
+  private object Component extends PluginComponent with nsc.typechecker.Analyzer {
     val global: BackendGenerator.this.global.type = BackendGenerator.this.global
     val runsAfter = List[String]("refchecks");
     val phaseName = BackendGenerator.this.name

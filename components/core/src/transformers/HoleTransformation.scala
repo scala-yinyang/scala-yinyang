@@ -29,9 +29,9 @@ trait HoleTransformation extends MacroModule with TransformationUtils {
   val holeTable = new ArrayBuffer[Int]
 
   object HoleTransformer {
-    def apply(toHoles: List[Symbol] = Nil, shortenNames: Tree => String)(tree: Tree) = {
+    def apply(toHoles: List[Symbol] = Nil, className: String)(tree: Tree) = {
       val t = new HoleTransformer(toHoles map symbolId).transform(tree)
-      log("holeTransformed (transforming " + toHoles + "): " + shortenNames(t), 2)
+      log("holeTransformed (transforming " + toHoles + "): " + code(t), 2)
       log("holeTable (holeId -> symbolId): " + holeTable, 2)
       t
     }

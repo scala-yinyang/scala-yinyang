@@ -11,7 +11,6 @@ import mutable.{ ListBuffer, HashMap }
 import language.experimental.macros
 import java.util.concurrent.atomic.AtomicLong
 import yinyang.typetransformers.TypeTransformer
-import scala.util.matching.Regex
 
 object YYTransformer {
   val defaults = Map[String, Any](
@@ -47,6 +46,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
   with HoleTransformation
   with FreeIdentAnalysis
   with AscriptionTransformation
+  with TypeTreeTransformation
   with LiftLiteralTransformation
   with DataDefs
   with TransformationUtils
@@ -54,8 +54,6 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
 
   type Ctx = C
   import c.universe._
-  import c.universe.TermName
-  val typeTransformer: TypeTransformer[c.type]
   val postProcessor: PostProcessing[c.type]
   import typeTransformer._
   import postProcessor._
@@ -100,13 +98,13 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
           (x => VirtualizationTransformer(x)._1) andThen
           ScopeInjectionTransformer andThen
           TypeTreeTransformer andThen
-          HoleTransformer((toHoles ++ toMixed).distinct, shortenNames) andThen
+          HoleTransformer((toHoles ++ toMixed).distinct, className) andThen
           composeDSL((toLifts ++ toMixed).distinct) andThen
           PostProcess)(block)
 
       lazy val unboundDSL = {
         val t = transform(capturedSyms, Nil, Nil)(block.tree)
-        log("FIRST TRANSFORM DONE (prettyPrinting in Caps):\n" + shortenNames(t) + "\n", 2)
+        log("FIRST TRANSFORM DONE (prettyPrinting in Caps):\n" + code(t) + "\n", 2)
         log(showRaw(t, printTypes = true), 3)
         t
       }
@@ -224,7 +222,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
 
       log(s"Final tree: ${showRaw(c.untypecheck(dslTree))}", 3)
       log(s"Final untyped: ${show(c.untypecheck(dslTree), printTypes = true)}", 3)
-      log(s"Final typed: ${shortenNames(c.typecheck(c.untypecheck(dslTree)))}\n" +
+      log(s"Final typed: ${code(c.typecheck(c.untypecheck(dslTree)))}\n" +
         "-------- YYTransformer DONE ----------\n\n", 2)
       c.Expr[T](c.untypecheck(dslTree))
     }
@@ -236,7 +234,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
   def interpretMethod = "interpret"
   val holeMethod = "hole"
   val classUID = YYTransformer.uID.incrementAndGet
-  val className =
+  override val className =
     s"generated$$${dslName.filter(_ != '.') + classUID}"
   val dslType = c.mirror.staticClass(dslName).toType
   def debugLevel: Int = debug
@@ -347,47 +345,6 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
     res
   }
 
-  object TypeTreeTransformer extends (Tree => Tree) {
-    def apply(tree: Tree) = {
-      val t = new TypeTreeTransformer().transform(tree)
-      log("typeTreeTransformed: " + shortenNames(t), 2)
-      t
-    }
-  }
-
-  private final class TypeTreeTransformer extends Transformer {
-
-    var typeCtx: TypeContext = OtherCtx
-    var ident = 0
-
-    override def transform(tree: Tree): Tree = {
-      log(" " * ident + " ::> " + tree, 3)
-      ident += 1
-      val result = tree match {
-        case typTree: TypTree if typTree.tpe != null =>
-          log(s"TypeTree for ${showRaw(typTree)}", 3)
-          constructTypeTree(typeCtx, typTree.tpe)
-
-        case TypeApply(mth, targs) =>
-          // TypeApply params need special treatment
-          typeCtx = TypeApplyCtx
-          val liftedArgs = targs map (transform(_))
-          typeCtx = OtherCtx
-          TypeApply(transform(mth), liftedArgs)
-
-        case _ =>
-          super.transform(tree)
-      }
-
-      ident -= 1
-      log(" " * ident + " <:: " + result, 3)
-      result
-    }
-  }
-
-  def constructTypeTree(tctx: TypeContext, inType: Type): Tree =
-    typeTransformer transform (tctx, inType)
-
   def defaultCompVar(s: Symbol): CompVar = {
     CompVar.equality(s.typeSignature.toString)
   }
@@ -433,24 +390,4 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
     }
   """
 
-  /*
-   * Utility methods for logging.
-   */
-
-  val typeRegex = new Regex("(" + className.replace("$", "\\$") + """\.this\.)(\w*)""")
-  val typetagRegex = new Regex("""(scala\.reflect\.runtime\.[a-zA-Z`]*\.universe\.typeTag\[)(\w*)\]""")
-  def shortenNames(tree: Tree): String = {
-    var short = tree.toString
-    if (shortenDSLNames) {
-      typeRegex findAllIn short foreach { m =>
-        val typeRegex(start, typ) = m
-        short = short.replace(start + typ, typ.toUpperCase())
-      }
-      typetagRegex findAllIn short foreach { m =>
-        val typetagRegex(start, typ) = m
-        short = short.replace(start + typ + "]", "TYPETAG[" + typ.toUpperCase() + "]")
-      }
-    }
-    short
-  }
 }

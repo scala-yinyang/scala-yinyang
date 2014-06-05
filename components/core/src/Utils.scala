@@ -4,6 +4,7 @@ import ch.epfl.yinyang._
 import ch.epfl.yinyang.transformers._
 import scala.reflect.macros.blackbox.Context
 import language.experimental.macros
+import scala.util.matching.Regex
 
 trait MacroModule {
   type Ctx <: Context
@@ -58,4 +59,25 @@ trait TransformationUtils extends MacroModule {
   def log(s: => String, level: Int = 0) = if (debugLevel > level) println(s)
 
   def debugLevel: Int
+
+  /*
+   * Utility methods for logging.
+   */
+  def className: String = ???
+  lazy val typeRegex = new Regex("(" + className.replace("$", "\\$") + """\.this\.)(\w*)""")
+  lazy val typetagRegex = new Regex("""(scala\.reflect\.runtime\.[a-zA-Z`]*\.universe\.typeTag\[)(\w*)\]""")
+  def code(tree: Tree, shortenDSLNames: Boolean = true): String = {
+    var short = showCode(tree)
+    if (shortenDSLNames) {
+      typeRegex findAllIn short foreach { m =>
+        val typeRegex(start, typ) = m
+        short = short.replace(start + typ, typ.toUpperCase())
+      }
+      typetagRegex findAllIn short foreach { m =>
+        val typetagRegex(start, typ) = m
+        short = short.replace(start + typ + "]", "TYPETAG[" + typ.toUpperCase() + "]")
+      }
+    }
+    short
+  }
 }

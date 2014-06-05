@@ -23,7 +23,7 @@ object YinYangBuild extends Build {
   lazy val scalaSettings = Defaults.defaultSettings ++ Seq(
     scalaOrganization    := scalaOrg,
     scalaVersion         := "2.11.1",
-    scalacOptions        := defaultScalacOptions :+ "-Xfatal-warnings"
+    scalacOptions        := defaultScalacOptions 
   )
 
   // libraries
@@ -37,12 +37,12 @@ object YinYangBuild extends Build {
   )))
 
   // modules
-  lazy val _yinyang      = Project(id = "root",           base = file(".")                   , settings = Project.defaultSettings ++ Seq(publishArtifact := false)) aggregate (yinyang, yy_core, yy_paradise, example_dsls, backend)
+  lazy val _yinyang      = Project(id = "root",           base = file(".")                   , settings = Project.defaultSettings ++ Seq(publishArtifact := false)) aggregate (yinyang, yy_core, yy_paradise, example_dsls, backend, generator)
   lazy val yy_core       = Project(id = "yy-core",        base = file("components/core")     , settings = defaults ++ Seq(name := "yy-core"))
   lazy val yy_paradise   = Project(id = "yy-paradise",    base = file("components/paradise") , settings = defaults ++ paradise ++ Seq(name := "yy-paradise")) dependsOn(yy_core)
   lazy val yinyang       = Project(id = "yin-yang",       base = file("components/yin-yang") , settings = defaults ++ Seq(name := "yin-yang")) dependsOn(yy_core)
   lazy val backend       = Project(id = "backend",        base = file("components/backend")  , settings = defaults ++ Seq(name := "yy-backend")) dependsOn (yinyang)
-  lazy val generator     = Project(id = "backend",        base = file("components/generator"), settings = defaults ++ Seq(name := "yy-backend")) dependsOn (yinyang)
+  lazy val generator     = Project(id = "generator",      base = file("components/generator"), settings = defaults ++ Seq(name := "yy-generator")) dependsOn (yinyang)
   lazy val example_dsls  = Project(id = "example-dsls",   base = file("components/dsls")     , settings = defaults) dependsOn(yinyang)
 
   lazy val defaults = projectSettings ++ scalaSettings ++ formatSettings ++ libraryDeps ++ Seq(
