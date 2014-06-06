@@ -1,8 +1,26 @@
-# Yin-Yang: Building Deep DSLs with a Breeze! [![Build Status](https://travis-ci.org/vjovanov/yin-yang.png?branch=master)](https://travis-ci.org/vjovanov/yin-yang)#
+# Yin-Yang: Building Deep DSLs with a Breeze! #
+master: [![Build Status](https://travis-ci.org/vjovanov/yin-yang.png?branch=master)](https://travis-ci.org/vjovanov/yin-yang)
 
-Yin-Yang is a macro based library that provides the infrastructure for easy development of deeply embedded DSLs.
+Yin-Yang is a library that makes it easy use and develop deeply embedded DSLs. The DSL users will never see the complex artifacts of the deep embedding while in production they will get all their benefits. The DSL authors write the DSL in plain Scala and Yin-Yang will generate the deep embedding. All that needs is left to be done is the optimizations.
 
-Deep embedding of DSLs requires complex types, disallows debugging, and imposes long compilation times. Yin-Yang uses a regular Scala interface (direct embedding) for the DSL and automatically converts it into the deep embedding by using Scala macros.
+**DSL Users** will never know that the DSL is deeply embedded as they can debug and prototype their code. For example:
+
+    vectorDSL {
+    	Collection(1,2,3) map (_ + 1)
+    }
+
+
+**DSL Authors** will develop their interface in regular Scala:
+		object Collection {
+			def apply[T](els:T*) = ...
+	  }
+    class Collection[T](elements: Seq[T]) {
+    	def map[U](f: T => U) = ...
+    }
+
+And Yin-Yang will generate the nasty `Rep[_]` types, IR nodes, and cakes. 
+
+## Translation
 
 For more information [www.yin-yang.org](www.yin-yang.org).
 
@@ -39,4 +57,4 @@ In Eclipse use the *Import Wizard* to import *Existing Projects into Workspace*
 
 ## License
 
-Yin-Yang is licensted under the [Scala Licence](https://raw.githubusercontent.com/vjovanov/yin-yang/master/LICENCE).
+Yin-Yang is licensed under the [Scala License](https://raw.githubusercontent.com/vjovanov/yin-yang/master/LICENCE).
