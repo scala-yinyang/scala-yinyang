@@ -15,7 +15,7 @@ object YinYangBuild extends Build {
     version              := "0.1-SNAPSHOT",
     organization         := "ch.epfl.lamp",
     licenses             := Seq("New BSD" -> url("https://raw2.github.com/vjovanov/yin-yang/master/LICENSE")),
-    homepage             := Some(url("http://scala-yinyang.org/")),
+    homepage             := Some(url("http://yin-yang.org/")),
     organizationHomepage := Some(url("http://lamp.epfl.ch")),
     scmInfo              := Some(ScmInfo(url("https://github.com/vjovanov/yin-yang.git"),"git://github.com/vjovanov/yin-yang.git"))
   )
@@ -58,7 +58,7 @@ object YinYangBuild extends Build {
     unmanagedSourceDirectories in Compile <<= (scalaSource in Compile)(Seq(_)),
     unmanagedSourceDirectories in Test <<= (scalaSource in Test)(Seq(_)),
     parallelExecution in Test := false,
-    incOptions := incOptions.value.withNameHashing(true)
+    incOptions := incOptions.value.withNameHashing(true)    
   )
 
   // add the macro paradise compiler plugin
@@ -66,7 +66,6 @@ object YinYangBuild extends Build {
     addCompilerPlugin("org.scalamacros" % "paradise_2.11.0" % "2.0.0"),
     scalacOptions := defaultScalacOptions
   )
-
 
   lazy val website = Seq(site.settings,
     ghpages.settings,
