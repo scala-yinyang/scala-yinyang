@@ -23,7 +23,7 @@ object YinYangBuild extends Build {
   lazy val scalaSettings = Defaults.defaultSettings ++ Seq(
     scalaOrganization    := scalaOrg,
     scalaVersion         := "2.11.1",
-    scalacOptions        := defaultScalacOptions 
+    scalacOptions        := defaultScalacOptions
   )
 
   // libraries
@@ -42,7 +42,7 @@ object YinYangBuild extends Build {
   lazy val yy_paradise   = Project(id = "yy-paradise",    base = file("components/paradise") , settings = defaults ++ paradise ++ Seq(name := "yy-paradise")) dependsOn(yy_core)
   lazy val yinyang       = Project(id = "yin-yang",       base = file("components/yin-yang") , settings = defaults ++ Seq(name := "yin-yang")) dependsOn(yy_core)
   lazy val backend       = Project(id = "backend",        base = file("components/backend")  , settings = defaults ++ Seq(name := "yy-backend")) dependsOn (yinyang)
-  lazy val generator     = Project(id = "generator",      base = file("components/generator"), settings = defaults ++ Seq(name := "yy-generator")) dependsOn (yinyang)
+  lazy val generator     = Project(id = "generator",      base = file("components/generator"), settings = defaults ++ Seq(name := "yy-generator")) dependsOn (yinyang, yy_core)
   lazy val example_dsls  = Project(id = "example-dsls",   base = file("components/dsls")     , settings = defaults) dependsOn(yinyang)
 
   lazy val defaults = projectSettings ++ scalaSettings ++ formatSettings ++ libraryDeps ++ Seq(
@@ -58,7 +58,7 @@ object YinYangBuild extends Build {
     unmanagedSourceDirectories in Compile <<= (scalaSource in Compile)(Seq(_)),
     unmanagedSourceDirectories in Test <<= (scalaSource in Test)(Seq(_)),
     parallelExecution in Test := false,
-    incOptions := incOptions.value.withNameHashing(true)    
+    incOptions := incOptions.value.withNameHashing(true)
   )
 
   // add the macro paradise compiler plugin

@@ -9,6 +9,12 @@ import nsc.Global
 import nsc.Phase
 import nsc.plugins.Plugin
 import nsc.plugins.PluginComponent
+import scala.annotation.StaticAnnotation
+
+/**
+ * Annotation that marks that the class has a deep embedding.
+ */
+class deep extends StaticAnnotation
 
 class BackendGenerator(val global: Global) extends Plugin {
   import global._
@@ -23,6 +29,15 @@ class BackendGenerator(val global: Global) extends Plugin {
     val phaseName = BackendGenerator.this.name
     def newPhase(_prev: Phase) = new BackendGeneratorPhase(_prev)
 
+    def liftClass(c: Context)(tpe: c.Type): Unit = {
+      import c.universe._
+      val al = new AutoLifter(c.universe)
+      val lc = al.getLiftedClass(tpe)(annotations.Custom())
+      val lp = al.getLiftedProgram(lc)
+      val generator = new Generator {}
+      println(generator.generate(lp))
+    }
+
     class BackendGeneratorPhase(prev: Phase) extends StdPhase(prev) {
       override def name = BackendGenerator.this.name
       def apply(unit: CompilationUnit): Unit = {
@@ -30,8 +45,7 @@ class BackendGenerator(val global: Global) extends Plugin {
         val topLevelClasses = defs collect { case c: ClassDef => c }
         val classesForLifting = topLevelClasses filter { x =>
           x.symbol.annotations.exists(annot =>
-            annot.tpe =:= typeOf[scala.deprecated])
-          // TODO introduce our own annotation
+            annot.tpe =:= typeOf[ch.epfl.yinyang.deep])
         }
 
         classesForLifting foreach { x =>
@@ -42,32 +56,6 @@ class BackendGenerator(val global: Global) extends Plugin {
           } with scala.reflect.macros.contexts.Context {
             val prefix = null
           })(x.symbol.tpe)
-        }
-
-        if (true) {
-          unit.error(unit.body.pos, "Let's generate!")
-        }
-      }
-
-      def liftClass(c: Context)(tpe: c.Type): Unit = {
-        import c.universe._
-        val mh = new MacroHelper[c.type](c)
-        println("Hey!")
-        val liftedMethods = mh.liftClass(tpe)
-
-        liftedMethods foreach {
-          case (s, m) =>
-            println(s)
-            showCode(m)
-        }
-
-        val al = new AutoLifter(c.universe)
-        val lc = al.getLiftedClass(tpe)(annotations.Custom())
-        val lp = al.getLiftedProgram(lc)
-        val liftedMethodsMap = liftedMethods.toMap
-        lp.caseClasses foreach { cc =>
-          val sym = cc.opsMethod.method.originalSymbol.asInstanceOf[Symbol]
-          println(cc + "->" + showCode(liftedMethodsMap(sym)))
         }
       }
 

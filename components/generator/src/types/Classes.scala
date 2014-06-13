@@ -95,9 +95,9 @@ case class MethodCaseClass(name: String, typeParams: List[Type], params: List[Pa
       case Nil => ""
       case l   => l.mkString("[", ", ", "]")
     }
-
-    val prms = params.mkString("(", ", ", ")") + implicitParams.mkString("(implicit ", ", ", ")")
-    s"""case class $name$tpePrms$prms extends $superType"""
+    val implPrms = if (implicitParams.size > 0) implicitParams.mkString("(implicit ", ", ", ")") else ""
+    val prms = params.mkString("(", ", ", ")")
+    s"""case class $name$tpePrms$prms$implPrms extends $superType"""
   }
 
   def call: String = {
@@ -110,10 +110,16 @@ case class MethodCaseClass(name: String, typeParams: List[Type], params: List[Pa
     opsMethod.method.effect match {
       case Pure   => call
       case Global => s"reflectEffect($call, Global())"
-      case _ => {
-        val fx = opsMethod.method.effect.emit(opsMethod.method.paramss.head map (_.variable.name))
+      case _      => call
+
+      /*{
+        val fx = opsMethod
+          .method
+          .effect
+          .emit(
+            opsMethod.method.paramss.head map (_.variable.name))
         s"$fx($call)"
-      }
+      }*/
     }
   }
 
@@ -131,7 +137,7 @@ case class MethodCaseClass(name: String, typeParams: List[Type], params: List[Pa
         val sb = new StringBuilder
         sb ++= s"${opsMethod.method} = {\n"
         sb ++= (list map functionCode).mkString("    ", "\n    ", "\n    ")
-        sb ++= s"reflectEffect($call, summarizeEffects(${list.head._2._2.variable.name}).star)" // TODO Generalize to 
+        sb ++= s"reflectEffect($call, summarizeEffects(${list.head._2._2.variable.name}).star)" // TODO Generalize to
         sb ++= "\n  }"
         sb.toString
       }
