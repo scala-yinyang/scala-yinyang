@@ -61,6 +61,9 @@ trait FreeIdentAnalysis extends MacroModule with TransformationUtils {
       case vd @ ValDef(mods, name, tpt, rhs) =>
         definedValues += vd.symbol
         traverse(rhs)
+      case fd @ Function(vparams, body) =>
+        definedValues ++= vparams.map(_.symbol)
+        traverse(body)
       case dd @ DefDef(mods, name, tparams, vparamss, tpt, rhs) =>
         definedMethods += dd.symbol
         vparamss.flatten.foreach(traverse)

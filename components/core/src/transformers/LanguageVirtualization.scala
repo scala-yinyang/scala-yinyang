@@ -45,6 +45,11 @@ import scala.collection.mutable
  *   t.wait(t1, l)          =>       infix_wait(t, t1, l)
  * }}}
  *
+ * ===Configurable===
+ * {{{
+ *   x => e                 =>       __lambda(x => e)
+ * }}}
+ *
  * @todo
  * {{{
  *   try b catch c          =>       __tryCatch(b, c, f)
@@ -56,6 +61,8 @@ import scala.collection.mutable
  */
 trait LanguageVirtualization extends MacroModule with TransformationUtils with DataDefs {
   import c.universe._
+
+  val virtualizeLambda: Boolean = false
 
   def virtualize(t: Tree): (Tree, Seq[DSLFeature]) = VirtualizationTransformer(t)
 
@@ -70,10 +77,10 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
   private class VirtualizationTransformer extends Transformer {
     val lifted = mutable.ArrayBuffer[DSLFeature]()
 
-    def liftFeature(receiver: Option[Tree], nme: String, args: List[Tree], targs: List[Tree] = Nil): Tree = {
+    def liftFeature(receiver: Option[Tree], nme: String, args: List[Tree], targs: List[Tree] = Nil, trans: Tree => Tree = transform): Tree = {
       lifted += DSLFeature(receiver.map(_.tpe), nme, targs, List(args.map(_.tpe)))
-      log(show(method(receiver.map(transform), nme, List(args.map(transform)), targs)), 3)
-      method(receiver.map(transform), nme, List(args.map(transform)), targs)
+      log(show(method(receiver.map(trans), nme, List(args.map(trans)), targs)), 3)
+      method(receiver.map(trans), nme, List(args.map(trans)), targs)
     }
 
     override def transform(tree: Tree): Tree = {
@@ -85,6 +92,9 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
         // special way).
         case ValDef(mods, sym, tpt, rhs) if mods.hasFlag(Flag.MUTABLE) =>
           ValDef(mods, sym, tpt, liftFeature(None, "__newVar", List(rhs)))
+
+        case f @ Function(vparams, body) if virtualizeLambda =>
+          liftFeature(None, "__lambda", List(Function(vparams, transform(body))), Nil, x => x)
 
         case t @ If(cond, thenBr, elseBr) =>
           liftFeature(None, "__ifThenElse", List(cond, thenBr, elseBr))

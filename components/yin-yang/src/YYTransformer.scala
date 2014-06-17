@@ -52,6 +52,9 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
   with TransformationUtils
   with YYConfig {
 
+  // Amir: needs clean up
+  override val virtualizeLambda: Boolean = virtLambda
+
   type Ctx = C
   import c.universe._
   val postProcessor: PostProcessing[c.type]
@@ -174,6 +177,20 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
             ${c parse (reflInstance[CodeGenerator](dsl) generateCode className)}
             new ${Ident(TypeName(className))}().apply(..${captured})
           """
+        case tpe if tpe <:< typeOf[Stager] && compilVars.isEmpty =>
+          log("COMPILE TIME COMPILED for lifting", 2)
+          val retTypeTree = block.tree.tpe
+          // val liftedType = typeTransformer.transform(typeTransformer.OtherCtx, retTypeTree)
+          // q"""
+          //   $dsl
+          //   new ${Ident(TypeName(className))}().stage[$liftedType]()
+          // """
+          q"""
+            $dsl
+            val dslInstance = new ${Ident(TypeName(className))}()
+            import dslInstance._
+            dslInstance.stage[dslInstance.Rep[$retTypeTree]]()
+          """
         case _ =>
           /*
            * Requires run-time variables => execute at run-time and install a recompilation guard.
@@ -208,13 +225,13 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
               """
             // TODO(vsalvis) How do optional variables interact with interpretation?
             // FIXME: this is not tested! Types probably wrong
-            // case t if t <:< typeOf[Interpreted] => YYCacheString + s"""
-            //   val dslInstance = $YYStorageName.classInstance;
-            //   val compilVars: scala.Array[Any] = scala.Array(${compilVars map (_.name.decodedName.toString) mkString ", "})
-            //   ${compilVars.map({ k => "dslInstance.captured$" + k.name.decodedName.toString + " = " + k.name.decodedName.toString }) mkString "\n"}
+            // case t if t <:< typeOf[Interpreted] => q"""
+            //   val dslInstance = ${c parse YYCacheString}
+            //   val compilVars: scala.Array[Any] = scala.Array(..$compilVars)
+            //   ${compilVars.map({ k => "dslInstance.captured$" + k.symbol.toString + " = " + k.symbol.toString }) mkString "\n"}
             //   def invalidate(): () => Any = () => dslInstance.reset
-            //   $YYStorageName.check(compilVars, invalidate)
-            //   dslInstance.interpret[${retType}](${args(sortedHoles)})
+            //   dslInstance.check(compilVars, invalidate)
+            //   dslInstance.interpret[${retType}](..${sortedHoles})
             // """
           }
           Block(List(dsl), guardedExecute)
