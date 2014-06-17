@@ -25,8 +25,8 @@ trait RepTransformerLike[C <: Context] extends PolyTransformerLike[C] { this: Ty
 
     def rep(inType: Type): Tree = {
       AppliedTypeTree(Select(This(newTypeName(className)), newTypeName("Rep")),
-        List(constructPolyTree(ctx, inType))) // TypeTree(inType)
-      // List(TypeTree(inType)))
+        // List(constructPolyTree(ctx, inType))) // TypeTree(inType)
+        List(TypeTree(inType)))
     }
     ctx match {
       case TypeApplyCtx =>
