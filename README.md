@@ -19,11 +19,7 @@ Yin-Yang is a library that makes it easy use and develop deeply embedded DSLs. T
     	def map[U](f: T => U) = ...
     }
 
-And Yin-Yang will generate the nasty `Rep[_]` types, IR nodes, and cakes. 
-
-## Translation
-
-For more information [www.yin-yang.org](www.yin-yang.org).
+And Yin-Yang will generate the nasty `Rep[_]` types, IR nodes, and cakes.
 
 ## Support
 
@@ -36,8 +32,8 @@ If you have any questions about the project please ask them in the development [
 ### Project Structure
 | Component             | Description                                                | Stability          |
 |:---------             |:-----------                                                |:---------:         |
-| `components/core`     |  The core transformers of Yin-Yang (regular release)       | Release            |
-| `components/yin-yang` |  The main Yin-Yang transformer used for defining your DSLs | Release            |
+| `components/core`     |  The core transformers of Yin-Yang (regular release)       | Release(soon)      |
+| `components/yin-yang` |  The main Yin-Yang transformer used for defining your DSLs | Release(soon)      |
 | `components/paradise` |  provides annotations for virtualization                   | Experimental       |
 | `components/generator`|  Generates the LMS based deep embedding from Scala classes | Experimental       |
 | `components/dsls`     |  Small DSLs used for experimentation.                      | Experimental       |
