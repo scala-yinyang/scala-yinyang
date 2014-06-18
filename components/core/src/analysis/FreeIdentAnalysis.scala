@@ -27,9 +27,9 @@ trait FreeIdentAnalysis extends MacroModule with TransformationUtils {
   class FreeVariableCollector extends Traverser {
 
     private[this] val collected = ListBuffer[Tree]()
-    private[this] var defined = List[Tree]()
+    private[this] var defined = List[Symbol]()
 
-    private[this] final def isFree(id: Tree) = !defined.contains(id)
+    private[this] final def isFree(id: Tree) = !defined.contains(id.symbol)
 
     override def traverse(tree: Tree) = tree match {
       case i @ Ident(s) => {
@@ -45,8 +45,8 @@ trait FreeIdentAnalysis extends MacroModule with TransformationUtils {
 
     def collect(tree: Tree): List[Tree] = {
       collected.clear()
-      // defined = new LocalDefCollector().definedSymbols(tree)
-      // log(s"FreeIdentAnalysis: Defined (not-free variables): $defined", 2)
+      defined = new LocalDefCollector().definedSymbols(tree)
+      log(s"FreeIdentAnalysis: Defined (not-free variables): $defined", 2)
       traverse(tree)
       collected.map(x => (x.symbol, x)).toMap.values.toList
     }
@@ -61,9 +61,6 @@ trait FreeIdentAnalysis extends MacroModule with TransformationUtils {
       case vd @ ValDef(mods, name, tpt, rhs) =>
         definedValues += vd.symbol
         traverse(rhs)
-      case fd @ Function(vparams, body) =>
-        definedValues ++= vparams.map(_.symbol)
-        traverse(body)
       case dd @ DefDef(mods, name, tparams, vparamss, tpt, rhs) =>
         definedMethods += dd.symbol
         vparamss.flatten.foreach(traverse)
