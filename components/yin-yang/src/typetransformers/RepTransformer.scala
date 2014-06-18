@@ -17,17 +17,17 @@ trait RepTransformerLike[C <: Context] extends PolyTransformerLike[C] { this: Ty
       super.constructPolyTree(typeCtx, another)
   }
 
+  def rep(inType: Type): Tree = {
+    AppliedTypeTree(Select(This(newTypeName(className)), newTypeName("Rep")),
+      List(TypeTree(inType)))
+  }
+
   /**
    * transform Type1[Type2[...]] => Rep[Type1[Type2[...]]] for non-function types
    */
   def constructRepTree(ctx: TypeContext, inType: Type): Tree = {
     val universe = c.universe.asInstanceOf[scala.reflect.internal.Types]
 
-    def rep(inType: Type): Tree = {
-      AppliedTypeTree(Select(This(newTypeName(className)), newTypeName("Rep")),
-        // List(constructPolyTree(ctx, inType))) // TypeTree(inType)
-        List(TypeTree(inType)))
-    }
     ctx match {
       case TypeApplyCtx =>
         TypeTree(inType)
@@ -63,4 +63,24 @@ class RepTransformer[C <: Context](ctx: C) extends TypeTransformer[C](ctx) with 
 
   def transform(ctx: TypeContext, t: c.universe.Type): c.universe.Tree =
     constructRepTree(ctx, t)
+}
+
+/**
+ * Type transformer for Pardis Rep types.
+ */
+class PardisRepTransformer[C <: Context](ctx: C) extends RepTransformer[C](ctx) {
+  import c.universe._
+
+  override def constructRepTree(ctx: TypeContext, inType: Type): Tree = {
+    ctx match {
+      case OtherCtx =>
+        inType match {
+          case inType if isFunctionType(inType) =>
+            rep(inType)
+          case _ =>
+            super.constructRepTree(ctx, inType)
+        }
+      case _ => super.constructRepTree(ctx, inType)
+    }
+  }
 }

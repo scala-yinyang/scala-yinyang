@@ -39,6 +39,10 @@ trait LiftLiteralTransformation extends MacroModule with TransformationUtils wit
           lift(List(Ident(TermName("captured$" + t.name.decodedName.toString))))
         case t @ Ident(_) if toMixed.contains(t.symbol) =>
           mixed(List(Ident(TermName("captured$" + t.name.decodedName.toString)), t))
+        // the type associated with the identifier will remain if we don't that
+        case t @ Ident(n) =>
+          log("local variable: " + t, 3)
+          Ident(n)
         case _ =>
           super.transform(tree)
       }
