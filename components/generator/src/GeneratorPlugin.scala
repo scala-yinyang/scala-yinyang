@@ -1,7 +1,6 @@
 package ch.epfl.yinyang
 
 import ch.epfl.lamp.autolifter._
-import ch.epfl.lamp.autolifter.impl._
 import scala.reflect.macros.whitebox.Context
 
 import scala.tools.nsc
@@ -29,13 +28,10 @@ class BackendGenerator(val global: Global) extends Plugin {
     val phaseName = BackendGenerator.this.name
     def newPhase(_prev: Phase) = new BackendGeneratorPhase(_prev)
 
-    def liftClass(c: Context)(tpe: c.Type): Unit = {
+    def liftClass(c: Context)(tpe: c.Type): String = {
       import c.universe._
       val al = new AutoLifter(c.universe)
-      val lc = al.getLiftedClass(tpe)(annotations.Custom())
-      val lp = al.getLiftedProgram(lc)
-      val generator = new Generator {}
-      println(generator.generate(lp))
+      al.autoLiftType(annotations.Custom())(tpe)
     }
 
     class BackendGeneratorPhase(prev: Phase) extends StdPhase(prev) {
@@ -48,7 +44,7 @@ class BackendGenerator(val global: Global) extends Plugin {
             annot.tpe =:= typeOf[ch.epfl.yinyang.deep])
         }
 
-        classesForLifting foreach { x =>
+        val classes = classesForLifting map { x =>
           liftClass(new {
             val universe: global.type = global
             val callsiteTyper: global.analyzer.Typer = global.typer
@@ -56,6 +52,15 @@ class BackendGenerator(val global: Global) extends Plugin {
           } with scala.reflect.macros.contexts.Context {
             val prefix = null
           })(x.symbol.tpe)
+        }
+        if (classes.size > 0) {
+          val file = unit.source.file
+          val outputFile = file.container.subdirectoryNamed("lifted").fileNamed(file.name)
+          val out = outputFile.bufferedOutput
+          classes.foreach { x =>
+            out.write(x.getBytes)
+          }
+          out.flush
         }
       }
 

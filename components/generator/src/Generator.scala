@@ -13,13 +13,19 @@ trait Generator {
   def implicitName(implicit program: LiftedProgram) = s"${origName}Implicits"
 
   def generate(implicit program: LiftedProgram): String = {
-    generateImport +
+    generatePackage +
+      generateImport +
       generateOps +
       generateExp(program) +
       generateGen(program) +
       generateImpl(program) +
       generateComp(program) +
       generateExpOpt(program)
+  }
+
+  def generatePackage(implicit program: LiftedProgram): String = {
+    val fullName = program.actualOrigClass.toString.split("\\.")
+    s"package ${fullName.take(fullName.length - 1).mkString(".")}\n"
   }
 
   def generateImport(implicit program: LiftedProgram): String = {
@@ -32,14 +38,21 @@ import scala.virtualization.lms.util.OverloadHack
   def generateOps(implicit program: LiftedProgram): String = {
     val sb = new StringBuilder
     sb ++= s"trait $opsName extends Base with OverloadHack { this: $compName => \n"
+    sb ++= s"  object $origName {\n"
+    sb ++= "  " + program.objMethods.map(x => x.method + s" = ${x.method.name}_obj${x.method.argString}").mkString("  ", "\n  ", "\n")
+    sb ++= s"  }\n"
     sb ++= s"  ${program.repClass.header} {\n"
     sb ++= program.opsMethods collect {
+      case om: OpsMethod if om.repMethod.method.name == "hashCode" =>
+        val rm = om.repMethod
+        s"    ${rm.copy(method = rm.method.copy(name = "infix_hashCode"))} = ${om.method.call}"
       case om: OpsMethod if !om.repMethod.isConstructor =>
         val rm = om.repMethod
         s"    ${rm.toString} = ${om.method.call}"
     } mkString "\n"
     sb ++= "\n  }\n"
     sb ++= program.opsMethods.map(_.method).mkString("  ", "\n  ", "\n")
+    sb ++= program.objMethods.map(x => x.copy(method = x.method.copy(name = x.method.name + "_obj")).method).mkString("  ", "\n  ", "\n")
     sb ++= s"  type ${program.origClass}\n"
     sb ++= "\n}\n"
     sb.toString
@@ -99,7 +112,7 @@ import scala.virtualization.lms.util.OverloadHack
   override def symsFreq(e: Any): List[(Sym[Any], Double)] = e match {
     $generateSymsFreq
     case _ => super.symsFreq(e)
-  }  
+  }
 """
     sb ++= s"  override type ${program.origClass} = ${program.actualOrigClass}\n"
     sb ++= "}"
@@ -146,7 +159,7 @@ trait $genName extends ScalaGenEffect {
   }"""
 
     }).mkString("", "\n  ", "\n")
-    s"""trait $expOptName extends $expName with PrimitiveOpsExpOpt { this: $compName =>
+    s"""trait $expOptName extends $expName { this: $compName =>
   $methods
 }
 """

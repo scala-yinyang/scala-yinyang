@@ -16,6 +16,12 @@ object Utils {
       case l   => l.mkString("(", ", ", ")")
     }
 
+  def argsToString(params: List[Parameter]): String =
+    params match {
+      case Nil => ""
+      case l   => l.map(_.variable).mkString("(", ", ", ")")
+    }
+
   def paramsAccessToString(params: List[Parameter]): String =
     params match {
       case Nil => ""

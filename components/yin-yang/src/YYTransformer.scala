@@ -19,7 +19,7 @@ object YYTransformer {
     ("shortenDSLNames" -> true),
     ("mainMethod" -> "main"),
     ("featureAnalysing" -> true),
-    ("ascriptionTransforming" -> true),
+    ("ascriptionTransforming" -> false),
     ("liftTypes" -> Nil),
     ("optionalInitiallyStable" -> true),
     ("codeCacheSize" -> 3),
@@ -28,7 +28,7 @@ object YYTransformer {
   def apply[C <: Context, T](c: C)(
     dslName: String,
     tpeTransformer: TypeTransformer[c.type],
-    postProcessing: Option[PostProcessing[c.type]],
+    postProcessing: Option[PostProcessing[c.type]] = None,
     config: Map[String, Any] = Map()) =
     new YYTransformer[c.type, T](c, dslName, config withDefault (defaults)) {
       val typeTransformer = tpeTransformer
@@ -70,6 +70,8 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
    */
   def apply[T](block: c.Expr[T]): c.Expr[T] = {
     log("-------- YYTransformer STARTED for block: " + showRaw(block.tree), 2)
+
+    def shallow = !(c.settings contains ("embed"))
     if (featureAnalysing) {
       FeatureAnalyzer(block.tree) // ABORTS compilation in case of restricted constructs
     }
@@ -108,7 +110,6 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
         log(showRaw(t, printTypes = true), 3)
         t
       }
-
       val varTypes: List[(Tree, VarType)] = dslType match {
         case tpe if tpe <:< typeOf[FullyStaged] =>
           captured.map(t => (t, defaultCompVar(t.symbol)))
@@ -165,7 +166,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
       val programId = new scala.util.Random().nextLong
       val programIdTree = Literal(Constant(programId))
       val dslTree = dslType match {
-        case tpe if tpe <:< typeOf[CodeGenerator] && compilVars.isEmpty =>
+        case tpe if tpe <:< typeOf[CodeGenerator] && compilVars.isEmpty && !(tpe <:< typeOf[FullyStaged]) =>
           // does not require run-time data => completely generated at compile.
           log("COMPILE TIME COMPILED", 2)
 
@@ -174,6 +175,18 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
             ${c parse (reflInstance[CodeGenerator](dsl) generateCode className)}
             new ${Ident(TypeName(className))}().apply(..${captured})
           """
+        case tpe if tpe <:< typeOf[FullyStaged] =>
+          val retTypeTree = block.tree.tpe
+          val functionType = tq"(..${sortedHoles.map(_ => tq"scala.Any")}) => ${retTypeTree}"
+          val retType = block.tree.tpe
+          val res = Block(List(dsl),
+            q"""
+            val program = new ${Ident(TypeName(className))}().compile[$retType, $functionType](Set[Int]())
+            program.apply(..${sortedHoles})
+          """)
+
+          println(showCode(res))
+          res
         case _ =>
           /*
            * Requires run-time variables => execute at run-time and install a recompilation guard.
@@ -193,7 +206,8 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
             case (_, _: CompVar)  => -1
           }) mkString ("scala.Array((", "), (", "))")
 
-          val YYCacheString = YYStorageFactory.getYYStorageString(className, functionTypeString, retType,
+          val YYCacheString = YYStorageFactory.getYYStorageString(
+            className, functionTypeString, retType,
             guards, optionalHoleIds, optionalInitiallyStable, codeCacheSize, minimumCountToStabilize,
             compilVars.map(_.symbol.asInstanceOf[reflect.runtime.universe.Symbol]))
 
@@ -298,10 +312,14 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
       //Finds the first element of the sequence satisfying a predicate, if any.
       (methods ++ lifted).toSeq.find(!methodsExist(_)) match {
         case Some(methodError) if lifted.contains(methodError) =>
-          c.error(tree.pos, s"Language feature $methodError not supported.")
-        case Some(methodError) =>
+          val name = methodError.name.replaceAll("infix_", "").replaceAll("__ifThenElse", "if")
+          c.abort(tree.pos, s"Language construct ${name} not supported.")
+        case Some(DSLFeature(tpe, name, _, _)) =>
+          val tpName = tpe
+            .map(x => x.toString.replaceAll("\\.type", ""))
+            .map(_ + ".").getOrElse("")
           // missing method
-          c.error(tree.pos, s"Method $methodError not found.")
+          c.error(tree.pos, s"Method $tpName$name not found.")
         case None =>
       }
     }
@@ -381,12 +399,10 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
     }
     _reflInstance.get.asInstanceOf[T]
   }
-
+  // ..${compilVars.map(k => q"var ${TermName("captured$" + k.name.decodedName.toString)} = $k")}
   def composeDSL(compilVars: List[Symbol])(transformedBody: Tree): Tree = q"""
     class ${TypeName(className)} extends $dslTrait {
-      ..${compilVars.map(k => q"var ${TermName("captured$" + k.name.decodedName.toString)} = $k")}
-
-      def main(): Any = $transformedBody
+      def main(): Any = {$transformedBody}
     }
   """
 

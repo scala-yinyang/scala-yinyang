@@ -13,7 +13,7 @@ trait RepTransformerLike[C <: Context] { this: TypeTransformer[C] with PolyTrans
 
     def rep(inType: Type): Tree = {
       AppliedTypeTree(Select(This(TypeName(className)), TypeName("Rep")),
-        List(constructPolyTree(ctx, inType))) // TypeTree(inType)
+        List(TypeTree(inType))) // constructPolyTree(ctx, inType)
     }
 
     inType match {
