@@ -27,6 +27,7 @@ trait TypeTreeTransformation extends MacroModule with TransformationUtils with D
       log(" " * ident + " ::> " + tree, 3)
       ident += 1
       val result = tree match {
+        case TypeTree() => super.transform(tree)
         case typTree: TypTree if typTree.tpe != null =>
           log(s"TypeTree for ${showRaw(typTree)}", 3)
           constructTypeTree(typeCtx, typTree.tpe)
