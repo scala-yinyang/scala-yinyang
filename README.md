@@ -12,9 +12,9 @@ Yin-Yang is a library that makes it easy use and develop deeply embedded DSLs. T
 
 **DSL Authors** will develop their interface in regular Scala:
 
-		object Collection {
-			def apply[T](els:T*) = ...
-	  }
+    object Collection {
+      def apply[T](els:T*) = ...
+    }
     class Collection[T](elements: Seq[T]) {
     	def map[U](f: T => U) = ...
     }
