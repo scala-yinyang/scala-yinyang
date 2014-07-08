@@ -10,7 +10,7 @@ import scala.reflect.macros.Universe
 import scala.collection.mutable
 
 /**
- * Post processing phase, in which you can add more statements to final DSL. Its main use-case is for class virtualization.
+ * Pre-processing phase, which allows pre-processing transformations.
  */
 class PreProcessing[C <: Context](val c: C)(val patterns: List[PartialFunction[Universe#Tree, Universe#Tree]]) {
   import c.universe._

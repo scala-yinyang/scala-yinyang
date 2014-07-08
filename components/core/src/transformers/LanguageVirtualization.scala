@@ -85,6 +85,7 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
 
     override def transform(tree: Tree): Tree = {
       tree match {
+        case x @ UnstageBlock(_) => x
         // sstucki: It seems necessary to keep the MUTABLE flag in the
         // new ValDef set, otherwise it becomes tricky to
         // "un-virtualize" a variable definition, if necessary

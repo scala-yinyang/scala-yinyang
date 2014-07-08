@@ -30,7 +30,7 @@ object YYTransformer {
     tpeTransformer: TypeTransformer[c.type],
     postProcessing: Option[PostProcessing[c.type]],
     preProcessing: Option[PreProcessing[c.type]],
-    config: Map[String, Any] = Map()) =
+    config: Map[String, Any] = Map()): YYTransformer[c.type, T] =
     new YYTransformer[c.type, T](c, dslName, config withDefault (defaults)) {
       val typeTransformer = tpeTransformer
       typeTransformer.className = className

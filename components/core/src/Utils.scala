@@ -60,6 +60,13 @@ trait TransformationUtils extends MacroModule {
 
   def debugLevel: Int
 
+  object UnstageBlock {
+    def unapply(tree: Tree): Option[Tree] = tree match {
+      case q"unstage($body)" => Some(body)
+      case _                 => None
+    }
+  }
+
   /*
    * Utility methods for logging.
    */

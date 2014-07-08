@@ -36,6 +36,7 @@ trait AscriptionTransformation extends MacroModule with TransformationUtils with
       ident += 1
 
       val result = tree match {
+        case x @ UnstageBlock(_) => x
         case vd @ ValDef(m, n, t, rhs) if rhs != EmptyTree =>
           copy(vd)(ValDef(m, n, t, Typed(transform(rhs), TypeTree(t.tpe))))
 
