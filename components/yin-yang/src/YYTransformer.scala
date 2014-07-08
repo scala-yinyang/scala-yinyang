@@ -29,11 +29,13 @@ object YYTransformer {
     dslName: String,
     tpeTransformer: TypeTransformer[c.type],
     postProcessing: Option[PostProcessing[c.type]],
+    preProcessing: Option[PreProcessing[c.type]],
     config: Map[String, Any] = Map()) =
     new YYTransformer[c.type, T](c, dslName, config withDefault (defaults)) {
       val typeTransformer = tpeTransformer
       typeTransformer.className = className
       val postProcessor = postProcessing.getOrElse(new NullPostProcessing[c.type](c))
+      val preProcessor = preProcessing.getOrElse(new NullPreProcessing[c.type](c))
     }
 
   protected[yinyang] val uID = new AtomicLong(0)
@@ -58,8 +60,10 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
   type Ctx = C
   import c.universe._
   val postProcessor: PostProcessing[c.type]
+  val preProcessor: PreProcessing[c.type]
   import typeTransformer._
   import postProcessor._
+  import preProcessor._
 
   /**
    * Main YinYang method. Transforms the body of the DSL, makes the DSL cake out
@@ -96,7 +100,8 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
        *     `lift("captured$" + sym)`
        */
       def transform(toHoles: List[Symbol], toMixed: List[Symbol], toLifts: List[Symbol])(block: Tree): Tree =
-        (AscriptionTransformer andThen
+        (PreProcess andThen
+          AscriptionTransformer andThen
           LiftLiteralTransformer(toLifts, toMixed) andThen
           (x => VirtualizationTransformer(x)._1) andThen
           ScopeInjectionTransformer andThen
