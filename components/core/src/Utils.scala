@@ -63,7 +63,8 @@ trait TransformationUtils extends MacroModule {
   object UnstageBlock {
     def unapply(tree: Tree): Option[Tree] = tree match {
       case q"unstage($body)" => Some(body)
-      case _                 => None
+      case q"ch.epfl.yinyang.api.`package`.unstage[$t]($body)" => Some(body)
+      case _ => None
     }
   }
 
