@@ -35,13 +35,10 @@ trait LiftLiteralTransformation extends MacroModule with TransformationUtils wit
       tree match {
         case t @ Literal(Constant(_)) =>
           lift(List(t))
-
         case t @ Ident(_) if toLift.contains(t.symbol) =>
-          lift(List(Ident(TermName( /*"captured$" + */ t.name.decodedName.toString))))
-        /*case t @ Ident(_) if toMixed.contains(t.symbol) =>
-          mixed(List(Ident(TermName("captured$" + t.name.decodedName.toString)), t))*/
-        case t @ Ident(_) =>
-          Ident(TermName(t.name.decodedName.toString))
+          lift(List(Ident(TermName("captured$" + t.name.decodedName.toString))))
+        case t @ Ident(_) if toMixed.contains(t.symbol) =>
+          mixed(List(Ident(TermName("captured$" + t.name.decodedName.toString)), t))
         case _ =>
           super.transform(tree)
       }
