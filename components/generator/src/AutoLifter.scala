@@ -20,7 +20,8 @@ class AutoLifter(override val universe: Universe) extends Generator with Univers
 
   def autoLiftType(config: Custom)(tpe: Universe#Type): String = {
     val lc = getLiftedClass(tpe)(config)
-    val prog = getLiftedProgram(lc)
+    val lm = getLiftedModule(tpe)(config)
+    val prog = getLiftedProgram(lc, lm)
     generate(prog)
   }
 
@@ -131,8 +132,8 @@ class AutoLifter(override val universe: Universe) extends Generator with Univers
 
   def getLiftedModule(tpe: Universe#Type)(implicit config: Custom): LiftedModule = {
     val methods = getMethods(tpe.typeSymbol.companionSymbol.typeSignature)
-    val module = LiftedModule(tpe, methods.toList)
-
+    val noCons = methods.filter(x => !x.symbol.isConstructor)
+    val module = LiftedModule(tpe, noCons.toList)
     module
   }
 
@@ -157,7 +158,7 @@ class AutoLifter(override val universe: Universe) extends Generator with Univers
     Method(name, typeParams, paramss, returnTpe, implicitParams, effect, method.symbol)
   }
 
-  def getLiftedProgram(lc: LiftedClass): LiftedProgram = {
+  def getLiftedProgram(lc: LiftedClass, lm: LiftedModule): LiftedProgram = {
 
     val selfParam = Parameter(Variable("self"), Type(lc.tpe.typeSymbol))
     val implParams = (lc.typeParams map (Type.apply) map (_.manifest)) ++ (lc.implicitParams map Parameter.apply)
@@ -190,6 +191,7 @@ class AutoLifter(override val universe: Universe) extends Generator with Univers
         else
           (selfParam :: ps)
       }
+
       // println(params)
 
       val returnTpe = Type(method.symbol.returnType)(universe)
@@ -197,6 +199,27 @@ class AutoLifter(override val universe: Universe) extends Generator with Univers
       val nrm = if (rm == null) new RepMethod(repMethod(method).method, true) else rm
 
       OpsMethod(Method(name, typeParams, List(params), returnTpe, implicitParams, nrm.method.effect, method.symbol).lift, nrm)
+    }
+
+    def objMethod(method: LiftedMethod, rm: RepMethod): OpsMethod = {
+      val clzName = lc.tpe.typeSymbol.name.toString
+      val prefName = clzName.head.toLower + clzName.tail
+      val name = if (rm != null)
+        method.symbol.name.toString
+      // "_" + lc.tpe.typeSymbol.name.toString + method.symbol.name.toString.capitalize + method.overloadOrder.getOrElse("")
+      else
+        prefName + "New"
+      // "_" + lc.tpe.typeSymbol.name.toString + "New"
+      val allParams = method.symbol.paramss.flatten
+      val typeParams = ((lc.typeParams) ++ (method.symbol.typeParams map (_.asType))) map (Type.apply _)
+      val implicitParams = (typeParams map (_.manifest)) ++ (
+        ({ if (rm == null) Nil else lc.implicitParams } ++ (allParams filter isImplicitSymbol)) map (p => Parameter(p)))
+      val params = (allParams filter (p => !isImplicitSymbol(p)) map (p => Parameter(p)))
+      val returnTpe = Type(method.symbol.returnType)(universe)
+
+      val nrm = if (rm == null) new RepMethod(repMethod(method).method, true) else rm
+
+      OpsMethod(Method(name, typeParams, List(params), returnTpe, implicitParams, nrm.method.effect, method.symbol).lift, nrm, true)
     }
 
     def methodCaseClass(om: OpsMethod): MethodCaseClass = {
@@ -217,15 +240,18 @@ class AutoLifter(override val universe: Universe) extends Generator with Univers
       MethodCaseClass(name, mom.typeParams, params, mom.implicitParams, superType, om, functions.toMap)
     }
 
-    val repMethods = lc.methods filter (m => !m.symbol.isConstructor) map repMethod
-    val opsMethods = (lc.methods filter (m => m.symbol.isConstructor) map { a: LiftedMethod => opsMethod(a, null) }) ++
+    val methods = lc.methods
+    val repMethods = methods.filter(m => !m.symbol.isConstructor).map(repMethod)
+    val opsMethods = methods.filter(m => m.symbol.isConstructor).map { a: LiftedMethod => opsMethod(a, null) } ++
       (lc.methods.filter(m => !m.symbol.isConstructor).zip(repMethods).map((opsMethod _).tupled))
+    val objMethods = lm.methods.map(x => objMethod(x, repMethod(x)))
     // val repMethods = Nil
-    val caseClasses = opsMethods map (methodCaseClass _)
+    val caseClasses = (opsMethods ++ objMethods) map (methodCaseClass _)
     // val caseClasses = Nil
 
     val repClass = RepClass(lc.tpe.typeSymbol.name.toString + "Rep", lc.typeParams map (Type.apply), selfParam.lift, implParams, repMethods)
-    LiftedProgram(Type(lc.tpe.typeSymbol), repClass, caseClasses, opsMethods, Type(lc.tpe.typeSymbol, true))
+
+    LiftedProgram(Type(lc.tpe.typeSymbol), repClass, caseClasses, opsMethods, objMethods, Type(lc.tpe.typeSymbol, true))
   }
 
 }

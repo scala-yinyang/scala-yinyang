@@ -29,7 +29,7 @@ trait FreeIdentAnalysis extends MacroModule with TransformationUtils {
     private[this] val collected = ListBuffer[Tree]()
     private[this] var defined = List[Symbol]()
 
-    private[this] final def isFree(id: Tree) = !defined.contains(id.symbol)
+    private[this] final def isFree(id: Symbol) = !defined.contains(id)
 
     override def traverse(tree: Tree) = tree match {
       case i @ Ident(s) => {
@@ -38,7 +38,7 @@ trait FreeIdentAnalysis extends MacroModule with TransformationUtils {
         // symbolIds.put(symbolId(sym), sym)
         if (sym.isTerm &&
           !(sym.isMethod || sym.isPackage || sym.isModule) &&
-          isFree(i)) collected append i
+          isFree(sym)) collected append i
       }
       case _ => super.traverse(tree)
     }

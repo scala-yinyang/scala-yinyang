@@ -36,6 +36,7 @@ trait LiftLiteralTransformation extends MacroModule with TransformationUtils wit
         case x @ UnstageBlock(_) => x
         case t @ Literal(Constant(_)) =>
           lift(List(t))
+
         case t @ Ident(_) if toLift.contains(t.symbol) =>
           lift(List(Ident(TermName("captured$" + t.name.decodedName.toString))))
         case t @ Ident(_) if toMixed.contains(t.symbol) =>
@@ -44,6 +45,13 @@ trait LiftLiteralTransformation extends MacroModule with TransformationUtils wit
         case t @ Ident(n) =>
           log("local variable: " + t, 3)
           Ident(n)
+        //=======
+        //          lift(List(Ident(TermName( /*"captured$" + */ t.name.decodedName.toString))))
+        //        /*case t @ Ident(_) if toMixed.contains(t.symbol) =>
+        //          mixed(List(Ident(TermName("captured$" + t.name.decodedName.toString)), t))*/
+        //        case t @ Ident(_) =>
+        //          Ident(TermName(t.name.decodedName.toString))
+        //>>>>>>> Modifications for the demo.
         case _ =>
           super.transform(tree)
       }

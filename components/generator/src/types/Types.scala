@@ -165,10 +165,11 @@ object Parameter {
 
 case class Method(name: String, typeParams: List[Type], paramss: List[List[Parameter]], returnTpe: Type, implicitParams: List[Parameter], effect: Effect, originalSymbol: Universe#Symbol) extends Liftable {
   type Self = Method
+  lazy val paramString = paramss map (l => paramsToString(l)) mkString ""
+  lazy val argString = paramss map (l => argsToString(l)) mkString ""
+  lazy val implString = implParamsToString(implicitParams)
+  lazy val typeString = typeParamsToString(typeParams)
   override def toString: String = {
-    val typeString = typeParamsToString(typeParams)
-    val paramString = paramss map (l => paramsToString(l)) mkString ""
-    val implString = implParamsToString(implicitParams)
     s"""def $name$typeString$paramString$implString: $returnTpe"""
   }
 

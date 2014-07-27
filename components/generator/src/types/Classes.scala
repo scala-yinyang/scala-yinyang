@@ -43,7 +43,7 @@ case class LiftedMethod(symbol: Universe#MethodSymbol, config: Option[annotation
   }
 }
 
-case class LiftedProgram(origClass: Type, repClass: RepClass, caseClasses: List[MethodCaseClass], opsMethods: List[OpsMethod], actualOrigClass: Type) {
+case class LiftedProgram(origClass: Type, repClass: RepClass, caseClasses: List[MethodCaseClass], opsMethods: List[OpsMethod], objMethods: List[OpsMethod], actualOrigClass: Type) {
   override def toString: String = {
     val sb = new StringBuilder
     sb ++= "Rep class:\n"
@@ -52,6 +52,8 @@ case class LiftedProgram(origClass: Type, repClass: RepClass, caseClasses: List[
     sb ++= (caseClasses mkString "\n")
     sb ++= "Ops methods:\n"
     sb ++= (opsMethods mkString "\n")
+    sb ++= "Obj methods:\n"
+    sb ++= (objMethods mkString "\n")
     sb.toString
   }
 }
@@ -75,7 +77,7 @@ case class RepClass(name: String, typeParams: List[Type], origParam: Parameter, 
 }
 
 // case class RepMethod(name: String, typeParams: List[ru.TypeSymbol], paramLists: List[List[ru.Symbol]], returnTpe: ru.Type, implicitParams: List[(ru.TermSymbol, ru.TypeSymbol)])
-class RepMethod(val method: Method, val isConstructor: Boolean = false) {
+case class RepMethod(val method: Method, val isConstructor: Boolean = false) {
   override def toString: String = {
     method.copy(name = runtimeUniverse.TermName(method.name).decodedName.toString).toString
   }
@@ -86,7 +88,7 @@ object RepMethod {
 }
 
 // case class OpsMethod(name: String, typeParams: List[ru.TypeSymbol], params: List[ru.Symbol], returnTpe: ru.Type, implicitParams: List[ru.Symbol])
-case class OpsMethod(method: Method, repMethod: RepMethod)
+case class OpsMethod(method: Method, repMethod: RepMethod, obj: Boolean = false)
 
 // case class MethodCaseClass(name: String, typeParams: List[ru.TypeSymbol], params: List[ru.Symbol], returnTpe: ru.Type, implicitParams: List[ru.Symbol])
 case class MethodCaseClass(name: String, typeParams: List[Type], params: List[Parameter], implicitParams: List[Parameter], superType: Type, opsMethod: OpsMethod, functions: Map[Parameter, (Parameter, Parameter)]) {
@@ -132,7 +134,11 @@ case class MethodCaseClass(name: String, typeParams: List[Type], params: List[Pa
   val ${fo.variable.name} = reifyEffects(${f.variable.name}(${fi.variable.name}))"""
     }
     functions.toList match {
-      case Nil => s"${opsMethod.method} = $fxCall"
+      case Nil =>
+        if (opsMethod.obj)
+          s"${opsMethod.method.copy(name = opsMethod.method.name + "_obj")} = $fxCall"
+        else
+          s"${opsMethod.method} = $fxCall"
       case list => {
         val sb = new StringBuilder
         sb ++= s"${opsMethod.method} = {\n"
@@ -149,7 +155,10 @@ case class MethodCaseClass(name: String, typeParams: List[Type], params: List[Pa
     val tab = " " * 6
     sb ++= s"case $call => {\n"
     // println(opsMethod)
-    if (opsMethod.repMethod.isConstructor) {
+    if (opsMethod.obj) {
+      val m = opsMethod.repMethod.method.name
+      sb ++= s"""${tab}stream.print("val " + quote(sym) + " = " + "decimals.BigDecimal.$m")""" + "\n"
+    } else if (opsMethod.repMethod.isConstructor) {
       val m = opsMethod.repMethod.method.name
       sb ++= s"""${tab}stream.print("val " + quote(sym) + " = new $m")""" + "\n"
     } else {
