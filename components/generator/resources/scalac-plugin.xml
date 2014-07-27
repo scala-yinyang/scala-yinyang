@@ -1,4 +1,0 @@
-<plugin>
-  <name>backend-generator</name>
-  <classname>ch.epfl.yinyang.BackendGenerator</classname>
-</plugin>
