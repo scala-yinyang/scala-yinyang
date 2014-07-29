@@ -14,14 +14,13 @@ import yinyang.typetransformers.TypeTransformer
 
 object YYTransformer {
   val defaults = Map[String, Any](
-    ("shallow" -> true),
+    ("shallow" -> false),
     ("debug" -> 0),
     ("shortenDSLNames" -> true),
     ("mainMethod" -> "main"),
     ("featureAnalysing" -> true),
     ("ascriptionTransforming" -> false),
     ("virtualizeLambda" -> false),
-    ("ascriptionTransforming" -> true),
     ("liftTypes" -> Nil),
     ("optionalInitiallyStable" -> true),
     ("codeCacheSize" -> 3),
@@ -80,7 +79,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
    */
   def apply[T](block: c.Expr[T]): c.Expr[T] = {
     log("-------- YYTransformer STARTED for block: " + showRaw(block.tree), 2)
-
+    println(c.settings)
     def shallowFlag = shallow || !(c.settings contains ("embed"))
     if (featureAnalysing) {
       FeatureAnalyzer(block.tree) // ABORTS compilation in case of restricted constructs
@@ -109,8 +108,8 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
           AscriptionTransformer andThen
           LiftLiteralTransformer(toLifts, toMixed) andThen
           (x => VirtualizationTransformer(x)._1) andThen
-          ScopeInjectionTransformer andThen
           TypeTreeTransformer andThen
+          ScopeInjectionTransformer andThen
           HoleTransformer((toHoles ++ toMixed).distinct, className) andThen
           composeDSL((toLifts ++ toMixed).distinct) andThen
           PostProcess)(block)
@@ -200,20 +199,19 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
             import dslInstance._
             dslInstance.stage[dslInstance.Rep[$retTypeTree]]()
           """
-        // =======
-        //        case tpe if tpe <:< typeOf[FullyStaged] =>
-        //          val retTypeTree = block.tree.tpe
-        //          val functionType = tq"(..${sortedHoles.map(_ => tq"scala.Any")}) => ${retTypeTree}"
-        //          val retType = block.tree.tpe
-        //          val res = Block(List(dsl),
-        //            q"""
-        //            val program = new ${Ident(TypeName(className))}().compile[$retType, $functionType](Set[Int]())
-        //            program.apply(..${sortedHoles})
-        //          """)
-        //
-        //          println(showCode(res))
-        //          res
-        // >>>>>>> Modifications for the demo.
+
+        case tpe if tpe <:< typeOf[FullyStaged] =>
+          val retTypeTree = block.tree.tpe
+          val functionType = tq"(..${sortedHoles.map(_ => tq"scala.Any")}) => ${retTypeTree}"
+          val retType = block.tree.tpe
+          val res = Block(List(c.untypecheck(dsl)),
+            q"""
+            val program = new ${Ident(TypeName(className))}().compile[$retType, $functionType](Set[Int]())
+            program.apply(..${sortedHoles})
+          """)
+
+          println(showCode(res))
+          res
         case _ =>
           /*
            * Requires run-time variables => execute at run-time and install a recompilation guard.
@@ -258,12 +256,12 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
             //   dslInstance.interpret[${retType}](..${sortedHoles})
             // """
           }
-          Block(List(dsl), guardedExecute)
+          Block(List(c.untypecheck(dsl)), guardedExecute)
       }
 
       log(s"Final tree: ${showRaw(c.untypecheck(dslTree))}", 3)
-      log(s"Final untyped: ${show(c.untypecheck(dslTree), printTypes = true)}", 3)
-      log(s"Final typed: ${code(c.typecheck(c.untypecheck(dslTree)))}\n" +
+      log(s"Final untyped: ${show(c.untypecheck(c.untypecheck(dslTree)), printTypes = true)}", 3)
+      log(s"Final typed: ${showCode(c.typecheck(dslTree))}\n" +
         "-------- YYTransformer DONE ----------\n\n", 2)
       c.Expr[T](c.untypecheck(dslTree))
     }
@@ -301,7 +299,6 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
 
     def addIfNotLifted(m: DSLFeature) =
       if (!lifted.exists(x => x.name == m.name)) {
-        log(s"adding ${m}", 3)
         methods += m
       }
 
@@ -429,7 +426,8 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
   // ..${compilVars.map(k => q"var ${TermName("captured$" + k.name.decodedName.toString)} = $k")}
   def composeDSL(compilVars: List[Symbol])(transformedBody: Tree): Tree = q"""
     class ${TypeName(className)} extends $dslTrait {
-      def main(): Any = {$transformedBody}
+      ..${compilVars.map(k => q"var ${TermName("captured$" + k.name.decodedName.toString)} = ${TermName(k.name.decoded)}")}
+      def main() = {$transformedBody}
     }
   """
 

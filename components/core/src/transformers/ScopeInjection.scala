@@ -61,10 +61,6 @@ trait ScopeInjection extends MacroModule with TransformationUtils {
         case th @ This(_) =>
           This(typeNames.EMPTY)
 
-        // Removes all import statements (for now).
-        // case Import(_, _) =>
-        //   EmptyTree
-
         case _ =>
           super.transform(tree)
       }

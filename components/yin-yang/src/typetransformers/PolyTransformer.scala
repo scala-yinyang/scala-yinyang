@@ -47,7 +47,6 @@ trait PolyTransformerLike[C <: Context] { this: TypeTransformer[C] =>
         TermName(inType.typeSymbol.name.toString)))
 
     case s @ SingleType(pre, name) if inType.typeSymbol.isClass =>
-      println(s)
       constructPolyTree(typeCtx,
         s.asInstanceOf[scala.reflect.internal.Types#SingleType]
           .underlying.asInstanceOf[c.universe.Type])

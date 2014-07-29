@@ -28,9 +28,6 @@ trait TypeTreeTransformation extends MacroModule with TransformationUtils with D
       ident += 1
       val result = tree match {
         case x @ UnstageBlock(_) => x
-        case typTree: TypTree if typTree.tpe != null =>
-          log(s"TypeTree for ${showRaw(typTree)}", 3)
-          constructTypeTree(typeCtx, typTree.tpe)
 
         case TypeApply(mth, targs) =>
           // TypeApply params need special treatment
@@ -38,6 +35,10 @@ trait TypeTreeTransformation extends MacroModule with TransformationUtils with D
           val liftedArgs = targs map (transform(_))
           typeCtx = OtherCtx
           TypeApply(transform(mth), liftedArgs)
+
+        case typTree: TypTree if typTree.tpe != null =>
+          log(s"TypeTree for ${showRaw(typTree)}", 3)
+          constructTypeTree(typeCtx, typTree.tpe)
 
         case _ =>
           super.transform(tree)
