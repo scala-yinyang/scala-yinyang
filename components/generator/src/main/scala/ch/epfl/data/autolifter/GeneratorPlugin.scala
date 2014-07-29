@@ -48,7 +48,6 @@ class GeneratorPlugin(val global: Global) extends Plugin {
         }
         import autolifter.types._
         import impl.ImplLifter._
-        // println(implementations.liftType(c)(classDef.symbol.info))
         import ch.epfl.yinyang.typetransformers._
         val implLifter = new ImplLifter[c.type](c)("", Map()) {
           val typeTransformer = new RepTransformer[c.type](c)
@@ -56,13 +55,13 @@ class GeneratorPlugin(val global: Global) extends Plugin {
         }
         //
         val transformedBody = body.filter(_ != EmptyTree).map { body =>
+          val bodyCopy = body.duplicate
           val tpe = Type(liftedClass.tpe.typeSymbol)
           val preproc = new PreProcessor[c.type](c)(tpe, TypeContext(List(tpe), Nil)) {}
-          val processBody = preproc.PreProcess(implLifter(body))
+          val processBody = preproc.PreProcess(implLifter(bodyCopy))
 
           val pp = new PostProcessor[c.type](c)(tpe, TypeContext(List(tpe), Nil)) {}
           val res = pp.PostProcess(implLifter(processBody))
-          println(showCode(res))
           showCode(res)
         }
 
@@ -122,12 +121,8 @@ class GeneratorPlugin(val global: Global) extends Plugin {
           }
 
           val out = new PrintWriter(new File(new File(folder), unit.source.file.name))
-          // out.write("/*")
           out.write(imports)
           liftedClasses.foreach(out.write)
-          // out.write("*/")
-          // compose the component out of all classes
-          // out.write(s"trait $component extends ${classesForLifting.map(_.name + "Component").mkString(" with ")}")
           out.flush
         } else if (classesForLifting.size > 0) {
           unit.error(NoPosition, "File that contains @deep annotations must also contain exactly one @metadeep annotation.")

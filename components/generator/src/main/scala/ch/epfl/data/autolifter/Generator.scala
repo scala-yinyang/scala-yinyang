@@ -51,12 +51,22 @@ import scala.virtualization.lms.util.OverloadHack
 
   def generateExp(implicit program: LiftedProgram): String = {
     val sb = new StringBuilder
-    sb ++= s"trait $expName extends $opsName with BaseExp with EffectExp with VariablesExp with LoweringTransformer { this: $compName => \n"
+    sb ++= s"trait $expName extends $opsName with BaseExp with EffectExp with VariablesExp with LoweringTransformer with ArrayBufferOps with ArrayBufferOpsExp { this: $compName => \n"
     sb ++= "  // case classes\n"
     sb ++= program.caseClasses.mkString("  ", "\n  ", "\n")
     sb ++= "  // method definitions\n"
+    sb ++= "  // lowered\n"
     sb ++= program.caseClasses.filterNot(x => x.opsMethod.method.originalSymbol.asMethod.isConstructor).map(_.loweredDefinition).mkString("  ", "\n  ", "\n")
+    sb ++= "  // def\n"
     sb ++= program.caseClasses.filter(x => x.opsMethod.method.originalSymbol.asMethod.isConstructor).map(_.definition).mkString("  ", "\n  ", "\n")
+    sb ++= "override def mirror[A:Manifest](e: Def[A], f$: Transformer)(implicit pos: SourceContext): Exp[A] = (e match {\n"
+    sb ++=
+      program.caseClasses.filterNot(x => x.opsMethod.method.originalSymbol.asMethod.isConstructor)
+      .map(_.mirror).mkString("  ", "\n  ", "\n")
+    sb ++= """ case _ =>
+      super.mirrorDef(e,f$)
+  })
+    """
     sb ++= s"  override type ${program.origClass} = ${program.actualOrigClass}\n"
     sb ++= "}"
     sb.toString
@@ -72,13 +82,17 @@ trait $genName extends ScalaGenEffect {
   import IR._
 
   override def emitNode(sym: Sym[Any], node: Def[Any]): Unit = node match {"""
-    sb ++= program.caseClasses.map(_.emit).mkString("\n    ", "\n    ", "")
+    sb ++=
+      program.caseClasses
+      .filterNot(cc => cc.opsMethod.method.paramss.exists { p =>
+        p.exists { x =>
+          x.tpe.isFunction
+        }
+      })
+      .map(_.emit).mkString("\n    ", "\n    ", "")
     sb ++= s"""
     case _ => super.emitNode(sym, node)
   }
-  /*
-    ${program.caseClasses.map(_.opsMethod.method.body)}
-  */
 }
 """
     sb.toString
@@ -93,6 +107,20 @@ trait $genName extends ScalaGenEffect {
 
   def generateComp(implicit program: LiftedProgram): String = {
     s"""trait $compName extends $expOptName with $implicitName
+    trait ${origName}DSL extends $compName with LMSCore { self =>
+  val codegen = new QueryScalaGen with LMSCoreGen { val IR: self.type = self}
+  val optimizer = new QueryTransformer { val IR: self.type = self }
+}
+
+trait ${origName}Transformer extends ForwardTransformer {
+  val IR: $compName with LMSCore
+  import IR._
+
+  override def transformStm(stm: Stm): Exp[Any] = stm match {
+    /* add global optimizations here */
+    case _ => super.transformStm(stm)
+  }
+}
 """
   }
 
@@ -100,7 +128,7 @@ trait $genName extends ScalaGenEffect {
     val methods = program.opsMethods.map(rm => {
       val m = rm.method
       s"""override $m = {
-    /* add optimization here */
+    /* add local optimizations here */
     super.${m.call}
   }"""
 

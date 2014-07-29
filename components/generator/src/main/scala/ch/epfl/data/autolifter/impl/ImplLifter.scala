@@ -213,7 +213,7 @@ abstract class PreProcessor[C <: Context](val c: C)(classTpe: Type, typeContext:
     override def transform(tree: Tree): Tree = {
       tree match {
         case Select(This(typeNames.EMPTY), nme @ TermName(name)) =>
-          if (isModule) Ident(name) else Select(Ident(newTermName("self")), nme)
+          if (isModule) Ident(name) else q"lowering(self).$nme"
         case _ => super.transform(tree)
       }
     }

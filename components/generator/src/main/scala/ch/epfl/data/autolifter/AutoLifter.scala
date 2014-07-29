@@ -365,7 +365,7 @@ class AutoLifter(override val universe: Universe) extends Generator with Univers
       val superType = new Type("Def", mom.returnTpe.args)
       val anomalies = new ArrayBuffer[(Parameter, (List[Parameter], Parameter))]
       val params = mom.paramss.flatten flatMap { p =>
-        if (p.tpe.isFunction) {
+        if (p.tpe.isFunction && false) {
           // FIXME here we should also assume the functions inside a var arg parameter
           val (inputParam, outputParam) = p.toFunction
           anomalies += p -> (inputParam, outputParam)

@@ -79,7 +79,6 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
    */
   def apply[T](block: c.Expr[T]): c.Expr[T] = {
     log("-------- YYTransformer STARTED for block: " + showRaw(block.tree), 2)
-    println(c.settings)
     def shallowFlag = shallow || !(c.settings contains ("embed"))
     if (featureAnalysing) {
       FeatureAnalyzer(block.tree) // ABORTS compilation in case of restricted constructs
@@ -204,14 +203,11 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
           val retTypeTree = block.tree.tpe
           val functionType = tq"(..${sortedHoles.map(_ => tq"scala.Any")}) => ${retTypeTree}"
           val retType = block.tree.tpe
-          val res = Block(List(c.untypecheck(dsl)),
+          Block(List(c.untypecheck(dsl)),
             q"""
             val program = new ${Ident(TypeName(className))}().compile[$retType, $functionType](Set[Int]())
             program.apply(..${sortedHoles})
           """)
-
-          println(showCode(res))
-          res
         case _ =>
           /*
            * Requires run-time variables => execute at run-time and install a recompilation guard.

@@ -110,7 +110,10 @@ case class MethodCaseClass(name: String, typeParams: List[Type], params: List[Pa
     }
     val implPrms = if (implicitParams.size > 0) implicitParams.mkString("(implicit ", ", ", ")") else ""
     val prms = params.mkString("(", ", ", ")")
-    s"""case class $name$tpePrms$prms$implPrms extends ${superType.get}"""
+    s"""case class $name$tpePrms$prms$implPrms extends ${superType.get} {
+      ${typeParams.zipWithIndex.map { case (p, i) => s"val m$i= manifest[$p]" }.mkString("\n")}
+    }
+    """
   }
 
   def fxCall: String = {
@@ -239,9 +242,24 @@ case class MethodCaseClass(name: String, typeParams: List[Type], params: List[Pa
     s"""$name$paramString"""
   }
 
+  def matchStringMirror: String = {
+    var paramString = paramsAccessToStringMirror(params)
+    if (paramString == "") paramString = paramString + "()"
+    val tpePrms = typeParams match {
+      case Nil => ""
+      case l   => l.mkString("[", ", ", "]")
+    }
+    s"""$name$paramString"""
+  }
+
+  def manifests: String = {
+    val manifestString = typeParams.zipWithIndex.map { case (p, i) => s"e.m$i" }.mkString(", ")
+    if (manifestString == "") "()" else s"($manifestString)"
+  }
+
   def loweredCall = call + (opsMethod.method.body match {
     case None       => ""
-    case Some(body) => ".atPhase(lowering){" + body.toString + "}"
+    case Some(body) => ".atPhase(lowering){\nimplicit def sc: SourceContext = new SourceContext{};" + body.toString + "}"
   })
 
   // def fxCall: String = {
@@ -252,6 +270,10 @@ case class MethodCaseClass(name: String, typeParams: List[Type], params: List[Pa
   //     case _      => call
   //   }
   // }
+
+  def methodString(m: OpsMethod): String = {
+    (if (m.obj) m.method.copy(name = m.method.name + "_obj") else m.method.toString).toString
+  }
 
   def definition: String = {
     def anomaliesCode(anomaly: (Parameter, (List[Parameter], Parameter))): String = {
@@ -270,22 +292,26 @@ case class MethodCaseClass(name: String, typeParams: List[Type], params: List[Pa
         val parenthesis = if (f.tpe.isByName) "" else "()"
         s"""val ${fo.variable.name} = reifyEffects(${f.variable.name}$parenthesis)"""
       }
-
     }
     anomalies.toList match {
       // case Nil => s"${opsMethod.method} = $fxCall"
-      case Nil => s"${opsMethod.method} = $call"
-      case list => {
+      case Nil  => s"${methodString(opsMethod)} = $call"
+      case list => s"${methodString(opsMethod)} = $call"
+      /*{
         val sb = new StringBuilder
         sb ++= s"${opsMethod.method} = {\n"
         sb ++= (list map anomaliesCode).mkString("    ", "\n    ", "\n    ")
         sb ++= s"$call"
         sb ++= "\n  }"
         sb.toString
-      }
+      }*/
     }
   }
-
+  def mirror: String = {
+    s"case $matchString => $matchStringMirror \n" +
+      s"case Reflect(e@$matchString, u, es) => reflectMirrored(Reflect($matchStringMirror$manifests, mapOver(f$$,u), f$$(es)))(mtype(manifest[A]))"
+    //Reflect(e@Apply(x), u, es) => reflectMirrored(Reflect(Apply(f(x))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]))
+  }
   def loweredDefinition: String = {
     def anomaliesCode(anomaly: (Parameter, (List[Parameter], Parameter))): String = {
       val f = anomaly._1
@@ -307,15 +333,16 @@ case class MethodCaseClass(name: String, typeParams: List[Type], params: List[Pa
     }
     anomalies.toList match {
       // case Nil => s"${opsMethod.method} = $fxCall"
-      case Nil => s"${opsMethod.method} = $loweredCall"
-      case list => {
+      case Nil  => s"${methodString(opsMethod)} = $loweredCall"
+      case list => s"${methodString(opsMethod)} = $loweredCall"
+      /*{
         val sb = new StringBuilder
         sb ++= s"${opsMethod.method} = {\n"
         sb ++= (list map anomaliesCode).mkString("    ", "\n    ", "\n    ")
         sb ++= s"$call"
         sb ++= "\n  }"
         sb.toString
-      }
+      }*/
     }
   }
 
@@ -326,7 +353,7 @@ case class MethodCaseClass(name: String, typeParams: List[Type], params: List[Pa
     // println(opsMethod)
     if (opsMethod.obj) {
       val m = opsMethod.repMethod.method.name
-      sb ++= s"""${tab}stream.print("val " + quote(sym) + " = " + "query.BigDecimal.$m")""" + "\n"
+      sb ++= s"""${tab}stream.print("val " + quote(sym) + " = " + "${opsMethod.repMethod.method.originalSymbol.owner.fullName}.$m")""" + "\n"
     } else if (opsMethod.repMethod.isConstructor) {
       val m = opsMethod.repMethod.method.name
       sb ++= s"""${tab}stream.print("val " + quote(sym) + " = new $m")""" + "\n"

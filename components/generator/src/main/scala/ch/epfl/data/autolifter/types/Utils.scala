@@ -34,6 +34,19 @@ object Utils {
       }).mkString("(", ", ", ")")
     }
 
+  def paramsAccessToStringMirror(params: List[Parameter]): String =
+    params match {
+      case Nil => ""
+      case l => l.map(p => {
+        // If a parameter is of repeat type, we should add "_*" to it
+        val s = p.variable.name + {
+          (if (p.tpe.isInstanceOf[RepeatedType]) ":_*"
+          else "")
+        }
+        if (p.tpe.isFunction) s else "f$(" + s + ")"
+      }).mkString("(", ", ", ")")
+    }
+
   def implParamsToString(params: List[Parameter]): String =
     params match {
       case Nil => ""
