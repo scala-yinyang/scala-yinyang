@@ -133,7 +133,7 @@ trait ${origName}Transformer extends ForwardTransformer {
   }"""
 
     }).mkString("", "\n  ", "\n")
-    s"""trait $expOptName extends $expName { this: $compName =>
+    s"""trait $expOptName extends $expName with LMSCore{ this: $compName =>
   $methods
 }
 """

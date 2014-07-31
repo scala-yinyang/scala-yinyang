@@ -150,7 +150,7 @@ abstract class ImplLifter[C <: Context](val c: C)(override val className: String
     (
       ((x: Tree) => VirtualizationTransformer(x)._1) andThen
       AscriptionTransformer andThen
-      LiftLiteralTransformer(toLift, Nil) andThen
+      LiftLiteralTransformer(toLift, Nil, Nil) andThen
       {
         if (constructorConverting)
           ConstructorConvertor

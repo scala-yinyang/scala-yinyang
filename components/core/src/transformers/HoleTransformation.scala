@@ -46,6 +46,7 @@ trait HoleTransformation extends MacroModule with TransformationUtils {
 
     override def transform(tree: Tree): Tree = tree match {
       case x @ UnstageBlock(_) => x
+
       case i @ Ident(s) if toHoles contains symbolId(i.symbol) => {
         val index = {
           val sId = symbolId(i.symbol)
@@ -56,12 +57,7 @@ trait HoleTransformation extends MacroModule with TransformationUtils {
             holeTable.size - 1
           }
         }
-        Apply(
-          Select(This(typeNames.EMPTY), TermName(holeMethod)),
-          List(
-            TypeApply(
-              Select(This(typeNames.EMPTY), TermName("runtimeType")), List(TypeTree(i.tpe.widen))),
-            Literal(Constant(index))))
+        q"this.hole(manifest[${i.tpe}], $index)"
       }
       case _ =>
         super.transform(tree)

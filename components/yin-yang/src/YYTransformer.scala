@@ -105,23 +105,22 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
       def transform(toHoles: List[Symbol], toMixed: List[Symbol], toLifts: List[Symbol])(block: Tree): Tree =
         (PreProcess andThen
           AscriptionTransformer andThen
-          LiftLiteralTransformer(toLifts, toMixed) andThen
+          LiftLiteralTransformer(toLifts, toMixed, toHoles) andThen
           (x => VirtualizationTransformer(x)._1) andThen
           TypeTreeTransformer andThen
           ScopeInjectionTransformer andThen
-          HoleTransformer((toHoles ++ toMixed).distinct, className) andThen
           composeDSL((toLifts ++ toMixed).distinct) andThen
+          HoleTransformer((toHoles ++ toMixed).distinct, className) andThen
           PostProcess)(block)
 
       lazy val unboundDSL = {
         val t = transform(capturedSyms, Nil, Nil)(block.tree)
         log("FIRST TRANSFORM DONE (prettyPrinting in Caps):\n" + code(t) + "\n", 2)
-        log(showRaw(t, printTypes = true), 3)
         t
       }
       val varTypes: List[(Tree, VarType)] = dslType match {
         case tpe if tpe <:< typeOf[FullyStaged] =>
-          captured.map(t => (t, defaultCompVar(t.symbol)))
+          captured.map(t => (t, NonCompVar()))
 
         case tpe if tpe <:< typeOf[FullyUnstaged] =>
           captured.map(t => (t, NonCompVar()))
@@ -145,7 +144,6 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
       val guards: List[Guard] = varTypes.collect { case (_, v: CompVar) => v.guard }
       val liftedCompilVars: List[Tree] = varTypes.collect { case (s, _: RequiredStaticCompVar) => s }
       val mixedCompilVars: List[Tree] = compilVars diff liftedCompilVars
-
       log(s"VarTypes: $varTypes", 2)
       log(s"capturedSyms: $capturedSyms\nnonCompilVars (holes): $nonCompilVars" +
         s"compilVars: $compilVars\nlifted: $liftedCompilVars\nmixed: $mixedCompilVars", 2)
@@ -206,7 +204,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
           Block(List(c.untypecheck(dsl)),
             q"""
             val program = new ${Ident(TypeName(className))}().compile[$retType, $functionType](Set[Int]())
-            program.apply(..${sortedHoles})
+            this.time(() => program.apply(..${sortedHoles}))
           """)
         case _ =>
           /*
@@ -256,7 +254,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
       }
 
       log(s"Final tree: ${showRaw(c.untypecheck(dslTree))}", 3)
-      log(s"Final untyped: ${show(c.untypecheck(c.untypecheck(dslTree)), printTypes = true)}", 3)
+      log(s"Final untyped: ${showCode(c.untypecheck(dslTree))}", 3)
       log(s"Final typed: ${showCode(c.typecheck(dslTree))}\n" +
         "-------- YYTransformer DONE ----------\n\n", 2)
       c.Expr[T](c.untypecheck(dslTree))
@@ -332,8 +330,11 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
       //Finds the first element of the sequence satisfying a predicate, if any.
       (methods ++ lifted).toSeq.find(!methodsExist(_)) match {
         case Some(methodError) if lifted.contains(methodError) =>
-          val name = methodError.name.replaceAll("infix_", "").replaceAll("__ifThenElse", "if")
-          c.abort(tree.pos, s"Language construct ${name} not supported.")
+          val name = methodError.name
+            .replaceAll("infix_", "")
+            .replaceAll("__ifThenElse", "if")
+            .replaceAll("__whileDo", "while")
+          c.abort(tree.pos, s"Language construct ${name} is not supported.")
         case Some(DSLFeature(tpe, name, _, _)) =>
           val tpName = tpe
             .map(x => x.toString.replaceAll("\\.type", ""))

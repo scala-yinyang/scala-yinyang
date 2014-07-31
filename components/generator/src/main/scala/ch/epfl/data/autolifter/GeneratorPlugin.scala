@@ -89,23 +89,25 @@ class GeneratorPlugin(val global: Global) extends Plugin {
         }
 
         // This is the current solution to pass the necessary data that should be computed
-        val metaData: List[ClassDef] = topLevelClasses(unit.body) filter { x =>
+        /*        val metaData: List[ClassDef] = topLevelClasses(unit.body) filter { x =>
           x.symbol.annotations.exists(annot =>
             annot.tpe =:= typeOf[ch.epfl.data.autolifter.annotations.metadeep])
-        }
+        }*/
+        val metaData = List(1)
 
         if (metaData.size == 1 && classesForLifting.size > 0) { // all OK
           global.reporter.info(NoPosition,
             s"Generating for classes ${classesForLifting.map(_.name).mkString("[", ", ", "]")} in file ${unit.source.file}",
             force = true)
 
-          val metaAnnotation =
-            metaData.head.symbol.annotations.filter(_.tpe =:= typeOf[ch.epfl.data.autolifter.annotations.metadeep]).head
-          val (folder, imports, component) = metaAnnotation match {
+          // val metaAnnotation =
+          // metaData.head.symbol.annotations.filter(_.tpe =:= typeOf[ch.epfl.data.autolifter.annotations.metadeep]).head
+          val (folder, imports, component) = ("src/lifted/", "package queries\nimport scala.collection.mutable.ArrayBuffer\n", "")
+          /*metaAnnotation match {
             case AnnotationInfo(x, args, z) =>
               val params = args.map { case Literal(Constant(l)) => l.toString }
-              (params(0), params(1), params(2))
-          }
+
+          }*/
 
           val liftedClasses = classesForLifting map { classDef =>
             // here we make a macro context in order to use the Macro API

@@ -1,0 +1,4 @@
+<plugin>
+  <name>backend-generator</name>
+  <classname>ch.epfl.data.autolifter.GeneratorPlugin</classname>
+</plugin>

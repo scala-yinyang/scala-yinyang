@@ -17,14 +17,14 @@ import scala.collection.mutable
 trait LiftLiteralTransformation extends MacroModule with TransformationUtils with DataDefs {
   import c.universe._
   object LiftLiteralTransformer {
-    def apply(toLift: List[Symbol], toMixed: List[Symbol])(tree: Tree) = {
-      val t = new LiftLiteralTransformer(toLift, toMixed).transform(tree)
+    def apply(toLift: List[Symbol], toMixed: List[Symbol], toHole: List[Symbol])(tree: Tree) = {
+      val t = new LiftLiteralTransformer(toLift, toMixed, toHole).transform(tree)
       log("lifted: " + t, 2)
       t
     }
   }
 
-  class LiftLiteralTransformer(toLift: List[Symbol], toMixed: List[Symbol])
+  class LiftLiteralTransformer(toLift: List[Symbol], toMixed: List[Symbol], toHole: List[Symbol])
     extends Transformer {
 
     def genApply(name: String, t: List[Tree]) = Apply(Select(This(typeNames.EMPTY), TermName(name)), t)
@@ -41,8 +41,9 @@ trait LiftLiteralTransformation extends MacroModule with TransformationUtils wit
         case t @ Ident(_) if toMixed.contains(t.symbol) =>
           mixed(List(Ident(TermName("captured$" + t.name.decodedName.toString)), t))
         // the type associated with the identifier will remain if we don't that
-        case t @ Ident(n) =>
+        case t @ Ident(n) if !toHole.contains(t.symbol) =>
           log("local variable: " + t, 3)
+          // super.transform(tree)
           Ident(n)
         //=======
         //          lift(List(Ident(TermName( /*"captured$" + */ t.name.decodedName.toString))))
