@@ -31,7 +31,12 @@ trait TypeTreeTransformation extends MacroModule with TransformationUtils with D
         case typTree: TypTree if typTree.tpe != null =>
           log(s"TypeTree for ${showRaw(typTree)}", 3)
           constructTypeTree(typeCtx, typTree.tpe)
-
+        case ValDef(mods, sym, tpt, rhs) if mods.hasFlag(Flag.MUTABLE) => {
+          varCtx = IsVar
+          val newTpt = transform(tpt)
+          varCtx = NotVar
+          ValDef(mods, sym, newTpt, transform(rhs))
+        }
         case TypeApply(mth, targs) =>
           // TypeApply params need special treatment
           typeCtx = TypeApplyCtx

@@ -113,7 +113,7 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
           liftFeature(None, "__return", List(e))
 
         case Assign(lhs, rhs) =>
-          liftFeature(None, "__assign", List(lhs, rhs))
+          liftFeature(None, "__assign", List(lhs, transform(rhs)), Nil, x => x)
 
         case LabelDef(sym, List(), If(cond, Block(body :: Nil, Apply(Ident(label),
           List())), Literal(Constant(())))) if label == sym => // while(){}
@@ -184,6 +184,10 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
         case Throw(expr) => {
           c.warning(tree.pos, "virtualization of throw expressions is not supported.")
           super.transform(tree)
+        }
+
+        case Ident(x) if tree.symbol.isTerm && tree.symbol.asTerm.isVar => {
+          liftFeature(None, "readVar", List(tree), Nil, x => x)
         }
 
         case ClassDef(mods, n, _, _) if mods.hasFlag(Flag.CASE) =>
