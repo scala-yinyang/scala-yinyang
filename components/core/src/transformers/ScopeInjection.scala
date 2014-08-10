@@ -10,6 +10,8 @@ trait ScopeInjection extends MacroModule with TransformationUtils {
   import c.universe._
   import internal.decorators._
 
+  val rewireThis: Boolean = true
+
   // TODO DRY
   def rewiredToThis(s: String) = s == "package" || s == "Predef"
   object ScopeInjectionTransformer extends (Tree => Tree) {
@@ -31,7 +33,7 @@ trait ScopeInjection extends MacroModule with TransformationUtils {
       val result = tree match {
         case x @ UnstageBlock(_) => x
         //provide Def trees with NoSymbol (for correct show(tree))
-        case vdDef: ValOrDefDef => {
+        case vdDef: ValOrDefDef if rewireThis => {
           val retDef = super.transform(tree)
           retDef.setSymbol(NoSymbol)
           retDef
@@ -58,7 +60,7 @@ trait ScopeInjection extends MacroModule with TransformationUtils {
           Ident(name)
 
         // Added to rewire inherited methods to this class
-        case th @ This(_) =>
+        case th @ This(_) if rewireThis =>
           This(typeNames.EMPTY)
 
         // Removes all import statements (for now).
