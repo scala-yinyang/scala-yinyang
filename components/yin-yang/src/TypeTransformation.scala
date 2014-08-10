@@ -38,7 +38,8 @@ trait TypeTreeTransformation extends MacroModule with TransformationUtils with D
           val liftedArgs = targs map (transform(_))
           typeCtx = OtherCtx
           TypeApply(transform(mth), liftedArgs)
-
+        case Typed(x, Ident(typeNames.WILDCARD_STAR)) =>
+          transform(x)
         case _ =>
           super.transform(tree)
       }
