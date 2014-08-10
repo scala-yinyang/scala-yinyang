@@ -48,6 +48,7 @@ import scala.collection.mutable
  * ===Configurable===
  * {{{
  *   x => e                 =>       __lambda(x => e)
+ *   f.apply(x)             =>       __app(f).apply(x)    // if `f` is a function object
  * }}}
  *
  * @todo
@@ -63,6 +64,7 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
   import c.universe._
 
   val virtualizeLambda: Boolean = false
+  val virtualizeApply: Boolean = false
 
   def virtualize(t: Tree): (Tree, Seq[DSLFeature]) = VirtualizationTransformer(t)
 
@@ -99,6 +101,10 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
 
         case f @ Function(vparams, body) if virtualizeLambda =>
           liftFeature(None, "__lambda", List(Function(vparams, transform(body))), Nil, x => x)
+
+        case FunctionApply(qualifier, args) if virtualizeApply => {
+          Apply(Select(liftFeature(None, "__app", List(qualifier)), TermName("apply")), args)
+        }
 
         case t @ If(cond, thenBr, elseBr) =>
           liftFeature(None, "__ifThenElse", List(cond, thenBr, elseBr))
@@ -194,6 +200,21 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
           super.transform(tree)
       }
     }
+
+    object FunctionApply {
+      val functionTypes = List(typeOf[() => _], typeOf[(_ => _)], typeOf[(_, _) => _])
+      def isForFunctions(methodSymbol: Symbol): Boolean = {
+        functionTypes.exists(_.typeSymbol == methodSymbol.owner)
+      }
+
+      def unapply(tree: Tree): Option[(Tree, List[Tree])] = tree match {
+        case Apply(m @ Select(qualifier, TermName("apply")), args) if isForFunctions(m.symbol) => {
+          Some(qualifier, args)
+        }
+        case _ => None
+      }
+    }
+
     def apply(tree: c.universe.Tree): (Tree, Seq[DSLFeature]) =
       (transform(tree), lifted.toSeq)
   }
