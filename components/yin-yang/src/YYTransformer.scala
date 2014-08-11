@@ -81,11 +81,13 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
   def apply[T](block: c.Expr[T]): c.Expr[T] = {
     log("-------- YYTransformer STARTED for block: " + showRaw(block.tree), 2)
 
-    def shallowFlag = shallow || !(c.settings contains ("embed"))
+    // def shallowFlag = shallow || !(c.settings contains ("embed"))
+    // def shallow = !(c.settings contains ("embed"))
     if (featureAnalysing) {
       FeatureAnalyzer(block.tree) // ABORTS compilation in case of restricted constructs
     }
-    if (shallowFlag) { block }
+    // if (shallowFlag) { block }
+    if (shallow) { block }
     else {
       // mark captured variables as holes
       val captured: List[Tree] = freeVariables(block.tree)

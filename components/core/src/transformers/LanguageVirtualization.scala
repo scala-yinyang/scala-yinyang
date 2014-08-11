@@ -97,7 +97,7 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
           ValDef(mods, sym, tpt, liftFeature(None, "__newVar", List(rhs)))
         // Amir: fixes the problem with lifting types of ValDefs
         case ValDef(mods, sym, tpt, rhs) =>
-          ValDef(mods, sym, tpt, rhs)
+          ValDef(mods, sym, tpt, transform(rhs))
 
         case f @ Function(vparams, body) if virtualizeLambda =>
           liftFeature(None, "__lambda", List(Function(vparams, transform(body))), Nil, x => x)
