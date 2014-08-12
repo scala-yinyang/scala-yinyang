@@ -97,7 +97,7 @@ object YYStorageFactory {
 ${indent}variant.unsafeCounter += 1
 ${indent}headVariant match {
 ${indent}  case null => headVariant = (variant, new AllOptCounters($newCtr))
-${indent}  case (sameVariant, oldCounts) if (variant == sameVariant) => 
+${indent}  case (sameVariant, oldCounts) if (variant == sameVariant) =>
 ${indent}    $incrementCtr
 ${indent}  case (oldVariant, oldCounts) => headVariant = (variant, $updatedCtr)
 ${indent}}
@@ -136,18 +136,18 @@ ${indent}val lookupReq = lookup${list.length}.get"""
         val optLookup = is.init.foldRight({
           val last = is.last
           s"""map.get(hash$last).map((_, false)).orElse(option.map((_, true))) match {
-${ind}  case None => 
-${ind}  case Some((variant, unst)) => unstable$last = unst; return Some(variant) 
+${ind}  case None =>
+${ind}  case Some((variant, unst)) => unstable$last = unst; return Some(variant)
 ${ind}}"""
         })({
           case (i, inner) =>
             val ind = indent + (" " * (i - onlyReq.length) * 2)
-            s"""List(map.get(hash$i), option).collect({ case Some((map, option)) => 
+            s"""List(map.get(hash$i), option).collect({ case Some((map, option)) =>
 ${ind}    $inner
 ${ind}  })"""
         })
-        s"""lookupReq.foreach({ case (_, (map, option)) => 
-${indent}  $optLookup 
+        s"""lookupReq.foreach({ case (_, (map, option)) =>
+${indent}  $optLookup
 ${indent}})
 ${indent}None"""
     }
@@ -195,27 +195,27 @@ ${indent}}""")
         val i = onlyReq.length + allOpt.length;
         val ind = indent + (" " * i)
         s"""variantCount += 1
-${ind}if (next${i}.unsafeCounter < minCount) { 
+${ind}if (next${i}.unsafeCounter < minCount) {
 ${ind}  hashes.copyToArray(minHashes); minCount = next${i}.unsafeCounter; next${i}.unsafeCounter = 0; minSet = set
 ${ind}}"""
       })({
         case ((guard, hashI), inner) =>
           val ind = indent + (" " * hashI)
-          s"""(next${hashI}._2 match { 
+          s"""(next${hashI}._2 match {
 ${ind}  case Some(ohm) => (null, ohm) :: next${hashI}._1.toList
 ${ind}  case None => next${hashI}._1.toList
 ${ind}}).foreach({ case (hash, next${hashI + 1}) => hashes($hashI) = hash
 ${ind} $inner })"""
       })
     val optCountResetString =
-      if (allOpt.length > 1) s"""next${onlyReq.length}.foreach({ case (i, next${onlyReq.length}) => set = i 
+      if (allOpt.length > 1) s"""next${onlyReq.length}.foreach({ case (i, next${onlyReq.length}) => set = i
 ${indent + (" " * onlyReq.length)}$optCountReset })"""
       else optCountReset
 
     val reqCountResetString = onlyReq.zipWithIndex.foldRight(optCountResetString)({
       case ((guard, hashI), inner) =>
         val ind = indent + (" " * hashI)
-        s"""next${hashI}.foreach({ case (hash, next${hashI + 1}) => hashes($hashI) = hash; 
+        s"""next${hashI}.foreach({ case (hash, next${hashI + 1}) => hashes($hashI) = hash;
 ${ind} $inner })"""
     })
 
@@ -317,7 +317,7 @@ ${ind}case Some(nextMap${hashI + 1}: ${getCacheType(hashI + 1)}) => nextMap${has
     val theCache = s"""
 new ch.epfl.yinyang.runtime.YYCache() {
 
-  // Guards: 
+  // Guards:
   // onlyReq: ${onlyReq.map(guardToString(_))}
   // mixed: ${mixed.map(guardToString(_))}
   // onlyOpt: ${onlyOpt.map(guardToString(_))}
@@ -327,7 +327,7 @@ new ch.epfl.yinyang.runtime.YYCache() {
   final private case class ProgramVariant(function: $functionType, var unsafeCounter: Int)
 
   private val classInstance: $className = new $className()
-  
+
   @inline
   private def recompile(refs: Array[Any], unstableSet: scala.collection.immutable.Set[scala.Int]): $functionType = {
     ch.epfl.yinyang.runtime.YYStorage.incrementRuntimeCompileCount()
@@ -356,7 +356,7 @@ new ch.epfl.yinyang.runtime.YYCache() {
     }
 
     ${if (hasOpt) updateCtsString else ""}
-    
+
     @inline
     def createAndStoreVariant(refs: Array[Any]): ProgramVariant = {
       $unstableSet

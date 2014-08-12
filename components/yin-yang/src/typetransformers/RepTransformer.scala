@@ -71,6 +71,15 @@ class RepTransformer[C <: Context](ctx: C) extends TypeTransformer[C](ctx) with 
 class PardisRepTransformer[C <: Context](ctx: C) extends RepTransformer[C](ctx) {
   import c.universe._
 
+  override def rep(inType: Type): Tree = {
+    val repType = varCtx match {
+      case IsVar  => "Var"
+      case NotVar => "Rep"
+    }
+    AppliedTypeTree(Select(This(newTypeName(className)), TypeName(repType)),
+      List(TypeTree(inType)))
+  }
+
   override def constructRepTree(ctx: TypeContext, inType: Type): Tree = {
     ctx match {
       case OtherCtx =>
