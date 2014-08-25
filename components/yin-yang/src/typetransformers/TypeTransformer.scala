@@ -20,3 +20,14 @@ abstract class TypeTransformer[C <: Context](val c: C) {
   def transform(ctx: TypeContext, t: c.universe.Type): c.universe.Tree
   var className: String = _
 }
+
+object Macros {
+  def repCheck[T: c.WeakTypeTag](c: Context)(term: c.Expr[T]): c.Expr[String] = {
+    import c.universe._
+    val transformer = new RepTransformer[c.type](c)
+    val tpe = c.weakTypeTag[T].tpe
+    println("The type is: " + showRaw(tpe.normalize))
+    // transformer.transform(transformer.OtherCtx, c.weakTypeTag[T].tpe)
+    c.Expr[String](q"""${tpe.toString}""")
+  }
+}
