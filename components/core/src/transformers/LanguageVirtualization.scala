@@ -103,7 +103,7 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
           liftFeature(None, "__lambda", List(Function(vparams, transform(body))), Nil, x => x)
 
         case FunctionApply(qualifier, args) if virtualizeApply => {
-          Apply(Select(liftFeature(None, "__app", List(qualifier)), TermName("apply")), args)
+          Apply(Select(liftFeature(None, "__app", List(qualifier)), TermName("apply")), args map transform)
         }
 
         case t @ If(cond, thenBr, elseBr) =>
