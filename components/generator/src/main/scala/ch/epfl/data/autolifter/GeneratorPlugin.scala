@@ -23,7 +23,7 @@ class GeneratorPlugin(val global: Global) extends Plugin {
 
   private object Component extends PluginComponent {
     val global: GeneratorPlugin.this.global.type = GeneratorPlugin.this.global
-    val runsAfter = List[String]("refchecks");
+    val runsAfter = List[String]("typer");
     val phaseName = GeneratorPlugin.this.name
     def newPhase(_prev: Phase) = new GeneratorPhase(_prev)
 
