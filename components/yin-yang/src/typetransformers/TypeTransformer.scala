@@ -10,6 +10,12 @@ abstract class TypeTransformer[C <: Context](val c: C) {
   case object TypeApplyCtx extends TypeContext
   case object OtherCtx extends TypeContext
 
+  trait VarContext
+  case object IsVar extends VarContext
+  case object NotVar extends VarContext
+
+  var varCtx: VarContext = NotVar
+
   def rewiredToThis(s: String) = s == "package" || s == "Predef" // TODO DRY
   def transform(ctx: TypeContext, t: c.universe.Type): c.universe.Tree
   var className: String = _

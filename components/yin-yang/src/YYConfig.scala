@@ -15,4 +15,5 @@ trait YYConfig {
   val optionalInitiallyStable: Boolean = config("optionalInitiallyStable").asInstanceOf[Boolean]
   val codeCacheSize: Int = config("codeCacheSize").asInstanceOf[Int]
   val minimumCountToStabilize: Int = config("minimumCountToStabilize").asInstanceOf[Int]
+  val virtLambda: Boolean = config("virtualizeLambda").asInstanceOf[Boolean]
 }

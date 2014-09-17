@@ -12,9 +12,12 @@ import scala.collection.mutable
 /**
  * Post processing phase, in which you can add more statements to final DSL. Its main use-case is for class virtualization.
  */
-class PostProcessing[C <: Context](val c: C)(val statements: List[(PostProcessing.StatementContext, Universe#Tree)]) {
+class PostProcessing[C <: Context](val c: C)(val statements: List[(PostProcessing.StatementContext, Universe#Tree)]) extends TransformationUtils {
+  type Ctx = C
   import c.universe._
   import PostProcessing._
+
+  def debugLevel: Int = 0
 
   @inline def statementsWithContext(statementContext: StatementContext): List[Tree] = {
     statements.filter(_._1 == statementContext).map(_._2).asInstanceOf[List[Tree]]
@@ -24,7 +27,14 @@ class PostProcessing[C <: Context](val c: C)(val statements: List[(PostProcessin
     def apply(tree: Tree) = new PostProcess().transform(tree)
   }
 
-  private final class PostProcess extends Transformer {
+  class BasePostProcess extends Transformer {
+    override def transform(tree: Tree): Tree = tree match {
+      case UnstageBlock(body) => q"lift(${transform(body)})"
+      case _                  => super.transform(tree)
+    }
+  }
+
+  private final class PostProcess extends BasePostProcess {
     override def transform(tree: Tree): Tree = {
       tree match {
         case ClassDef(mods, name, tparams,
@@ -46,7 +56,7 @@ class PostProcessing[C <: Context](val c: C)(val statements: List[(PostProcessin
 class NullPostProcessing[C <: Context](ctx: C) extends PostProcessing(ctx)(Nil) {
   import c.universe._
   override object PostProcess extends (Tree => Tree) {
-    def apply(tree: Tree) = tree
+    def apply(tree: Tree) = new BasePostProcess().transform(tree)
   }
 }
 

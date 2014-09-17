@@ -26,5 +26,5 @@ trait CodeGenerator { this: BaseYinYang =>
    * @param unstableHoleIds The set of optional variables that should be treated as
    *   unstable, to be passed to the `generateCode` function.
    */
-  def compile[T: TypeTag, Ret](unstableHoleIds: Set[Int] = Set()): Ret
+  def compile[T: TypeRep, Ret](unstableHoleIds: Set[Int] = Set()): Ret
 }
