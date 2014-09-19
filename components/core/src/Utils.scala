@@ -60,6 +60,7 @@ trait TransformationUtils extends MacroModule {
 
   def debugLevel: Int
 
+  // TODO (VJ) Removed UnstageBlock from all transformers as these unrelated features.
   object UnstageBlock {
     def unapply(tree: Tree): Option[Tree] = tree match {
       case q"unstage($body)" => Some(body)

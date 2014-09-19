@@ -19,7 +19,7 @@ import scala.virtualization.lms.common.{
 trait MoreListOps extends ListOps {
 
   implicit def varToMoreListOps[T: Manifest](x: Var[List[T]]) =
-    new MoreListOpsCls(readVar(x))
+    new MoreListOpsCls(__readVar(x))
   implicit def repToMoreListOps[T: Manifest](a: Rep[List[T]]) =
     new MoreListOpsCls(a)
   implicit def listToListMoreOps[T: Manifest](a: List[T]) =

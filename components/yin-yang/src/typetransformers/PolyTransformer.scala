@@ -10,7 +10,7 @@ trait PolyTransformerLike[C <: Context] { this: TypeTransformer[C] =>
   def toType(s: Symbol) = s.name
 
   protected def isFunctionType(tp: Type): Boolean = tp.dealias match {
-    case TypeRef(pre, sym, args) if args.nonEmpty =>
+    case TypeRef(_, sym, args) if args.nonEmpty =>
       val arity = args.length - 1
 
       arity <= MaxFunctionArity &&

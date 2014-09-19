@@ -14,14 +14,16 @@ import scala.collection.mutable
  * ==Features covered are==
  * {{{
  *   var x = e              =>       var x = __newVar(e)
- *   if(c) t else e         =>       __ifThenElse(c, t, e)
- *   return t               =>       __return(t)
  *   x = t                  =>       __assign(x, t)
+ *   x // if x is a var     =>       __readVar(x)
+ *   lazy val x = b         =>       __lazyValDef(b)
+ *   if(c) t else e         =>       __ifThenElse(c, t, e)
  *   while(c) b             =>       __whileDo(c, b)
  *   do b while c           =>       __doWhile(c, b)
+ *   return t               =>       __return(t)
  * }}}
  *
- * ===Poor man's infix methods for `Any` methods===
+ * ===Virtualization of `Any` methods===
  * {{{
  *   t == t1                =>       infix_==(t, t1)
  *   t != t1                =>       infix_!=(t, t1)
@@ -33,7 +35,7 @@ import scala.collection.mutable
  *   t.toString             =>       infix_toString(t)
  * }}}
  *
- * ===Poor man's infix methods for `AnyRef` methods===
+ * ===Vritualization of `AnyRef` methods===
  * {{{
  *   t eq t1                =>       infix_eq(t, t1)
  *   t ne t1                =>       infix_ne(t, t1)
@@ -49,15 +51,17 @@ import scala.collection.mutable
  * {{{
  *   x => e                 =>       __lambda(x => e)
  *   f.apply(x)             =>       __app(f).apply(x)    // if `f` is a function object
+ *   val x = b              =>       __valDef(b)
  * }}}
  *
  * @todo
  * {{{
  *   try b catch c          =>       __tryCatch(b, c, f)
  *   throw e                =>       __throw(e)
- *   case class C { ... }   =>       ???
- *   Nothing                =>       ???
- *   Null                   =>       ???
+ *   def f                  =>       ignored for now as it is treated by the scope injection
+ *   case class C { ... }   =>       forbiden, for now
+ *   match                  =>       ignored, should be treated by virtual pattern matcher
+ *   new                    =>       forbiden, for now
  * }}}
  */
 trait LanguageVirtualization extends MacroModule with TransformationUtils with DataDefs {
@@ -65,6 +69,8 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
 
   val virtualizeLambda: Boolean = false
   val virtualizeApply: Boolean = false
+  val failCompilation: Boolean = false
+  val virtualizeVal: Boolean = false
 
   def virtualize(t: Tree): (Tree, Seq[DSLFeature]) = VirtualizationTransformer(t)
 
@@ -87,24 +93,32 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
 
     override def transform(tree: Tree): Tree = {
       tree match {
-        case x @ UnstageBlock(_) => x
+
+        case ValDef(mods, sym, tpt, rhs) if mods.hasFlag(Flag.PARAM) =>
+          ValDef(mods, sym, tpt, transform(rhs))
+
         // sstucki: It seems necessary to keep the MUTABLE flag in the
         // new ValDef set, otherwise it becomes tricky to
         // "un-virtualize" a variable definition, if necessary
         // (e.g. if the DSL does not handle variable definitions in a
         // special way).
         case ValDef(mods, sym, tpt, rhs) if mods.hasFlag(Flag.MUTABLE) =>
-          ValDef(mods, sym, tpt, liftFeature(None, "__newVar", List(rhs)))
-        // Amir: fixes the problem with lifting types of ValDefs
+          ValDef(mods, sym, tpt, liftFeature(None, "__newVar", List(transform(rhs))))
+
+        case ValDef(mods, sym, tpt, rhs) if mods.hasFlag(Flag.LAZY) =>
+          ValDef(mods, sym, tpt, liftFeature(None, "__lazyValDef", List(transform(rhs))))
+
         case ValDef(mods, sym, tpt, rhs) =>
-          ValDef(mods, sym, tpt, transform(rhs))
+          val newRhs =
+            if (virtualizeVal) liftFeature(None, "__valDef", List(transform(rhs)))
+            else transform(rhs)
+          ValDef(mods, sym, tpt, newRhs)
 
         case f @ Function(vparams, body) if virtualizeLambda =>
           liftFeature(None, "__lambda", List(Function(vparams, transform(body))), Nil, x => x)
 
-        case FunctionApply(qualifier, args) if virtualizeApply => {
+        case FunctionApply(qualifier, args) if virtualizeApply =>
           Apply(Select(liftFeature(None, "__app", List(qualifier)), TermName("apply")), args map transform)
-        }
 
         case t @ If(cond, thenBr, elseBr) =>
           liftFeature(None, "__ifThenElse", List(cond, thenBr, elseBr))
@@ -176,19 +190,8 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
           ) if arg0.tpe =:= typeOf[Long] && arg1.tpe =:= typeOf[Int] =>
           liftFeature(None, "infix_wait", List(qualifier, arg0, arg1))
 
-        case Try(block, catches, finalizer) => {
-          c.warning(tree.pos, "virtualization of try/catch expressions is not supported.")
-          super.transform(tree)
-        }
-
-        case Throw(expr) => {
-          c.warning(tree.pos, "virtualization of throw expressions is not supported.")
-          super.transform(tree)
-        }
-
-        case Ident(x) if tree.symbol.isTerm && tree.symbol.asTerm.isVar => {
-          liftFeature(None, "readVar", List(tree), Nil, x => x)
-        }
+        case Ident(x) if tree.symbol.isTerm && tree.symbol.asTerm.isVar =>
+          liftFeature(None, "__readVar", List(tree), Nil, x => x)
 
         case ClassDef(mods, n, _, _) if mods.hasFlag(Flag.CASE) =>
           // sstucki: there are issues with the ordering of
@@ -197,8 +200,15 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
           // should not be and vice-versa).  So until we have decided
           // how proper virtualization of case classes should be done,
           // any attempt to do so should fail.
-          println(tree)
-          c.abort(tree.pos, "virtualization of case classes is not supported.")
+          c.abort(tree.pos, "Virtualization of case classes is not supported.")
+
+        case Try(block, catches, finalizer) =>
+          unsupported(tree.pos, "Virtualization of try/catch expressions is not supported.")
+          super.transform(tree)
+
+        case Throw(expr) =>
+          unsupported(tree.pos, "Virtualization of throw expressions is not supported.")
+          super.transform(tree)
 
         case _ =>
           super.transform(tree)
@@ -206,7 +216,32 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
     }
 
     object FunctionApply {
-      val functionTypes = List(typeOf[() => _], typeOf[(_ => _)], typeOf[(_, _) => _])
+      // TODO (VJ) do this better!
+      val functionTypes = List(
+        typeOf[() => _],
+        typeOf[(_ => _)],
+        typeOf[(_, _) => _],
+        typeOf[(_, _, _) => _],
+        typeOf[(_, _, _, _) => _],
+        typeOf[(_, _, _, _, _) => _],
+        typeOf[(_, _, _, _, _, _) => _],
+        typeOf[(_, _, _, _, _, _, _) => _],
+        typeOf[(_, _, _, _, _, _, _, _) => _],
+        typeOf[(_, _, _, _, _, _, _, _, _) => _],
+        typeOf[(_, _, _, _, _, _, _, _, _, _) => _],
+        typeOf[(_, _, _, _, _, _, _, _, _, _, _) => _],
+        typeOf[(_, _, _, _, _, _, _, _, _, _, _, _) => _],
+        typeOf[(_, _, _, _, _, _, _, _, _, _, _, _, _) => _],
+        typeOf[(_, _, _, _, _, _, _, _, _, _, _, _, _, _) => _],
+        typeOf[(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => _],
+        typeOf[(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => _],
+        typeOf[(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => _],
+        typeOf[(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => _],
+        typeOf[(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => _],
+        typeOf[(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => _],
+        typeOf[(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => _],
+        typeOf[(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => _])
+
       def isForFunctions(methodSymbol: Symbol): Boolean = {
         functionTypes.exists(_.typeSymbol == methodSymbol.owner)
       }
@@ -218,6 +253,12 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
         case _ => None
       }
     }
+
+    def unsupported(pos: Position, msg: String) =
+      if (failCompilation)
+        c.abort(pos, msg)
+      else
+        c.warning(pos, msg)
 
     def apply(tree: c.universe.Tree): (Tree, Seq[DSLFeature]) =
       (transform(tree), lifted.toSeq)

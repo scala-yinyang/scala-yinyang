@@ -33,7 +33,6 @@ trait LiftLiteralTransformation extends MacroModule with TransformationUtils wit
 
     override def transform(tree: Tree): Tree = {
       tree match {
-        case x @ UnstageBlock(_) => x
         case t @ Literal(Constant(_)) =>
           lift(List(t))
         case t @ Ident(_) if toLift.contains(t.symbol) =>

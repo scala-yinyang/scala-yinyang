@@ -19,7 +19,6 @@ object YYTransformer {
     ("shortenDSLNames" -> true),
     ("mainMethod" -> "main"),
     ("featureAnalysing" -> true),
-    ("ascriptionTransforming" -> false),
     ("virtualizeLambda" -> false),
     ("ascriptionTransforming" -> true),
     ("liftTypes" -> Nil),
@@ -342,13 +341,13 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
       (methods ++ lifted).toSeq.find(!methodsExist(_)) match {
         case Some(methodError) if lifted.contains(methodError) =>
           val name = methodError.name.replaceAll("infix_", "").replaceAll("__ifThenElse", "if")
-          c.abort(tree.pos, s"Language construct ${name} not supported.")
+          c.error(tree.pos, s"Language construct ${name} not supported.")
         case Some(DSLFeature(tpe, name, _, _)) =>
+          // missing method
           val tpName = tpe
             .map(x => x.toString.replaceAll("\\.type", ""))
             .map(_ + ".").getOrElse("")
-          // missing method
-          c.error(tree.pos, s"Method $tpName$name not found.")
+          c.error(tree.pos, s"Operation $tpName$name not supported by the DSL $dslName.")
         case None =>
       }
     }

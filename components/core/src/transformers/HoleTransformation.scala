@@ -45,7 +45,6 @@ trait HoleTransformation extends MacroModule with TransformationUtils {
   class HoleTransformer(toHoles: List[Int]) extends Transformer {
 
     override def transform(tree: Tree): Tree = tree match {
-      case x @ UnstageBlock(_) => x
       case i @ Ident(s) if toHoles contains symbolId(i.symbol) => {
         val index = {
           val sId = symbolId(i.symbol)

@@ -29,8 +29,7 @@ class PostProcessing[C <: Context](val c: C)(val statements: List[(PostProcessin
 
   class BasePostProcess extends Transformer {
     override def transform(tree: Tree): Tree = tree match {
-      case UnstageBlock(body) => q"lift(${transform(body)})"
-      case _                  => super.transform(tree)
+      case _ => super.transform(tree)
     }
   }
 

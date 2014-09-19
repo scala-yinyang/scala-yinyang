@@ -31,7 +31,6 @@ trait ScopeInjection extends MacroModule with TransformationUtils {
       ident += 1
 
       val result = tree match {
-        case x @ UnstageBlock(_) => x
         //provide Def trees with NoSymbol (for correct show(tree))
         case vdDef: ValOrDefDef if rewireThis => {
           val retDef = super.transform(tree)

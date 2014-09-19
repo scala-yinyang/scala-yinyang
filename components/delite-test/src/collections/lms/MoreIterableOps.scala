@@ -18,7 +18,7 @@ import scala.virtualization.lms.common.{
 trait MoreIterableOps extends IterableOps {
 
   implicit def varToMoreIterableOps[A: Manifest](x: Var[Iterable[A]]) =
-    new MoreIterableOpsCls(readVar(x))
+    new MoreIterableOpsCls(__readVar(x))
   implicit def repIterableToMoreIterableOps[T: Manifest](a: Rep[Iterable[T]]) =
     new MoreIterableOpsCls(a)
   implicit def iterableToMoreIterableOps[T: Manifest](a: Iterable[T]) =

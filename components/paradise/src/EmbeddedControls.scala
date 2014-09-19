@@ -26,7 +26,6 @@ import scala.reflect.macros.blackbox.Context
  * not, the call will be left as it is and a staging or interpreting
  * DSL can take over.
  *
- * @note This is feature experimental.
  * @note None of the above will happen unless you annotate your code with `@virtualize`.
  */
 trait EmbeddedControls {
@@ -47,8 +46,11 @@ trait EmbeddedControls {
   def __whileDo(cond: Boolean, body: Unit): Unit = macro whileDoImpl
   def __doWhile(body: Unit, cond: Boolean): Unit = macro doWhileImpl
   def __newVar[T](init: T): T = macro newVarImpl[T]
+  def __readVar[T](init: T): T = macro readVarImpl[T]
+  def __valDef[T](init: T): T = macro valDefImpl[T]
+  def __lazyValDef[T](init: T): T = macro lazyValDefImpl[T]
 
-  // Poor man's infix methods for `Any` methods
+  // Infix methods for `Any` methods
   def infix_==(x1: Any, x2: Any): Boolean = macro any_==
   def infix_!=(x1: Any, x2: Any): Boolean = macro any_!=
   def infix_##(x: Any): Int = macro any_##
@@ -59,7 +61,7 @@ trait EmbeddedControls {
   def infix_toString(x: Any): String = macro any_toString
   def infix_getClass(x: Any): Class[_] = macro any_getClass
 
-  // Poor man's infix methods for `AnyRef` methods
+  // Infix methods for `AnyRef` methods
   def infix_eq(x1: AnyRef, x2: AnyRef): Boolean = macro anyRef_eq
   def infix_ne(x1: AnyRef, x2: AnyRef): Boolean = macro anyRef_ne
   def infix_notify(x: AnyRef): Unit = macro anyRef_notify
@@ -115,6 +117,12 @@ private object EmbeddedControls {
   }
 
   def newVarImpl[T](c: Context)(init: c.Expr[T]): c.Expr[T] = init
+
+  def readVarImpl[T](c: Context)(init: c.Expr[T]): c.Expr[T] = init
+
+  def valDefImpl[T](c: Context)(init: c.Expr[T]): c.Expr[T] = init
+
+  def lazyValDefImpl[T](c: Context)(init: c.Expr[T]): c.Expr[T] = init
 
   //
   // Poor man's infix methods for `Any` methods
@@ -180,7 +188,7 @@ private object EmbeddedControls {
   }
 
   //
-  // Poor man's infix methods for `AnyRef` methods
+  // Infix methods for `AnyRef` methods
 
   def anyRef_eq(c: Context)(
     x1: c.Expr[AnyRef], x2: c.Expr[AnyRef]): c.Expr[Boolean] = {
