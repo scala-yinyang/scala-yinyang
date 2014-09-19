@@ -19,7 +19,9 @@ object YYTransformer {
     ("shortenDSLNames" -> true),
     ("mainMethod" -> "main"),
     ("featureAnalysing" -> true),
-    ("virtualizeLambda" -> false),
+    ("virtualizeFunctions" -> false),
+    ("virtualizeVal" -> false),
+    ("failCompilation" -> true),
     ("ascriptionTransforming" -> true),
     ("liftTypes" -> Nil),
     ("optionalInitiallyStable" -> true),
@@ -55,9 +57,6 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
   with DataDefs
   with TransformationUtils
   with YYConfig {
-
-  // Amir: needs clean up
-  override val virtualizeLambda: Boolean = virtLambda
 
   type Ctx = C
   import c.universe._

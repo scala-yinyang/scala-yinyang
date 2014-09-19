@@ -47,8 +47,8 @@ trait EmbeddedControls {
   def __doWhile(body: Unit, cond: Boolean): Unit = macro doWhileImpl
   def __newVar[T](init: T): T = macro newVarImpl[T]
   def __readVar[T](init: T): T = macro readVarImpl[T]
-  def __valDef[T](init: T): T = macro valDefImpl[T]
   def __lazyValDef[T](init: T): T = macro lazyValDefImpl[T]
+  def __valDef[T](init: T): T = macro valDefImpl[T]
 
   // Infix methods for `Any` methods
   def infix_==(x1: Any, x2: Any): Boolean = macro any_==

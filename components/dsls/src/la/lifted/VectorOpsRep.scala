@@ -5,19 +5,7 @@ import base._
 import scala.reflect.ClassTag
 import reflect.runtime.universe._
 
-/*
- * This is a prototype implementation of the embedded DSL with Rep[T] types. The Rep[T] marks that the value
- * will be available in the next stage of computation. In this prototype we will use the approach similar to LMS.
- *
- * We need to provide the interface for basic Scala library features.
- */
-trait Base extends BaseYinYangTypeTag {
-  type Rep[+T]
-
-  def main(): Any
-}
-
-trait ClassTagOps extends Base {
+trait ClassTagOps extends RepBase {
   //  ClassTags posed a bit of a challenge: You want to keep the original
   //  class tags created by the compiler, as rewiring everything is too
   //  cumbersome, but at the same time you want to bridge the types from
@@ -29,124 +17,146 @@ trait ClassTagOps extends Base {
   val ClassTag = scala.reflect.ClassTag
 }
 
-trait NumericOps extends Base {
+trait NumericOps extends RepBase {
   type Numeric[T] = NumericOps[T]
 
   trait NumericOps[T] {
-    def plus(x: Rep[T], y: Rep[T]): Rep[T]
-    def minus(x: Rep[T], y: Rep[T]): Rep[T]
-    def times(x: Rep[T], y: Rep[T]): Rep[T]
-    def negate(x: Rep[T]): Rep[T]
-    def fromInt(x: Rep[Int]): Rep[T]
-    def toInt(x: Rep[T]): Rep[Int]
-    def toDouble(x: Rep[T]): Rep[Double]
+    def plus(x: R[T], y: R[T]): R[T]
+    def minus(x: R[T], y: R[T]): R[T]
+    def times(x: R[T], y: R[T]): R[T]
+    def negate(x: R[T]): R[T]
+    def fromInt(x: R[Int]): R[T]
+    def toInt(x: R[T]): R[Int]
+    def toDouble(x: R[T]): R[Double]
 
-    def zero: Rep[T]
-    def one: Rep[T]
+    def zero: R[T]
+    def one: R[T]
 
-    def abs(x: Rep[T]): Rep[T]
-    def signum(x: Rep[T]): Rep[Int]
+    def abs(x: R[T]): R[T]
+    def signum(x: R[T]): R[Int]
 
-    class Ops(lhs: Rep[T]) {
-      def +(rhs: Rep[T]) = plus(lhs, rhs)
-      def -(rhs: Rep[T]) = minus(lhs, rhs)
-      def *(rhs: Rep[T]) = times(lhs, rhs)
+    class Ops(lhs: R[T]) {
+      def +(rhs: R[T]) = plus(lhs, rhs)
+      def -(rhs: R[T]) = minus(lhs, rhs)
+      def *(rhs: R[T]) = times(lhs, rhs)
       def unary_-() = negate(lhs)
 
       //TODO see compilation problems in implementation
       //this methods are implemented in terms of NumericOps
-      def abs(): Rep[T] = ??? //NumericOps.this.abs(lhs)
-      def toInt(): Rep[Int] = ??? //NumericOps.this.toInt(lhs)
-      def toDouble(): Rep[Double] = ??? //NumericOps.this.toDouble(lhs)
+      def abs(): R[T] = ??? //NumericOps.this.abs(lhs)
+      def toInt(): R[Int] = ??? //NumericOps.this.toInt(lhs)
+      def toDouble(): R[Double] = ??? //NumericOps.this.toDouble(lhs)
     }
 
-    implicit def mkNumericOps(lhs: Rep[T]): Ops
+    implicit def mkNumericOps(lhs: R[T]): Ops
   }
 
   //  val DoubleIsFractional = Numeric.DoubleIsFractional
   //
   //  implicit class NumericOpsOf[T](v: Numeric[T]) {
-  //    def plus(x: Rep[T], y: Rep[T]): Rep[T] = ???
-  //    def minus(x: Rep[T], y: Rep[T]): Rep[T] = ???
-  //    def times(x: Rep[T], y: Rep[T]): Rep[T] = ???
-  //    def negate(x: Rep[T]): Rep[T] = ???
-  //    def fromInt(x: Rep[Int]): Rep[T] = ???
-  //    def toInt(x: Rep[T]): Rep[Int] = ???
-  //    def toDouble(x: Rep[T]): Rep[Double] = ???
+  //    def plus(x: R[T], y: R[T]): R[T] = ???
+  //    def minus(x: R[T], y: R[T]): R[T] = ???
+  //    def times(x: R[T], y: R[T]): R[T] = ???
+  //    def negate(x: R[T]): R[T] = ???
+  //    def fromInt(x: R[Int]): R[T] = ???
+  //    def toInt(x: R[T]): R[Int] = ???
+  //    def toDouble(x: R[T]): R[Double] = ???
   //
-  //    def zero: Rep[T] = ???
-  //    def one: Rep[T] = ???
+  //    def zero: R[T] = ???
+  //    def one: R[T] = ???
   //
-  //    def abs(x: Rep[T]): Rep[T] = ???
-  //    def signum(x: Rep[T]): Rep[Int] = ???
+  //    def abs(x: R[T]): R[T] = ???
+  //    def signum(x: R[T]): R[Int] = ???
   //
-  //    implicit def mkNumericOps(lhs: Rep[T]) = ???
+  //    implicit def mkNumericOps(lhs: R[T]) = ???
   //  }
 
   trait NumericOpsOf[T] extends NumericOps[T] {
-    def zero: Rep[T] = ???
-    def one: Rep[T] = ???
+    def zero: R[T] = ???
+    def one: R[T] = ???
 
-    def abs(x: Rep[T]): Rep[T] = ???
-    def signum(x: Rep[T]): Rep[Int] = ???
+    def abs(x: R[T]): R[T] = ???
+    def signum(x: R[T]): R[Int] = ???
 
-    override implicit def mkNumericOps(lhs: Rep[T]) = ???
+    override implicit def mkNumericOps(lhs: R[T]) = ???
   }
 
   implicit object IntIsIntegral extends NumericOpsOf[Int] {
-    def plus(x: Rep[Int], y: Rep[Int]): Rep[Int] = ???
-    def minus(x: Rep[Int], y: Rep[Int]): Rep[Int] = ???
-    def times(x: Rep[Int], y: Rep[Int]): Rep[Int] = ???
-    def negate(x: Rep[Int]): Rep[Int] = ???
+    def plus(x: R[Int], y: R[Int]): R[Int] = ???
+    def minus(x: R[Int], y: R[Int]): R[Int] = ???
+    def times(x: R[Int], y: R[Int]): R[Int] = ???
+    def negate(x: R[Int]): R[Int] = ???
 
-    def fromInt(x: Rep[Int]): Rep[Int] = ???
-    def toInt(x: Rep[Int]): Rep[Int] = ???
-    def toDouble(x: Rep[Int]): Rep[Double] = ???
+    def fromInt(x: R[Int]): R[Int] = ???
+    def toInt(x: R[Int]): R[Int] = ???
+    def toDouble(x: R[Int]): R[Double] = ???
   }
 
   implicit object DoubleIsFractional extends NumericOpsOf[Double] {
-    def plus(x: Rep[Double], y: Rep[Double]): Rep[Double] = ???
-    def minus(x: Rep[Double], y: Rep[Double]): Rep[Double] = ???
-    def times(x: Rep[Double], y: Rep[Double]): Rep[Double] = ???
-    def negate(x: Rep[Double]): Rep[Double] = ???
+    def plus(x: R[Double], y: R[Double]): R[Double] = ???
+    def minus(x: R[Double], y: R[Double]): R[Double] = ???
+    def times(x: R[Double], y: R[Double]): R[Double] = ???
+    def negate(x: R[Double]): R[Double] = ???
 
-    def fromInt(x: Rep[Int]): Rep[Double] = ???
+    def fromInt(x: R[Int]): R[Double] = ???
     // TODO these need to return the lifted types. This means that Numeric Type needs to be changed to something else.
-    def toInt(x: Rep[Double]): Rep[Int] = ???
-    def toDouble(x: Rep[Double]): Rep[Double] = ???
+    def toInt(x: R[Double]): R[Int] = ???
+    def toDouble(x: R[Double]): R[Double] = ???
   }
 }
 
-trait IntDSL extends Base {
+trait ScalaVirtualizationDSL extends VirtualControlsBase with VirtualFunctionsBase {
+  // Members declared in ch.epfl.yinyang.api.Interpreted
+  def reset(): Unit = ???
+
+  def __ifThenElse[T](cond: R[Boolean], thenBr: R[T], elseBr: R[T]): R[T] = ???
+  def __return(expr: R[Any]): R[Nothing] = ???
+  def __assign[T](lhs: R[T], rhs: R[T]): R[Unit] = ???
+  def __whileDo(cond: R[Boolean], body: R[Unit]): R[Unit] = ???
+  def __doWhile(body: R[Unit], cond: R[Boolean]): R[Unit] = ???
+  def __newVar[T](init: R[T]): R[T] = ???
+  def __readVar[T](init: R[T]): R[T] = ???
+  def __lazyValDef[T](init: R[T]): R[T] = ???
+  def __valDef[T](init: R[T]): R[T] = ???
+
+  def __app[U](f: R[() => U]): R[U] = ???
+  def __app[T_1, U](f: R[T_1 => U])(v1: R[T_1]): R[U] = ???
+  def __app[T_1, T_2, U](f: R[(T_1, T_2) => U])(v1: R[T_1], v2: R[T_2]): R[U] = ???
+  def __lambda[U](f: () => R[U]): R[() => U] = ???
+  def __lambda[T_1, U](f: R[T_1] => R[U]): R[T_1 => U] = ???
+  def __lambda[T_1, T_2, U](f: (R[T_1], R[T_2]) => R[U]): R[(T_1, T_2) => U] = ???
+}
+
+trait IntDSL extends RepBase {
   //to overload int operations
   implicit object IntOverloaded
 
   //Rep versions of Int operations
   trait IntOps {
-    def +(that: Rep[Int]): Rep[Int]
-    def +(that: Rep[Double])(implicit o: IntOverloaded.type): Rep[Double]
-    def *(that: Rep[Int]): Rep[Int]
-    def *(that: Rep[Double])(implicit o: IntOverloaded.type): Rep[Double]
-    def unary_- : Rep[Int]
-    def toInt: Rep[Int]
-    def toDouble: Rep[Double]
+    def +(that: R[Int]): R[Int]
+    def +(that: R[Double])(implicit o: IntOverloaded.type): R[Double]
+    def *(that: R[Int]): R[Int]
+    def *(that: R[Double])(implicit o: IntOverloaded.type): R[Double]
+    def unary_- : R[Int]
+    def toInt: R[Int]
+    def toDouble: R[Double]
   }
 
   //implementation of this operations (using implicit conversion to IntOpsOf class
   //before operation
-  implicit class IntOpsOf(v: Rep[Int]) extends IntOps {
-    def +(that: Rep[Int]): Rep[Int] = ???
-    def +(that: Rep[Double])(implicit o: IntOverloaded.type): Rep[Double] = ???
-    def *(that: Rep[Int]): Rep[Int] = ???
-    def *(that: Rep[Double])(implicit o: IntOverloaded.type): Rep[Double] = ???
-    def unary_- : Rep[Int] = ???
-    def toInt: Rep[Int] = ???
-    def toDouble: Rep[Double] = ???
+  implicit class IntOpsOf(v: R[Int]) extends IntOps {
+    def +(that: R[Int]): R[Int] = ???
+    def +(that: R[Double])(implicit o: IntOverloaded.type): R[Double] = ???
+    def *(that: R[Int]): R[Int] = ???
+    def *(that: R[Double])(implicit o: IntOverloaded.type): R[Double] = ???
+    def unary_- : R[Int] = ???
+    def toInt: R[Int] = ???
+    def toDouble: R[Double] = ???
   }
 
-  implicit object LiftInt extends LiftEvidence[Int, Rep[Int]] {
-    def lift(v: Int): Rep[Int] = ???
-    def hole(tpe: TypeTag[Int], symbolId: Int): Rep[Int] = ???
+  implicit object LiftInt extends LiftEvidence[Int, R[Int]] {
+    def lift(v: Int): R[Int] = ???
+    def hole(tpe: TypeTag[Int], symbolId: Int): R[Int] = ???
   }
 
   implicit object LiftUnit extends LiftEvidence[scala.Unit, Unit] {
@@ -155,205 +165,205 @@ trait IntDSL extends Base {
   }
 
   //TODO (TOASK) do we need such object
-  implicit object IntOrdering extends Ordering[Rep[Int]] {
-    def compare(x: Rep[Int], y: Rep[Int]): scala.Int = ???
+  implicit object IntOrdering extends Ordering[R[Int]] {
+    def compare(x: R[Int], y: R[Int]): scala.Int = ???
   }
 
   //maybe we don't need it
-  //  implicit def intOpsToDoubleOps(conv: Rep[Int]): Rep[Double] = ???
+  //  implicit def intOpsToDoubleOps(conv: R[Int]): R[Double] = ???
 }
 
-trait DoubleDSL extends Base {
+trait DoubleDSL extends RepBase {
 
   implicit object DoubleOverloaded
 
   trait DoubleOps {
-    def +(that: Rep[Int]): Rep[Double]
-    def +(that: Rep[Double])(implicit o: DoubleOverloaded.type): Rep[Double]
-    def *(that: Rep[Int]): Rep[Double]
-    def *(that: Rep[Double])(implicit o: DoubleOverloaded.type): Rep[Double]
-    def unary_- : Rep[Double]
-    def toInt: Rep[Int]
-    def toDouble: Rep[Double]
+    def +(that: R[Int]): R[Double]
+    def +(that: R[Double])(implicit o: DoubleOverloaded.type): R[Double]
+    def *(that: R[Int]): R[Double]
+    def *(that: R[Double])(implicit o: DoubleOverloaded.type): R[Double]
+    def unary_- : R[Double]
+    def toInt: R[Int]
+    def toDouble: R[Double]
   }
 
-  implicit class DoubleOpsOf(v: Rep[Double]) extends DoubleOps {
-    def +(that: Rep[Int]): Rep[Double] = ???
-    def +(that: Rep[Double])(implicit o: DoubleOverloaded.type): Rep[Double] = ???
-    def *(that: Rep[Int]): Rep[Double] = ???
-    def *(that: Rep[Double])(implicit o: DoubleOverloaded.type): Rep[Double] = ???
-    def unary_- : Rep[Double] = ???
-    def toInt: Rep[Int] = ???
-    def toDouble: Rep[Double] = ???
+  implicit class DoubleOpsOf(v: R[Double]) extends DoubleOps {
+    def +(that: R[Int]): R[Double] = ???
+    def +(that: R[Double])(implicit o: DoubleOverloaded.type): R[Double] = ???
+    def *(that: R[Int]): R[Double] = ???
+    def *(that: R[Double])(implicit o: DoubleOverloaded.type): R[Double] = ???
+    def unary_- : R[Double] = ???
+    def toInt: R[Int] = ???
+    def toDouble: R[Double] = ???
   }
 
-  implicit object LiftDouble extends LiftEvidence[Double, Rep[Double]] {
-    def lift(v: Double): Rep[Double] = ???
-    def hole(tpe: TypeTag[Double], symbolId: Int): Rep[Double] = ???
+  implicit object LiftDouble extends LiftEvidence[Double, R[Double]] {
+    def lift(v: Double): R[Double] = ???
+    def hole(tpe: TypeTag[Double], symbolId: Int): R[Double] = ???
   }
 
   //TODO (TOASK) do we need such object
-  implicit object DoubleOrdering extends Ordering[Rep[Double]] {
-    def compare(x: Rep[Double], y: Rep[Double]): scala.Int = ???
+  implicit object DoubleOrdering extends Ordering[R[Double]] {
+    def compare(x: R[Double], y: R[Double]): scala.Int = ???
   }
 }
 
-trait ArrayDSL extends Base {
+trait ArrayDSL extends RepBase {
 
   trait ArrayOps[T] {
-    def apply(i: Rep[Int]): Rep[T]
+    def apply(i: R[Int]): R[T]
     // TODO complete the list of methods
   }
 
-  implicit class ArrayOpsOf[T](v: Rep[Array[T]]) extends ArrayOps[T] {
-    def apply(i: Rep[Int]): Rep[T] = ???
+  implicit class ArrayOpsOf[T](v: R[Array[T]]) extends ArrayOps[T] {
+    def apply(i: R[Int]): R[T] = ???
 
-    def aggregate[B](z: Rep[B])(seqop: (Rep[B], Rep[T]) => Rep[B], combop: (Rep[B], Rep[B]) => Rep[B]): Rep[B] = ???
+    def aggregate[B](z: R[B])(seqop: (R[B], R[T]) => R[B], combop: (R[B], R[B]) => R[B]): R[B] = ???
 
-    def fold[A1 >: T](z: Rep[A1])(op: (Rep[A1], Rep[A1]) => Rep[A1]): Rep[A1] = ???
+    def fold[A1 >: T](z: R[A1])(op: (R[A1], R[A1]) => R[A1]): R[A1] = ???
 
-    //TODO (NEW) to ask - what type do we need here as output ArrayOps[T] or ArrayOps[Rep[T]]?
-    def sort[B](f: (Rep[T]) => Rep[B])(implicit ord: Ordering[Rep[B]]): Rep[Array[T]] = ???
+    //TODO (NEW) to ask - what type do we need here as output ArrayOps[T] or ArrayOps[R[T]]?
+    def sort[B](f: (R[T]) => R[B])(implicit ord: Ordering[R[B]]): R[Array[T]] = ???
 
-    def sort(implicit ord: Ordering[Rep[T]]): Rep[Array[T]] = ???
+    def sort(implicit ord: Ordering[R[T]]): R[Array[T]] = ???
   }
 
   object Array {
-    def apply[T](values: T*): Rep[Array[T]] = ???
+    def apply[T](values: T*): R[Array[T]] = ???
 
     //TODO (TOASK) (NEW) - what should we do with parameters like elem of type => T
-    def fill[T: ClassTag](n: Rep[Int])(elem: => Rep[T]): Rep[Array[T]] = ???
+    def fill[T: ClassTag](n: R[Int])(elem: => R[T]): R[Array[T]] = ???
     // TODO complete
   }
 
 }
 
-//trait TupleDSL extends Base {
+//trait TupleDSL extends RepBase {
 //
 //  trait Tuple2Ops[T1, T2] extends AnyRef {
-//    def _1: Rep[T1]
-//    def _2: Rep[T2]
-//    def swap: Tuple2[Rep[T2], Rep[T1]]
+//    def _1: R[T1]
+//    def _2: R[T2]
+//    def swap: Tuple2[R[T2], R[T1]]
 //  }
 //
 //  //Wrapper to work with Rep tuples
-//  implicit class Tuple2OpsOf[T1, T2](v: Rep[Tuple2[T1, T2]]) extends Tuple2Ops[T1, T2] {
-//    def _1: Rep[T1] = ???
-//    def _2: Rep[T2] = ???
-//    def swap: Tuple2[Rep[T2], Rep[T1]] = ???
+//  implicit class Tuple2OpsOf[T1, T2](v: R[Tuple2[T1, T2]]) extends Tuple2Ops[T1, T2] {
+//    def _1: R[T1] = ???
+//    def _2: R[T2] = ???
+//    def swap: Tuple2[R[T2], R[T1]] = ???
 //  }
 //
 //  object Tuple2 {
-//    def apply[T1, T2](x1: T1, x2: T2): Rep[Tuple2[T1, T2]] = ???
+//    def apply[T1, T2](x1: T1, x2: T2): R[Tuple2[T1, T2]] = ???
 //  }
 //
 //}
 
-trait BooleanDSL extends Base {
-  implicit object LiftBoolean extends LiftEvidence[Boolean, Rep[Boolean]] {
-    def lift(v: Boolean): Rep[Boolean] = ???
-    def hole(tpe: TypeTag[Boolean], symbolId: Int): Rep[Boolean] = ???
+trait BooleanDSL extends RepBase {
+  implicit object LiftBoolean extends LiftEvidence[Boolean, R[Boolean]] {
+    def lift(v: Boolean): R[Boolean] = ???
+    def hole(tpe: TypeTag[Boolean], symbolId: Int): R[Boolean] = ???
   }
 }
 
-trait IfThenElseDSL extends Base with BooleanDSL {
-  def __ifThenElse[T](c: => Rep[Boolean], t: Rep[T], e: Rep[T]) = ???
+trait IfThenElseDSL extends RepBase with BooleanDSL {
+  def __ifThenElse[T](c: => R[Boolean], t: R[T], e: R[T]) = ???
 }
 
 trait VectorDSL
   extends ArrayDSL with IntDSL with DoubleDSL with ClassTagOps
   with NumericOps with Base with IfThenElseDSL with Interpreted
-  with BaseYinYang {
+  with ScalaVirtualizationDSL with FullyStaged {
 
   def interpret[T: TypeTag](params: Any*) = ???
 
   type Vector[T] = dsl.la.Vector[T]
 
   trait VectorOps[T] {
-    def *(v: Rep[Vector[T]]): Rep[Vector[T]]
-    def +(v: Rep[Vector[T]]): Rep[Vector[T]]
-    def map[U: Numeric: ClassTag](v: Rep[T] => Rep[U]): Rep[Vector[U]]
-    def reconstruct[U: Numeric: ClassTag](v: (Rep[T], Rep[T]) => Rep[U]): Rep[Vector[U]]
+    def *(v: R[Vector[T]]): R[Vector[T]]
+    def +(v: R[Vector[T]]): R[Vector[T]]
+    def map[U: Numeric: ClassTag](v: R[T] => R[U]): R[Vector[U]]
+    def reconstruct[U: Numeric: ClassTag](v: (R[T], R[T]) => R[U]): R[Vector[U]]
 
-    def negate: Rep[Vector[T]]
-    def length: Rep[Double]
+    def negate: R[Vector[T]]
+    def length: R[Double]
 
     //returns list of Vectors - to test with Rep Types
-    def baseVectors: ArrayOps[Rep[Vector[T]]] //find base vectors
+    def baseVectors: ArrayOps[R[Vector[T]]] //find base vectors
 
-    def partition(fun: Rep[T] => Rep[Boolean]): Tuple2[Rep[Vector[T]], Rep[Vector[T]]]
+    def partition(fun: R[T] => R[Boolean]): Tuple2[R[Vector[T]], R[Vector[T]]]
 
-    def dotProduct(v: Rep[Vector[T]]): Rep[T]
+    def dotProduct(v: R[Vector[T]]): R[T]
 
-    def splice(vs: Rep[Vector[T]]*): Rep[Vector[T]]
+    def splice(vs: R[Vector[T]]*): R[Vector[T]]
 
-    def spliceT(v: Tuple2[Rep[Vector[T]], Rep[Vector[T]]]): Rep[Vector[T]]
+    def spliceT(v: Tuple2[R[Vector[T]], R[Vector[T]]]): R[Vector[T]]
 
-    def transform[U: Numeric: ClassTag](fn: Rep[Vector[T]] => Rep[Vector[U]]): Rep[Vector[U]]
+    def transform[U: Numeric: ClassTag](fn: R[Vector[T]] => R[Vector[U]]): R[Vector[U]]
 
     //TODO check new methods
     //TODO (TOASK) - what ordering should do with Rep?
 
-    def apply(i: Rep[Int]): Rep[T]
+    def apply(i: R[Int]): R[T]
 
-    def sort[B](f: (Rep[T]) => Rep[B])(implicit ord: Ordering[Rep[B]]): Vector[T]
+    def sort[B](f: (R[T]) => R[B])(implicit ord: Ordering[R[B]]): Vector[T]
 
-    def sort(implicit ord: Ordering[Rep[T]]): Vector[T]
+    def sort(implicit ord: Ordering[R[T]]): Vector[T]
 
-    def corresponds[B](that: Vector[B])(p: (Rep[T], Rep[B]) => Rep[Boolean]): Rep[Boolean]
+    def corresponds[B](that: Vector[B])(p: (R[T], R[B]) => R[Boolean]): R[Boolean]
 
-    def fold[A1 >: T](z: Rep[A1])(op: (Rep[A1], Rep[A1]) => Rep[A1]): Rep[A1]
+    def fold[A1 >: T](z: R[A1])(op: (R[A1], R[A1]) => R[A1]): R[A1]
 
   }
 
-  implicit class VectorOpsOf[T](v: Rep[Vector[T]]) extends VectorOps[T] {
-    def *(v: Rep[Vector[T]]): Rep[Vector[T]] = ???
-    def +(v: Rep[Vector[T]]): Rep[Vector[T]] = ???
-    def map[U: Numeric: ClassTag](v: Rep[T] => Rep[U]): Rep[Vector[U]] = ???
-    def reconstruct[U: Numeric: ClassTag](v: (Rep[T], Rep[T]) => Rep[U]): Rep[Vector[U]] = ???
+  implicit class VectorOpsOf[T](v: R[Vector[T]]) extends VectorOps[T] {
+    def *(v: R[Vector[T]]): R[Vector[T]] = ???
+    def +(v: R[Vector[T]]): R[Vector[T]] = ???
+    def map[U: Numeric: ClassTag](v: R[T] => R[U]): R[Vector[U]] = ???
+    def reconstruct[U: Numeric: ClassTag](v: (R[T], R[T]) => R[U]): R[Vector[U]] = ???
 
-    def negate: Rep[Vector[T]] = ???
-    def length: Rep[Double] = ???
+    def negate: R[Vector[T]] = ???
+    def length: R[Double] = ???
 
-    //TODO (TOASK) - is it correct ArrayOps[Rep...] or it should be Rep[ArrayOps...]
-    def baseVectors: ArrayOps[Rep[Vector[T]]] = ??? //find base vectors
+    //TODO (TOASK) - is it correct ArrayOps[Rep...] or it should be R[ArrayOps...]
+    def baseVectors: ArrayOps[R[Vector[T]]] = ??? //find base vectors
 
-    def partition(fun: Rep[T] => Rep[Boolean]): Tuple2[Rep[Vector[T]], Rep[Vector[T]]] = ???
+    def partition(fun: R[T] => R[Boolean]): Tuple2[R[Vector[T]], R[Vector[T]]] = ???
 
-    def dotProduct(v: Rep[Vector[T]]): Rep[T] = ???
+    def dotProduct(v: R[Vector[T]]): R[T] = ???
 
-    def splice(vs: Rep[Vector[T]]*): Rep[Vector[T]] = ???
+    def splice(vs: R[Vector[T]]*): R[Vector[T]] = ???
 
-    def spliceT(v: Tuple2[Rep[Vector[T]], Rep[Vector[T]]]): Rep[Vector[T]] = ???
+    def spliceT(v: Tuple2[R[Vector[T]], R[Vector[T]]]): R[Vector[T]] = ???
 
-    def transform[U: Numeric: ClassTag](fn: Rep[Vector[T]] => Rep[Vector[U]]): Rep[Vector[U]] = ???
+    def transform[U: Numeric: ClassTag](fn: R[Vector[T]] => R[Vector[U]]): R[Vector[U]] = ???
 
-    def apply(i: Rep[Int]): Rep[T] = ???
+    def apply(i: R[Int]): R[T] = ???
 
-    def sort[B](f: (Rep[T]) => Rep[B])(implicit ord: Ordering[Rep[B]]): Vector[T] = ???
+    def sort[B](f: (R[T]) => R[B])(implicit ord: Ordering[R[B]]): Vector[T] = ???
 
-    def sort(implicit ord: Ordering[Rep[T]]): Vector[T] = ???
+    def sort(implicit ord: Ordering[R[T]]): Vector[T] = ???
 
-    def corresponds[B](that: Vector[B])(p: (Rep[T], Rep[B]) => Rep[Boolean]): Rep[Boolean] = ???
+    def corresponds[B](that: Vector[B])(p: (R[T], R[B]) => R[Boolean]): R[Boolean] = ???
 
-    def fold[A1 >: T](z: Rep[A1])(op: (Rep[A1], Rep[A1]) => Rep[A1]): Rep[A1] = ???
+    def fold[A1 >: T](z: R[A1])(op: (R[A1], R[A1]) => R[A1]): R[A1] = ???
   }
 
   object DenseVector {
-    def apply[T: Numeric: ClassTag](a: Rep[T]*): Rep[Vector[T]] = ???
+    def apply[T: Numeric: ClassTag](a: R[T]*): R[Vector[T]] = ???
 
     //TODO maybe we need to provide map - test
-    def apply[T: Numeric: ClassTag](a: Rep[Map[Int, T]]): Rep[Vector[T]] = ???
+    def apply[T: Numeric: ClassTag](a: R[Map[Int, T]]): R[Vector[T]] = ???
   }
 
   /**
    * TODO how are we going to translate to objects and yet remain modular and reusable.
    */
   object SparseVector {
-    def apply[T: Numeric: ClassTag](a: Rep[T]*): Rep[Vector[T]] = ???
+    def apply[T: Numeric: ClassTag](a: R[T]*): R[Vector[T]] = ???
 
     //TODO (TOASK) - what classes we should model (like Tuples) and what we can use (like Double)
-    def apply[T: Numeric: ClassTag](a: Rep[Map[Int, T]]): Rep[Vector[T]] = ???
+    def apply[T: Numeric: ClassTag](a: R[Map[Int, T]]): R[Vector[T]] = ???
   }
 
 }

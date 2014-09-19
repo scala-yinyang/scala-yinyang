@@ -67,10 +67,9 @@ import scala.collection.mutable
 trait LanguageVirtualization extends MacroModule with TransformationUtils with DataDefs {
   import c.universe._
 
-  val virtualizeLambda: Boolean = false
-  val virtualizeApply: Boolean = false
-  val failCompilation: Boolean = false
-  val virtualizeVal: Boolean = false
+  val virtualizeFunctions: Boolean
+  val failCompilation: Boolean
+  val virtualizeVal: Boolean
 
   def virtualize(t: Tree): (Tree, Seq[DSLFeature]) = VirtualizationTransformer(t)
 
@@ -103,21 +102,22 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
         // (e.g. if the DSL does not handle variable definitions in a
         // special way).
         case ValDef(mods, sym, tpt, rhs) if mods.hasFlag(Flag.MUTABLE) =>
-          ValDef(mods, sym, tpt, liftFeature(None, "__newVar", List(transform(rhs))))
+          ValDef(mods, sym, tpt, liftFeature(None, "__newVar", List(rhs)))
 
         case ValDef(mods, sym, tpt, rhs) if mods.hasFlag(Flag.LAZY) =>
-          ValDef(mods, sym, tpt, liftFeature(None, "__lazyValDef", List(transform(rhs))))
+          ValDef(mods, sym, tpt, liftFeature(None, "__lazyValDef", List(rhs)))
 
         case ValDef(mods, sym, tpt, rhs) =>
           val newRhs =
-            if (virtualizeVal) liftFeature(None, "__valDef", List(transform(rhs)))
+            if (virtualizeVal) liftFeature(None, "__valDef", List(rhs))
             else transform(rhs)
           ValDef(mods, sym, tpt, newRhs)
 
-        case f @ Function(vparams, body) if virtualizeLambda =>
-          liftFeature(None, "__lambda", List(Function(vparams, transform(body))), Nil, x => x)
+        case f @ Function(vparams, body) if virtualizeFunctions =>
+          val tree = transform(body)
+          liftFeature(None, "__lambda", List(Function(vparams, tree)), Nil, trans = x => x)
 
-        case FunctionApply(qualifier, args) if virtualizeApply =>
+        case FunctionApply(qualifier, args) if virtualizeFunctions =>
           Apply(Select(liftFeature(None, "__app", List(qualifier)), TermName("apply")), args map transform)
 
         case t @ If(cond, thenBr, elseBr) =>
@@ -216,49 +216,24 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
     }
 
     object FunctionApply {
-      // TODO (VJ) do this better!
-      val functionTypes = List(
-        typeOf[() => _],
-        typeOf[(_ => _)],
-        typeOf[(_, _) => _],
-        typeOf[(_, _, _) => _],
-        typeOf[(_, _, _, _) => _],
-        typeOf[(_, _, _, _, _) => _],
-        typeOf[(_, _, _, _, _, _) => _],
-        typeOf[(_, _, _, _, _, _, _) => _],
-        typeOf[(_, _, _, _, _, _, _, _) => _],
-        typeOf[(_, _, _, _, _, _, _, _, _) => _],
-        typeOf[(_, _, _, _, _, _, _, _, _, _) => _],
-        typeOf[(_, _, _, _, _, _, _, _, _, _, _) => _],
-        typeOf[(_, _, _, _, _, _, _, _, _, _, _, _) => _],
-        typeOf[(_, _, _, _, _, _, _, _, _, _, _, _, _) => _],
-        typeOf[(_, _, _, _, _, _, _, _, _, _, _, _, _, _) => _],
-        typeOf[(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => _],
-        typeOf[(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => _],
-        typeOf[(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => _],
-        typeOf[(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => _],
-        typeOf[(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => _],
-        typeOf[(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => _],
-        typeOf[(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => _],
-        typeOf[(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => _])
+      private val functionArity = 22
+      private val functionSymbols = (0 to functionArity)
+        .map(x => "scala.Function" + x)
+        .map(c.mirror.staticClass)
 
-      def isForFunctions(methodSymbol: Symbol): Boolean = {
-        functionTypes.exists(_.typeSymbol == methodSymbol.owner)
-      }
+      def isFunction(methodSymbol: Symbol): Boolean =
+        functionSymbols.contains(methodSymbol.owner)
 
       def unapply(tree: Tree): Option[(Tree, List[Tree])] = tree match {
-        case Apply(m @ Select(qualifier, TermName("apply")), args) if isForFunctions(m.symbol) => {
+        case Apply(m @ Select(qualifier, TermName("apply")), args) if isFunction(m.symbol) => {
           Some(qualifier, args)
         }
         case _ => None
       }
     }
 
-    def unsupported(pos: Position, msg: String) =
-      if (failCompilation)
-        c.abort(pos, msg)
-      else
-        c.warning(pos, msg)
+    def unsupported: (Position, String) => Unit =
+      if (failCompilation) c.abort else c.warning
 
     def apply(tree: c.universe.Tree): (Tree, Seq[DSLFeature]) =
       (transform(tree), lifted.toSeq)

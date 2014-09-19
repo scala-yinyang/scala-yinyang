@@ -4,7 +4,7 @@ import scala.reflect.macros.blackbox.Context
 
 trait RepTransformerLike[C <: Context] extends PolyTransformerLike[C] { this: TypeTransformer[C] with PolyTransformerLike[C] =>
   import c.universe._
-
+  val IRType = "Rep"
   override def constructPolyTree(typeCtx: TypeContext, inType: Type): Tree = inType match {
     case TypeRef(pre, sym, Nil) =>
       Ident(inType.typeSymbol.name)
@@ -18,7 +18,7 @@ trait RepTransformerLike[C <: Context] extends PolyTransformerLike[C] { this: Ty
   }
 
   def rep(inType: Type): Tree = {
-    AppliedTypeTree(Select(This(newTypeName(className)), newTypeName("Rep")),
+    AppliedTypeTree(Select(This(newTypeName(className)), newTypeName(IRType)),
       List(TypeTree(inType)))
   }
 
@@ -68,13 +68,33 @@ class RepTransformer[C <: Context](ctx: C) extends TypeTransformer[C](ctx) with 
 /**
  * Type transformer for Pardis Rep types.
  */
+class GenericTypeTransformer[C <: Context](ctx: C) extends RepTransformer[C](ctx) {
+  import c.universe._
+
+  override def constructRepTree(ctx: TypeContext, inType: Type): Tree = {
+    ctx match {
+      case OtherCtx =>
+        inType match {
+          case inType if isFunctionType(inType) =>
+            rep(inType)
+          case _ =>
+            super.constructRepTree(ctx, inType)
+        }
+      case _ => super.constructRepTree(ctx, inType)
+    }
+  }
+}
+
+/**
+ * Type transformer for Pardis Rep types.
+ */
 class PardisRepTransformer[C <: Context](ctx: C) extends RepTransformer[C](ctx) {
   import c.universe._
 
   override def rep(inType: Type): Tree = {
     val repType = varCtx match {
       case IsVar  => "Var"
-      case NotVar => "Rep"
+      case NotVar => IRType
     }
     AppliedTypeTree(Select(This(newTypeName(className)), TypeName(repType)),
       List(TypeTree(inType)))

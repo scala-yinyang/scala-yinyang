@@ -1,6 +1,7 @@
 package base
+import ch.epfl.yinyang.api._
 
-trait Base {
+trait Base extends BaseYinYangTypeTag {
   def main(): Any
 }
 
