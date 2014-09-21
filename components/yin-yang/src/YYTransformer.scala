@@ -20,7 +20,6 @@ object YYTransformer {
     ("mainMethod" -> "main"),
     ("featureAnalysing" -> true),
     ("virtualizeFunctions" -> false),
-    ("virtualizeVal" -> false),
     ("failCompilation" -> true),
     ("ascriptionTransforming" -> true),
     ("liftTypes" -> Nil),

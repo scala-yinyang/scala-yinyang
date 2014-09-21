@@ -13,9 +13,9 @@ trait VirtualControlsBase extends RepBase {
 }
 
 trait VirtualFunctionsBase extends RepBase {
-  def __app[U](f: R[() => U]): R[U]
-  def __app[T_1, U](f: R[T_1 => U])(v1: R[T_1]): R[U]
-  def __app[T_1, T_2, U](f: R[(T_1, T_2) => U])(v1: R[T_1], v2: R[T_2]): R[U]
+  def __app[U](f: R[() => U]): () => R[U]
+  def __app[T_1, U](f: R[T_1 => U]): R[T_1] => R[U]
+  def __app[T_1, T_2, U](f: R[(T_1, T_2) => U]): (R[T_1], R[T_2]) => R[U]
   def __lambda[U](f: () => R[U]): R[() => U]
   def __lambda[T_1, U](f: R[T_1] => R[U]): R[T_1 => U]
   def __lambda[T_1, T_2, U](f: (R[T_1], R[T_2]) => R[U]): R[(T_1, T_2) => U]

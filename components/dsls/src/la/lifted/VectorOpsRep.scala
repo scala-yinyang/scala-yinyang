@@ -119,9 +119,9 @@ trait ScalaVirtualizationDSL extends VirtualControlsBase with VirtualFunctionsBa
   def __lazyValDef[T](init: R[T]): R[T] = ???
   def __valDef[T](init: R[T]): R[T] = ???
 
-  def __app[U](f: R[() => U]): R[U] = ???
-  def __app[T_1, U](f: R[T_1 => U])(v1: R[T_1]): R[U] = ???
-  def __app[T_1, T_2, U](f: R[(T_1, T_2) => U])(v1: R[T_1], v2: R[T_2]): R[U] = ???
+  def __app[U](f: R[() => U]): () => R[U] = ???
+  def __app[T_1, U](f: R[T_1 => U]): R[T_1] => R[U] = ???
+  def __app[T_1, T_2, U](f: R[(T_1, T_2) => U]): (R[T_1], R[T_2]) => R[U] = ???
   def __lambda[U](f: () => R[U]): R[() => U] = ???
   def __lambda[T_1, U](f: R[T_1] => R[U]): R[T_1 => U] = ???
   def __lambda[T_1, T_2, U](f: (R[T_1], R[T_2]) => R[U]): R[(T_1, T_2) => U] = ???
@@ -275,6 +275,8 @@ trait VectorDSL
   with NumericOps with Base with IfThenElseDSL with Interpreted
   with ScalaVirtualizationDSL with FullyStaged {
 
+  def compile[T: TypeRep, Ret](unstableHoleIds: Set[Int]): Ret = ???
+  def generateCode(className: String, unstableHoleIds: Set[Int]): String = ???
   def interpret[T: TypeTag](params: Any*) = ???
 
   type Vector[T] = dsl.la.Vector[T]

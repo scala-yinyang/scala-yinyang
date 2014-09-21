@@ -6,7 +6,6 @@ object YYStorageFactory {
   def getYYStorageString(className: String, functionType: String, retType: String, allGuards: List[Guard],
                          optionalHoleIds: String, optionalInitiallyStable: Boolean, codeCacheSize: Int,
                          minimumCountToStabilize: Int, refSymbols: List[reflect.runtime.universe.Symbol]): String = {
-
     val indent = "      "
 
     val capturedUpdate = refSymbols.zipWithIndex.map({
@@ -63,7 +62,7 @@ object YYStorageFactory {
     }
     val variantCacheType = getCacheType(0, true)
     val (variantCacheInit, variantCachePrefix) = (getTypes(ONLY_REQ), getTypes(MIXED) ++ getTypes(ONLY_OPT)) match {
-      case (Nil, Nil)      => assert(false)
+      case (Nil, Nil)      => ("???", "") //assert(false)
       case (req, Nil)      => ("HashMap()", "")
       case (Nil, o :: Nil) => ("(HashMap(), None)", "")
       case (Nil, opt)      => ("emptySortedSet", s"private val emptySortedSet = $variantCacheType()(Ordering.by(_._1))\n  ")
