@@ -125,6 +125,9 @@ trait ScalaVirtualizationDSL extends VirtualControlsBase with VirtualFunctionsBa
   def __lambda[U](f: () => R[U]): R[() => U] = ???
   def __lambda[T_1, U](f: R[T_1] => R[U]): R[T_1 => U] = ???
   def __lambda[T_1, T_2, U](f: (R[T_1], R[T_2]) => R[U]): R[(T_1, T_2) => U] = ???
+
+  def infix_hashCode(t: R[Any]): R[Int] = ???
+  def infix_!=(lhs: R[Any], rhs: R[Any]): R[Boolean] = ???
 }
 
 trait IntDSL extends RepBase {

@@ -363,7 +363,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
       }
 
       log(s"Args: ${meth.args}", 3)
-      val lhs = typeApply(meth.targs map { x => constructTypeTree(typeTransformer.TypeApplyCtx, x.tpe) })(
+      val lhs = typeApply(meth.targs map { x => constructTypeTree(typeTransformer.TypeArgCtx, x.tpe) })(
         Select(meth.tpe.map(dummyTree(_)).getOrElse(This(TypeName(className))), TermName(meth.name)))
       val res = meth.args.foldLeft(lhs)((x, y) => Apply(x, y.map(dummyTree)))
       log(s"${showRaw(res)}", 3)

@@ -16,7 +16,6 @@ import scala.collection.mutable
  *   var x = e              =>       var x = __newVar(e)
  *   x = t                  =>       __assign(x, t)
  *   x // if x is a var     =>       __readVar(x)
- *   lazy val x = b         =>       __lazyValDef(b)
  *   if(c) t else e         =>       __ifThenElse(c, t, e)
  *   while(c) b             =>       __whileDo(c, b)
  *   do b while c           =>       __doWhile(c, b)
@@ -58,6 +57,7 @@ import scala.collection.mutable
  * {{{
  *   try b catch c          =>       __tryCatch(b, c, f)
  *   throw e                =>       __throw(e)
+ *   lazy val x = b         =>       __lazyValDef(b)
  *   def f                  =>       ignored for now as it is treated by the scope injection
  *   case class C { ... }   =>       forbiden, for now
  *   match                  =>       ignored, should be treated by virtual pattern matcher

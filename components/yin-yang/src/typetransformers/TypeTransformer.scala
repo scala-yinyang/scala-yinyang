@@ -7,7 +7,8 @@ import scala.reflect.macros.blackbox.Context
  */
 abstract class TypeTransformer[C <: Context](val c: C) {
   trait TypeContext
-  case object TypeApplyCtx extends TypeContext
+  case object TypeArgCtx extends TypeContext
+  case object TypeParameterCtx extends TypeContext
   case object OtherCtx extends TypeContext
 
   trait VarContext

@@ -27,7 +27,6 @@ trait TypeTreeTransformation extends MacroModule with TransformationUtils with D
       log(" " * ident + " ::> " + tree, 3)
       ident += 1
       val result = tree match {
-        case x @ UnstageBlock(_) => x
         case typTree: TypTree if typTree.tpe != null =>
           log(s"TypeTree for ${showRaw(typTree)}", 3)
           constructTypeTree(typeCtx, typTree.tpe)
@@ -39,9 +38,10 @@ trait TypeTreeTransformation extends MacroModule with TransformationUtils with D
         }
         case TypeApply(mth, targs) =>
           // TypeApply params need special treatment
-          typeCtx = TypeApplyCtx
+          val currentCtx = typeCtx
+          typeCtx = TypeArgCtx
           val liftedArgs = targs map (transform(_))
-          typeCtx = OtherCtx
+          typeCtx = currentCtx
           TypeApply(transform(mth), liftedArgs)
         case Typed(x, Ident(typeNames.WILDCARD_STAR)) =>
           transform(x)

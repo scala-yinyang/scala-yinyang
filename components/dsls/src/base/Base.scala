@@ -6,5 +6,5 @@ trait Base extends BaseYinYangTypeTag with CodeGenerator {
 }
 
 trait RepBase extends Base {
-  type R[T]
+  type R[+T]
 }
