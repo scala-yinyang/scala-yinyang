@@ -70,6 +70,15 @@ class GenericTranslationSpec extends FlatSpec with ShouldMatchers {
     }
   }
 
+  it should "work for locally defined functions" in {
+    intercept[NotImplementedError] {
+      la {
+        def id[T](x: T): T = x
+        id(1)
+      }
+    }
+  }
+
   // type definitions
   //it should "work for locally defined functions" in {
   //  intercept[NotImplementedError] {
@@ -78,16 +87,6 @@ class GenericTranslationSpec extends FlatSpec with ShouldMatchers {
   //      type Y = Vector[X]
   //      val x: Y = Vector(1, 2, 3)
   //      x
-  //    }
-  //  }
-  //}
-
-  // local functions
-  //it should "work for locally defined functions" in {
-  //  intercept[NotImplementedError] {
-  //    la {
-  //      def id[T](x: T): T = x
-  //      id(1)
   //    }
   //  }
   //}
