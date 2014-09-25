@@ -29,11 +29,9 @@ trait RepTransformerLike[C <: Context] extends PolyTransformerLike[C] { this: Ty
     val universe = c.universe.asInstanceOf[scala.reflect.internal.Types]
 
     ctx match {
-      case TypeArgCtx =>
+      case TypeArgCtx | TypeParameterCtx =>
         TypeTree(inType)
-      case TypeParameterCtx =>
-        TypeTree(inType)
-      case _ =>
+      case OtherCtx =>
         inType match {
           case inType if isFunctionType(inType) =>
             val TypeRef(pre, sym, args) = inType

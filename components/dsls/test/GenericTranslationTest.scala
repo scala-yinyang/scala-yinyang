@@ -74,21 +74,27 @@ class GenericTranslationSpec extends FlatSpec with ShouldMatchers {
     intercept[NotImplementedError] {
       la {
         def id[T](x: T): T = x
-        id(1)
+        def id2[T, U <: AnyRef](p1: T, p2: U): Unit = ()
+
+        id[Int](1)
+        id2[Int, String](1, "string")
+        val x = 1
+        x
       }
     }
   }
 
-  // type definitions
-  //it should "work for locally defined functions" in {
-  //  intercept[NotImplementedError] {
-  //    la {
-  //      type X = Int // this should be ignored
-  //      type Y = Vector[X]
-  //      val x: Y = Vector(1, 2, 3)
-  //      x
-  //    }
-  //  }
-  //}
+  it should "work for type aliases" in {
+    intercept[NotImplementedError] {
+      la {
+        type X = Int // this does not work (do not know how to recursively dealias)
+        type Y = dsl.la.Vector[Int]
+        val x: Y = dsl.la.Vector(1, 2, 3)
+        x
+      }
+    }
+  }
+
+  // TODO existentials and structural types
 
 }

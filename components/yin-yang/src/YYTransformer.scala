@@ -78,13 +78,11 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
   def apply[T](block: c.Expr[T]): c.Expr[T] = {
     log("-------- YYTransformer STARTED for block: " + showRaw(block.tree), 2)
 
-    // def shallowFlag = shallow || !(c.settings contains ("embed"))
-    // def shallow = !(c.settings contains ("embed"))
-    if (featureAnalysing) {
-      FeatureAnalyzer(block.tree) // ABORTS compilation in case of restricted constructs
-    }
-    // if (shallowFlag) { block }
-    if (shallow) { block }
+    def shallowFlag = shallow || (c.settings contains ("embed"))
+    if (featureAnalysing) // Aborts compilation for unsupported constructs
+      FeatureAnalyzer(block.tree)
+
+    if (shallowFlag) { block }
     else {
       // mark captured variables as holes
       val captured: List[Tree] = freeVariables(block.tree)
@@ -117,7 +115,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
       lazy val unboundDSL = {
         val t = transform(capturedSyms, Nil, Nil)(block.tree)
         log("FIRST TRANSFORM DONE (prettyPrinting in Caps):\n" + code(t) + "\n", 2)
-        log(showRaw(t, printTypes = true), 3)
+        log(show(t, printTypes = true), 3)
         t
       }
       val varTypes: List[(Tree, VarType)] = dslType match {
@@ -187,8 +185,8 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
           """
         case tpe if tpe <:< typeOf[Stager] && compilVars.isEmpty =>
           log("COMPILE TIME COMPILED for lifting", 2)
-          val retTypeTree = block.tree.tpe
-          // val liftedType = typeTransformer.transform(typeTransformer.OtherCtx, retTypeTree)
+          val retType = block.tree.tpe.dealias
+          // val liftedType = typeTransformer.transform(typeTransformer.OtherCtx, retType)
           // q"""
           //   $dsl
           //   new ${Ident(TypeName(className))}().stage[$liftedType]()
@@ -197,7 +195,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
             $dsl
             val dslInstance = new ${Ident(TypeName(className))}()
             import dslInstance._
-            dslInstance.stage[dslInstance.Rep[$retTypeTree]]()
+            dslInstance.stage[dslInstance.Rep[$retType]]()
           """
         // =======
         //        case tpe if tpe <:< typeOf[FullyStaged] =>
@@ -218,12 +216,11 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
            * Requires run-time variables => execute at run-time and install a recompilation guard.
            */
           log("RUNTIME COMPILED with guards", 2)
-          // TODO do we need exact types? We do if the types are primitive!
-          val retTypeTree = block.tree.tpe
-          val retType = block.tree.tpe.toString
+          val retType = block.tree.tpe.dealias.dealias.normalize
+          val retTypeString = retType.toString
           val functionTypeString =
-            s"""${sortedHoles.map(_ => "scala.Any").mkString("(", ", ", ")")} => ${retType}"""
-          val functionType = tq"(..${sortedHoles.map(_ => tq"scala.Any")}) => ${retTypeTree}"
+            s"""${sortedHoles.map(_ => "scala.Any").mkString("(", ", ", ")")} => ${retTypeString}"""
+          val functionType = tq"(..${sortedHoles.map(_ => tq"scala.Any")}) => ${retType}"
 
           log("Guard function strings: " + guards, 3)
 
@@ -233,7 +230,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
           }) mkString ("scala.Array((", "), (", "))")
 
           val YYCacheString = YYStorageFactory.getYYStorageString(
-            className, functionTypeString, retType,
+            className, functionTypeString, retTypeString,
             guards, optionalHoleIds, optionalInitiallyStable, codeCacheSize, minimumCountToStabilize,
             compilVars.map(_.symbol.asInstanceOf[reflect.runtime.universe.Symbol]))
 
@@ -254,7 +251,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
             //   ${compilVars.map({ k => "dslInstance.captured$" + k.symbol.toString + " = " + k.symbol.toString }) mkString "\n"}
             //   def invalidate(): () => Any = () => dslInstance.reset
             //   dslInstance.check(compilVars, invalidate)
-            //   dslInstance.interpret[${retType}](..${sortedHoles})
+            //   dslInstance.interpret[${retTypeString}](..${sortedHoles})
             // """
           }
           Block(List(dsl), guardedExecute)
@@ -262,8 +259,8 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
 
       log(s"Final tree: ${showRaw(c.untypecheck(dslTree))}", 3)
       log(s"Final untyped: ${show(c.untypecheck(dslTree), printTypes = true)}", 3)
-      log(s"Final typed: ${code(c.typecheck(c.untypecheck(dslTree)))}\n" +
-        "-------- YYTransformer DONE ----------\n\n", 2)
+      log(s"Final typed: ${show(c.typecheck(c.untypecheck(dslTree)), printTypes = true)}\n")
+      log("-------- YYTransformer DONE ----------\n\n", 2)
       c.Expr[T](c.untypecheck(dslTree))
     }
   }

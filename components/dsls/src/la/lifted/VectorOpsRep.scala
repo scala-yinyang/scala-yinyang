@@ -162,9 +162,9 @@ trait IntDSL extends RepBase {
     def hole(tpe: TypeTag[Int], symbolId: Int): R[Int] = ???
   }
 
-  implicit object LiftUnit extends LiftEvidence[scala.Unit, Unit] {
-    def lift(v: Unit): Unit = ()
-    def hole(tpe: TypeTag[Unit], symbolId: Int): Unit = ???
+  implicit object LiftUnit extends LiftEvidence[scala.Unit, R[Unit]] {
+    def lift(v: Unit): R[Unit] = ???
+    def hole(tpe: TypeTag[Unit], symbolId: Int): R[Unit] = ???
   }
 
   //TODO (TOASK) do we need such object
@@ -203,6 +203,11 @@ trait DoubleDSL extends RepBase {
   implicit object LiftDouble extends LiftEvidence[Double, R[Double]] {
     def lift(v: Double): R[Double] = ???
     def hole(tpe: TypeTag[Double], symbolId: Int): R[Double] = ???
+  }
+
+  implicit object LiftString extends LiftEvidence[String, R[String]] {
+    def lift(v: String): R[String] = ???
+    def hole(tpe: TypeTag[String], symbolId: Int): R[String] = ???
   }
 
   //TODO (TOASK) do we need such object
@@ -283,7 +288,9 @@ trait VectorDSL
   def interpret[T: TypeTag](params: Any*) = ???
 
   type Vector[T] = dsl.la.Vector[T]
-
+  object Vector {
+    def apply[T: Numeric](v: R[T]*): R[Vector[T]] = ???
+  }
   trait VectorOps[T] {
     def *(v: R[Vector[T]]): R[Vector[T]]
     def +(v: R[Vector[T]]): R[Vector[T]]

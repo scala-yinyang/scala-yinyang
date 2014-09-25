@@ -4,6 +4,10 @@ import scala.reflect.ClassTag
 import collection.mutable.{ ListBuffer, WrappedArray }
 import scala.collection.mutable.WrappedArray
 
+object Vector {
+  def apply[T: Numeric](v: T*): Vector[T] = ???
+}
+
 trait Vector[T] {
   //TODO try to implement
   //  type VectorConverter[Vector1[T] <: Vector[T], Vector2[T] <: Vector[T]] = Vector1[T] => Vector2[T]

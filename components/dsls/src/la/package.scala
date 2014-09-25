@@ -7,7 +7,7 @@ import scala.reflect.macros.blackbox.Context
 
 package object la {
 
-  def la[T](block: => T): Unit = macro implementations.liftRep[T]
+  def la[T](block: => T): T = macro implementations.liftRep[T]
 
   object implementations {
     def liftRep[T](c: Context)(block: c.Expr[T]): c.Expr[T] =
