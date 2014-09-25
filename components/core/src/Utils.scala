@@ -56,6 +56,12 @@ trait TransformationUtils extends MacroModule {
     nev
   }
 
+  def deepDealias(tpe: Type): Type = {
+    val dealiased = tpe.dealias.map(_.dealias)
+    if (dealiased == tpe) tpe
+    else deepDealias(dealiased)
+  }
+
   def log(s: => String, level: Int = 0) = if (debugLevel > level) println(s)
 
   def debugLevel: Int

@@ -185,7 +185,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
           """
         case tpe if tpe <:< typeOf[Stager] && compilVars.isEmpty =>
           log("COMPILE TIME COMPILED for lifting", 2)
-          val retType = block.tree.tpe.dealias
+          val retType = deepDealias(block.tree.tpe)
           // val liftedType = typeTransformer.transform(typeTransformer.OtherCtx, retType)
           // q"""
           //   $dsl
@@ -216,7 +216,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
            * Requires run-time variables => execute at run-time and install a recompilation guard.
            */
           log("RUNTIME COMPILED with guards", 2)
-          val retType = block.tree.tpe.dealias.dealias.normalize
+          val retType = deepDealias(block.tree.tpe)
           val retTypeString = retType.toString
           val functionTypeString =
             s"""${sortedHoles.map(_ => "scala.Any").mkString("(", ", ", ")")} => ${retTypeString}"""

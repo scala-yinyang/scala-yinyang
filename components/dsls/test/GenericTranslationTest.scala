@@ -87,8 +87,8 @@ class GenericTranslationSpec extends FlatSpec with ShouldMatchers {
   it should "work for type aliases" in {
     intercept[NotImplementedError] {
       la {
-        type X = Int // this does not work (do not know how to recursively dealias)
-        type Y = dsl.la.Vector[Int]
+        type X = Int
+        type Y = dsl.la.Vector[X]
         val x: Y = dsl.la.Vector(1, 2, 3)
         x
       }
