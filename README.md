@@ -1,5 +1,5 @@
-# Yin-Yang: Building Deep DSLs with a Breeze! #
-master: [![Build Status](https://travis-ci.org/vjovanov/yin-yang.png?branch=master)](https://travis-ci.org/vjovanov/yin-yang)
+# Yin-Yang: Building Deep DSLs in a Breeze! #
+master: [![Build Status](https://travis-ci.org/scala-yinyang/scala-yinyang.png?branch=master)](https://travis-ci.org/scala-yinyang/scala-yinyang)
 
 Yin-Yang is a library that makes it easy use and develop deeply embedded DSLs. The DSL users will never see the complex artifacts of the deep embedding while in production they will get all their benefits. The DSL authors write the DSL in plain Scala and Yin-Yang will generate the deep embedding. All that needs is left to be done is the optimizations.
 
