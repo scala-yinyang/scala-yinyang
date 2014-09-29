@@ -186,31 +186,12 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
         case tpe if tpe <:< typeOf[Stager] && compilVars.isEmpty =>
           log("COMPILE TIME COMPILED for lifting", 2)
           val retType = deepDealias(block.tree.tpe)
-          // val liftedType = typeTransformer.transform(typeTransformer.OtherCtx, retType)
-          // q"""
-          //   $dsl
-          //   new ${Ident(TypeName(className))}().stage[$liftedType]()
-          // """
           q"""
             $dsl
             val dslInstance = new ${Ident(TypeName(className))}()
             import dslInstance._
             dslInstance.stage[dslInstance.Rep[$retType]]()
-          """
-        // =======
-        //        case tpe if tpe <:< typeOf[FullyStaged] =>
-        //          val retTypeTree = block.tree.tpe
-        //          val functionType = tq"(..${sortedHoles.map(_ => tq"scala.Any")}) => ${retTypeTree}"
-        //          val retType = block.tree.tpe
-        //          val res = Block(List(dsl),
-        //            q"""
-        //            val program = new ${Ident(TypeName(className))}().compile[$retType, $functionType](Set[Int]())
-        //            program.apply(..${sortedHoles})
-        //          """)
-        //
-        //          println(showCode(res))
-        //          res
-        // >>>>>>> Modifications for the demo.
+          """        
         case _ =>
           /*
            * Requires run-time variables => execute at run-time and install a recompilation guard.
