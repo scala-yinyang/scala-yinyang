@@ -26,6 +26,7 @@ object YinYangBuild extends Build {
   lazy val scalaSettings = Defaults.defaultSettings ++ Seq(
     scalaOrganization    := scalaOrg,
     scalaVersion         := "2.11.2",
+    crossScalaVersions := Seq("2.11.0", "2.11.1", "2.11.2"),
     scalacOptions        := defaultScalacOptions
   )
 
@@ -64,7 +65,12 @@ object YinYangBuild extends Build {
 
   // add the macro paradise compiler plugin
   lazy val paradise = Seq(
-    addCompilerPlugin("org.scalamacros" % "paradise_2.11.2" % "2.0.1"),
+    libraryDependencies += {
+      val paradiseVersion =  
+        if (scalaVersion.value == "2.11.2") "2.0.1"
+        else"2.0.0"
+      compilerPlugin("org.scalamacros" % "paradise" %  paradiseVersion cross CrossVersion.full)
+    },
     scalacOptions := defaultScalacOptions
   )
 
@@ -79,30 +85,30 @@ object YinYangBuild extends Build {
   lazy val publishing = Seq(
     // for integration testing against scala snapshots
     resolvers += Resolver.sonatypeRepo("snapshots"),
-   // so we don't have to wait for maven central synch
-   resolvers += Resolver.sonatypeRepo("releases"),
-   // publishing
-   credentials += Credentials(Path.userHome / ".ivy2" / ".credentials"),
-   // If we want on maven central, we need to be in maven style.
-   publishMavenStyle := true,
-   publishArtifact in Test := false,
-   // The Nexus repo we're publishing to.
-   publishTo := Some(
-     if (version.value.trim.endsWith("SNAPSHOT")) Resolver.sonatypeRepo("snapshots")
-     else Opts.resolver.sonatypeStaging
-   ),
-   // Maven central cannot allow other repos.  We're ok here because the artifacts we
-   // we use externally are *optional* dependencies.
-   pomIncludeRepository := { _ => false },
-   pomExtra := (
-     <developers>
-       <developer>
-         <id>vjovanov</id>
-         <name>Vojin Jovanovic</name>
-         <url>http://www.vjovanov.com/</url>
-       </developer>
-     </developers>
-   )
+    // so we don't have to wait for maven central synch
+    resolvers += Resolver.sonatypeRepo("releases"),
+    // publishing
+    credentials += Credentials(Path.userHome / ".ivy2" / ".credentials"),
+    // If we want on maven central, we need to be in maven style.
+    publishMavenStyle := true,
+    publishArtifact in Test := false,
+    // The Nexus repo we're publishing to.
+    publishTo := Some(
+      if (version.value.trim.endsWith("SNAPSHOT")) Resolver.sonatypeRepo("snapshots")
+      else Opts.resolver.sonatypeStaging
+    ),
+    // Maven central cannot allow other repos.  We're ok here because the artifacts we
+    // we use externally are *optional* dependencies.
+    pomIncludeRepository := { _ => false },
+    pomExtra := (
+      <developers>
+        <developer>
+          <id>vjovanov</id>
+          <name>Vojin Jovanovic</name>
+          <url>http://www.vjovanov.com/</url>
+        </developer>
+      </developers>
+    )
   )
 
   lazy val formatSettings = SbtScalariform.scalariformSettings ++ Seq(
