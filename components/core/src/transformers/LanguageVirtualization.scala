@@ -225,9 +225,8 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
         functionSymbols.contains(methodSymbol.owner)
 
       def unapply(tree: Tree): Option[(Tree, List[Tree])] = tree match {
-        case Apply(m @ Select(qualifier, TermName("apply")), args) if isFunction(m.symbol) => {
+        case Apply(m @ Select(qualifier, TermName("apply")), args) if isFunction(m.symbol) =>
           Some(qualifier, args)
-        }
         case _ => None
       }
     }

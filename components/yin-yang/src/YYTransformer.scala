@@ -422,9 +422,10 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
     }
     _reflInstance.get.asInstanceOf[T]
   }
-  // ..${compilVars.map(k => q"var ${TermName("captured$" + k.name.decodedName.toString)} = $k")}
+
   def composeDSL(compilVars: List[Symbol])(transformedBody: Tree): Tree = q"""
     class ${TypeName(className)} extends $dslTrait {
+      ..${compilVars.map(k => q"var ${TermName("captured$" + k.name.decodedName.toString)} = $k")}
       def main(): Any = {$transformedBody}
     }
   """

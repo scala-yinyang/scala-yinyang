@@ -47,16 +47,12 @@ trait PolyTransformerLike[C <: Context] { this: TypeTransformer[C] =>
         TermName(inType.typeSymbol.name.toString)))
 
     case s @ SingleType(pre, name) if inType.typeSymbol.isClass =>
-      println(s)
       constructPolyTree(typeCtx,
         s.asInstanceOf[scala.reflect.internal.Types#SingleType]
           .underlying.asInstanceOf[c.universe.Type])
     case annTpe @ AnnotatedType(annotations, underlying) =>
       constructPolyTree(typeCtx, underlying)
     case another @ _ =>
-      println(("!" * 10) + s"""Missed: $inType = ${
-        showRaw(another)
-      } name = ${inType.typeSymbol.name}""")
       TypeTree(another)
   }
 
