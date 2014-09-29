@@ -191,7 +191,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
             val dslInstance = new ${Ident(TypeName(className))}()
             import dslInstance._
             dslInstance.stage[dslInstance.Rep[$retType]]()
-          """        
+          """
         case _ =>
           /*
            * Requires run-time variables => execute at run-time and install a recompilation guard.
