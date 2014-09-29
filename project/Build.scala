@@ -12,7 +12,7 @@ import com.typesafe.sbt.SbtGit.git
 
 object YinYangBuild extends Build {
   lazy val projectSettings = Seq[Setting[_]](
-    version              := "0.1-SNAPSHOT",
+    version              := "0.1.0-SNAPSHOT",
     organization         := "ch.epfl.lamp",
     licenses             := Seq("New BSD" -> 
       url("https://raw.githubusercontent.com/scala-yinyang/scala-yinyang/master/LICENCE")),
@@ -20,7 +20,7 @@ object YinYangBuild extends Build {
     organizationHomepage := Some(url("http://lamp.epfl.ch")),
     scmInfo              := Some(ScmInfo(
       url("https://github.com/scala-yinyang/scala-yinyang.git"),
-      "git://github.com/scala-yinyang/scala-yinyang.git"))
+      "scm:git:git://github.com/scala-yinyang/scala-yinyang.git"))
   )
 
   lazy val scalaSettings = Defaults.defaultSettings ++ Seq(
@@ -42,10 +42,10 @@ object YinYangBuild extends Build {
 
   // modules
   lazy val _yinyang      = Project(id = "root",             base = file(".")                   , settings = Project.defaultSettings ++ Seq(publishArtifact := false)) aggregate (yinyang, yy_core, yy_paradise, example_dsls)
-  lazy val yy_core       = Project(id = "yinyang-core",     base = file("components/core")     , settings = defaults ++ Seq(name := "yy-core"))
-  lazy val yy_paradise   = Project(id = "yinyang-paradise", base = file("components/paradise") , settings = defaults ++ paradise ++ Seq(name := "yy-paradise")) dependsOn(yy_core)
-  lazy val yinyang       = Project(id = "scala-yinyang",    base = file("components/yin-yang") , settings = defaults ++ Seq(name := "yin-yang")) dependsOn(yy_core)  
-  lazy val example_dsls  = Project(id = "example-dsls",     base = file("components/dsls")     , settings = defaults) dependsOn(yinyang)
+  lazy val yy_core       = Project(id = "yinyang-core",     base = file("components/core")     , settings = defaults ++ Seq(name := "yinyang-core"))
+  lazy val yy_paradise   = Project(id = "yinyang-paradise", base = file("components/paradise") , settings = defaults ++ paradise ++ Seq(name := "yinyang-paradise")) dependsOn(yy_core)
+  lazy val yinyang       = Project(id = "scala-yinyang",    base = file("components/yin-yang") , settings = defaults ++ Seq(name := "scala-yinyang")) dependsOn(yy_core)  
+  lazy val example_dsls  = Project(id = "example-dsls",     base = file("components/dsls")     , settings = defaults ++ Seq(publishArtifact := false)) dependsOn(yinyang)
 
   lazy val defaults = projectSettings ++ scalaSettings ++ formatSettings ++ libraryDeps ++ Seq(
     resolvers +=  "OSSH" at "https://oss.sonatype.org/content/groups/public",
@@ -87,16 +87,17 @@ object YinYangBuild extends Build {
     resolvers += Resolver.sonatypeRepo("snapshots"),
     // so we don't have to wait for maven central synch
     resolvers += Resolver.sonatypeRepo("releases"),
-    // publishing
-    credentials += Credentials(Path.userHome / ".ivy2" / ".credentials"),
     // If we want on maven central, we need to be in maven style.
     publishMavenStyle := true,
     publishArtifact in Test := false,
     // The Nexus repo we're publishing to.
-    publishTo := Some(
-      if (version.value.trim.endsWith("SNAPSHOT")) Resolver.sonatypeRepo("snapshots")
-      else Opts.resolver.sonatypeStaging
-    ),
+    publishTo := {
+      val nexus = "https://oss.sonatype.org/"
+      if (isSnapshot.value)
+        Some("snapshots" at nexus + "content/repositories/snapshots")
+      else
+        Some("releases"  at nexus + "service/local/staging/deploy/maven2")
+    },
     // Maven central cannot allow other repos.  We're ok here because the artifacts we
     // we use externally are *optional* dependencies.
     pomIncludeRepository := { _ => false },
@@ -107,6 +108,16 @@ object YinYangBuild extends Build {
           <name>Vojin Jovanovic</name>
           <url>http://www.vjovanov.com/</url>
         </developer>
+        <developer>
+          <id>amirsh</id>
+          <name>Amir Shaikhha</name>
+          <url>http://people.epfl.ch/amir.shaikhha</url>          
+        </developer>
+        <developer>
+          <id>sstucki</id>
+          <name>Sandro Stucki</name>
+          <url>http://people.epfl.ch/sandro.stucki</url>          
+        </developer>        
       </developers>
     )
   )
