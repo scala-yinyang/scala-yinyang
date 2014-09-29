@@ -35,7 +35,6 @@ If you have any questions about the project please ask them in the development [
 | `components/core`     |  The core transformers of Yin-Yang (regular release)       | Release(soon)      |
 | `components/yin-yang` |  The main Yin-Yang transformer used for defining your DSLs | Release(soon)      |
 | `components/paradise` |  provides annotations for virtualization                   | Experimental       |
-| `components/generator`|  Generates the LMS based deep embedding from Scala classes | Experimental       |
 | `components/dsls`     |  Small DSLs used for experimentation.                      | Experimental       |
 
 ### Building the Project
