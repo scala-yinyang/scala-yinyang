@@ -12,7 +12,7 @@ import com.typesafe.sbt.SbtGit.git
 
 object YinYangBuild extends Build {
   lazy val projectSettings = Seq[Setting[_]](
-    version              := "0.1.0-SNAPSHOT",
+    version              := "0.2.0-SNAPSHOT",
     organization         := "ch.epfl.lamp",
     licenses             := Seq("New BSD" -> 
       url("https://raw.githubusercontent.com/scala-yinyang/scala-yinyang/master/LICENCE")),
