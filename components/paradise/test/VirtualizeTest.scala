@@ -142,4 +142,18 @@ class VirtualizeSpec extends FlatSpec with ShouldMatchers with EmbeddedControls 
       case MyException(e) => e should be("nope")
     }
   }
+
+  "isInstanceOf and asInstanceOf" should "not be virtualized" in {
+
+    // TODO(namin): when I put @virtualize here, I get an error
+    // ./scala-yinyang/components/paradise/test/VirtualizeTest.scala:149: Boolean does not take parameters
+    // [error]     @virtualize
+    // somehow, this works in https://github.com/scala-lms/summer-of-lms-2014/commit/46313475724f79c9a6772dbbb442bd4f32400875
+    // but not sure why anymore ...
+    // @virtualize
+    def virtualizeInstanceOf(o: Object) = if (o.isInstanceOf[String]) o.asInstanceOf[String] else null
+
+    virtualizeInstanceOf("hello") should be("hello")
+    virtualizeInstanceOf(Nil) should be(null)
+  }
 }
