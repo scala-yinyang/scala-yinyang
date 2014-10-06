@@ -164,14 +164,14 @@ private object EmbeddedControls {
     implicit tt: c.WeakTypeTag[T]): c.Expr[T] = {
 
     import c.universe._
-    c.Expr(q"$x.asInstanceOf[${tt.tpe}]()")
+    c.Expr(q"$x.asInstanceOf[${tt.tpe}]")
   }
 
   def any_isInstanceOf[T](c: Context)(x: c.Expr[Any])(
     implicit tt: c.WeakTypeTag[T]): c.Expr[Boolean] = {
 
     import c.universe._
-    c.Expr[Boolean](q"$x.isInstanceOf[${tt.tpe}]()")
+    c.Expr[Boolean](q"$x.isInstanceOf[${tt.tpe}]")
   }
 
   def any_toString(c: Context)(x: c.Expr[Any]): c.Expr[String] = {

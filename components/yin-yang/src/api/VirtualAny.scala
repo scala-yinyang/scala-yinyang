@@ -76,14 +76,14 @@ private object VirtualAny {
     implicit tt: c.WeakTypeTag[T]): c.Expr[Any] = {
 
     import c.universe._
-    c.Expr[Any](q"$x.__asInstanceOf[${tt.tpe}]()")
+    c.Expr[Any](q"$x.__asInstanceOf[${tt.tpe}]")
   }
 
   def any_isInstanceOf[T](c: Context)(x: c.Expr[Any])(
-    implicit tt: c.WeakTypeTag[T]): c.Expr[Any] = {
+    implicit tt: c.WeakTypeTag[T]): c.Expr[Boolean] = {
 
     import c.universe._
-    c.Expr[Any](q"$x.__isInstanceOf[${tt.tpe}]()")
+    c.Expr[Boolean](q"$x.__isInstanceOf[${tt.tpe}]")
   }
 
   def any_toString(c: Context)(x: c.Expr[Any]): c.Expr[Any] = {

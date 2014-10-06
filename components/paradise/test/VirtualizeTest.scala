@@ -33,6 +33,19 @@ class VirtualizeSpec extends FlatSpec with ShouldMatchers with EmbeddedControls 
     VirtualizeIfTest(List(true, true)) should be("yep")
   }
 
+  "VirtualizeIfTraitTest" should "be virtualized" in {
+
+    @virtualize
+    trait VirtualizeIfTrait {
+      def apply(cs: List[Boolean]) = if (cs) "yep" else "nope"
+    }
+
+    object VirtualizeIfTraitTest extends VirtualizeIfTrait
+
+    VirtualizeIfTraitTest(List(true, false)) should be("nope")
+    VirtualizeIfTraitTest(List(true, true)) should be("yep")
+  }
+
   // Should use default `__ifThenElse` from EmbeddedControls.
   "defaultIfTest" should "be virtualized" in {
 
@@ -128,5 +141,14 @@ class VirtualizeSpec extends FlatSpec with ShouldMatchers with EmbeddedControls 
     } catch {
       case MyException(e) => e should be("nope")
     }
+  }
+
+  "isInstanceOf and asInstanceOf" should "not be virtualized" in {
+
+    @virtualize
+    def virtualizeInstanceOf(o: Object) = if (o.isInstanceOf[String]) o.asInstanceOf[String] else null
+
+    virtualizeInstanceOf("hello") should be("hello")
+    virtualizeInstanceOf(Nil) should be(null)
   }
 }
