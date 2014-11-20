@@ -44,6 +44,17 @@ trait TransformationUtils extends MacroModule {
   else
     select
 
+  def typeToTree(tpe: Type): Tree = tpe match {
+    case TypeRef(pre, sym, Nil) =>
+      TypeTree(tpe)
+    case TypeRef(pre, sym, args) =>
+      AppliedTypeTree(Ident(sym.name),
+        args map { x => typeToTree(x) })
+    case AnnotatedType(annotations, underlying) =>
+      typeToTree(underlying)
+    case _ => TypeTree(tpe)
+  }
+
   def makeConstructor(classname: String, arguments: List[Tree]): Tree =
     Apply(Select(newClass(classname), termNames.CONSTRUCTOR), arguments)
 
