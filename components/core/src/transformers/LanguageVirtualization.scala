@@ -193,6 +193,9 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
         case Ident(x) if tree.symbol.isTerm && tree.symbol.asTerm.isVar =>
           liftFeature(None, "__readVar", List(tree), Nil, x => x)
 
+        case Typed(x, Ident(typeNames.WILDCARD_STAR)) =>
+          Typed(liftFeature(None, "__castVarArg", List(x)), Ident(typeNames.WILDCARD_STAR))
+
         case ClassDef(mods, n, _, _) if mods.hasFlag(Flag.CASE) =>
           // sstucki: there are issues with the ordering of
           // virtualization and expansion of case classes (i.e. some
