@@ -117,8 +117,8 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
           val tree = transform(body)
           liftFeature(None, "__lambda", List(Function(vparams, tree)), Nil, trans = x => x)
 
-        case FunctionApply(qualifier, args) if virtualizeFunctions =>
-          Apply(Select(liftFeature(None, "__app", List(qualifier)), TermName("apply")), args map transform)
+        case FunctionApply(qualifier, args, targs) if virtualizeFunctions =>
+          Apply(Select(liftFeature(None, "__app", List(qualifier), targs), TermName("apply")), args map transform)
 
         case t @ If(cond, thenBr, elseBr) =>
           liftFeature(None, "__ifThenElse", List(cond, thenBr, elseBr))
@@ -193,6 +193,9 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
         case Ident(x) if tree.symbol.isTerm && tree.symbol.asTerm.isVar =>
           liftFeature(None, "__readVar", List(tree), Nil, x => x)
 
+        case Typed(x, Ident(typeNames.WILDCARD_STAR)) =>
+          Typed(liftFeature(None, "__castVarArg", List(x)), Ident(typeNames.WILDCARD_STAR))
+
         case ClassDef(mods, n, _, _) if mods.hasFlag(Flag.CASE) =>
           // sstucki: there are issues with the ordering of
           // virtualization and expansion of case classes (i.e. some
@@ -224,9 +227,18 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
       def isFunction(methodSymbol: Symbol): Boolean =
         functionSymbols.contains(methodSymbol.owner)
 
-      def unapply(tree: Tree): Option[(Tree, List[Tree])] = tree match {
+      def unapply(tree: Tree): Option[(Tree, List[Tree], List[Tree])] = tree match {
         case Apply(m @ Select(qualifier, TermName("apply")), args) if isFunction(m.symbol) =>
-          Some(qualifier, args)
+          val targs = m.tpe match {
+            case null => Nil
+            case MethodType(params, respte) => {
+              val argsTypes = params.map(x => x.asTerm.typeSignature)
+              val targs = (argsTypes :+ respte) map typeToTree
+              targs
+            }
+            case _ => Nil // does not know how to extract the parameter types
+          }
+          Some(qualifier, args, targs)
         case _ => None
       }
     }
