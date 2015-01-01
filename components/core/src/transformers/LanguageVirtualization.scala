@@ -70,6 +70,7 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
   val virtualizeFunctions: Boolean
   val failCompilation: Boolean
   val virtualizeVal: Boolean
+  val virtualizeVarNamed: Boolean = false
 
   def virtualize(t: Tree): (Tree, Seq[DSLFeature]) = VirtualizationTransformer(t)
 
@@ -95,6 +96,9 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
 
         case ValDef(mods, sym, tpt, rhs) if mods.hasFlag(Flag.PARAM) =>
           ValDef(mods, sym, tpt, transform(rhs))
+
+        case ValDef(mods, sym, tpt, rhs) if mods.hasFlag(Flag.MUTABLE) && virtualizeVarNamed =>
+          ValDef(mods, sym, tpt, liftFeature(None, "__newVarNamed", List(rhs, Literal(Constant(sym.toString)))))
 
         // sstucki: It seems necessary to keep the MUTABLE flag in the
         // new ValDef set, otherwise it becomes tricky to
