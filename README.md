@@ -27,7 +27,7 @@ If you encounter any issues with Yin-Yang please report them [here](https://gith
 
 ## Development
 
-If you have any questions about the project please ask them in the development [mailing list](todo).
+If you have any questions about the project please ask them in the development [mailing list](https://groups.google.com/forum/#!forum/scala-yinyang).
 
 ### Project Structure
 | Component             | Description                                                | Stability          |
