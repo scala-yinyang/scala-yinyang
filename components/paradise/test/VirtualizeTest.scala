@@ -13,6 +13,31 @@ class VirtualizeSpec extends FlatSpec with ShouldMatchers with EmbeddedControls 
     (x1 zip x2) forall (p => p._1 == p._2)
   }
 
+  "newVarInt" should "double int" in {
+    def __newVar(init: Int): Int = init + init
+
+    @virtualize
+    def virtualizeInt(str: Int) = {
+      var virt = str
+      virt
+    }
+
+    virtualizeInt(1) should be(2)
+  }
+
+  "newVarString" should "double string" in {
+    def __newVar(init: String): String = init + init
+
+    @virtualize
+    def virtualizeString(str: String) = {
+      var virt = str
+      virt
+    }
+
+    virtualizeString("a") should be("aa")
+    virtualizeString("ab") should be("abab")
+  }
+
   "virtualizeIfTest" should "be virtualized" in {
 
     @virtualize
