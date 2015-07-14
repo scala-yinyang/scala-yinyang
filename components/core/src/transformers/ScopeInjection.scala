@@ -26,6 +26,11 @@ trait ScopeInjection extends MacroModule with TransformationUtils {
 
     var ident = 0
 
+    def preservePosition(newTree: Tree, oldTree: Tree): Tree = {
+      newTree.setPos(oldTree.pos)
+      newTree
+    }
+
     override def transform(tree: Tree): Tree = {
       log(" " * ident + " --> " + tree, 3)
       ident += 1
@@ -40,7 +45,7 @@ trait ScopeInjection extends MacroModule with TransformationUtils {
 
         case CaseDef(pat: Tree, guard: Tree, body: Tree) => {
           val newPat = pat match {
-            case Apply(fun: TypeTree, args) => transform(Apply(fun.original, args))
+            case Apply(fun: TypeTree, args) => transform(preservePosition(Apply(fun.original, args), pat))
             case _                          => transform(pat)
           }
           CaseDef(newPat, transform(guard), transform(body))
@@ -73,7 +78,7 @@ trait ScopeInjection extends MacroModule with TransformationUtils {
       ident -= 1
       log(" " * ident + " <-- " + result, 3)
 
-      result
+      preservePosition(result, tree)
     }
   }
 
