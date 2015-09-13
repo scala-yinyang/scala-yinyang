@@ -105,7 +105,8 @@ trait NumericOps extends RepBase {
   }
 }
 
-trait ScalaVirtualizationDSL extends VirtualControlsBase with VirtualFunctionsBase {
+trait ScalaVirtualizationDSL extends VirtualControlsBase with VirtualFunctionsBase with VirtualVariablesBase {
+
   // Members declared in ch.epfl.yinyang.api.Interpreted
   def reset(): Unit = ???
 
@@ -114,10 +115,12 @@ trait ScalaVirtualizationDSL extends VirtualControlsBase with VirtualFunctionsBa
   def __assign[T](lhs: R[T], rhs: R[T]): R[Unit] = ???
   def __whileDo(cond: R[Boolean], body: R[Unit]): R[Unit] = ???
   def __doWhile(body: R[Unit], cond: R[Boolean]): R[Unit] = ???
-  def __newVar[T](init: R[T]): R[T] = ???
-  def __readVar[T](init: R[T]): R[T] = ???
+  def __varDef[T](init: R[T]): R[T] = ???
+  def __read[T](init: R[T]): R[T] = ???
   def __lazyValDef[T](init: R[T]): R[T] = ???
   def __valDef[T](init: R[T]): R[T] = ???
+  def __try[T](body: R[T], b: R[Throwable => T], finalizer: R[T]): T = ???
+  def __throw(e: R[Throwable]): R[Nothing] = ???
 
   def __app[U](f: R[() => U]): () => R[U] = ???
   def __app[T_1, U](f: R[T_1 => U]): R[T_1] => R[U] = ???

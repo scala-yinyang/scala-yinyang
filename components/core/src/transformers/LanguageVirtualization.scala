@@ -11,22 +11,25 @@ import scala.collection.mutable
  * Converts Scala features that can not be overridden to method calls that can be given
  * arbitrary semantics.
  *
- * ==Features covered are==
+ * == Control Structures==
  * {{{
- *   var x = e              =>       var x = __newVar(e)
- *   x = t                  =>       __assign(x, t)
- *   x // if x is a var     =>       __readVar(x)
  *   if(c) t else e         =>       __ifThenElse(c, t, e)
  *   while(c) b             =>       __whileDo(c, b)
  *   do b while c           =>       __doWhile(c, b)
  *   return t               =>       __return(t)
+ * }}}
+ * ===Virtualization of `Any` methods===
+ * {{{
+ *   var x = e              =>       var x = __var(e)
+ *   x = t                  =>       __assign(x, t)
+ *   x // if x is a val     =>       __read(x)
  * }}}
  *
  * ===Virtualization of `Any` methods===
  * {{{
  *   t == t1                =>       infix_==(t, t1)
  *   t != t1                =>       infix_!=(t, t1)
- *   t.##                   =>       infix_##(t, t1)
+ *   t.##                   =>       infix_##(t)
  *   t.equals t1            =>       infix_equals(t, t1)
  *   t.hashCode             =>       infix_hashCode(t)
  *   t.asInstanceOf[T]      =>       infix_asInstanceOf[T](t)
@@ -53,16 +56,13 @@ import scala.collection.mutable
  *   val x = b              =>       __valDef(b)
  * }}}
  *
- * @todo
+ * ===Forbiden===
  * {{{
- *   try b catch c          =>       __tryCatch(b, c, f)
- *   throw e                =>       __throw(e)
- *   lazy val x = b         =>       __lazyValDef(b)
- *   def f                  =>       ignored for now as it is treated by the scope injection
- *   case class C { ... }   =>       forbiden, for now
- *   match                  =>       ignored, should be treated by virtual pattern matcher
- *   new                    =>       forbiden, for now
+ *     class C { ... }
+ *     trait T
+ *     object O
  * }}}
+ *
  */
 trait LanguageVirtualization extends MacroModule with TransformationUtils with DataDefs {
   import c.universe._
@@ -70,7 +70,7 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
   val virtualizeFunctions: Boolean
   val failCompilation: Boolean
   val virtualizeVal: Boolean
-  val virtualizeVarNamed: Boolean = false
+  val nameBindings: Boolean = false
 
   def virtualize(t: Tree): (Tree, Seq[DSLFeature]) = VirtualizationTransformer(t)
 
@@ -91,32 +91,10 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
       method(receiver.map(trans), nme, List(args.map(trans)), targs)
     }
 
+    def named(name: TermName): Seq[Tree] = if (nameBindings) Seq(q"$name") else Seq()
+
     override def transform(tree: Tree): Tree = {
       tree match {
-
-        case ValDef(mods, sym, tpt, rhs) if mods.hasFlag(Flag.PARAM) =>
-          ValDef(mods, sym, tpt, transform(rhs))
-
-        case ValDef(mods, sym, tpt, rhs) if mods.hasFlag(Flag.MUTABLE) && virtualizeVarNamed =>
-          ValDef(mods, sym, tpt, liftFeature(None, "__newVarNamed", List(rhs, Literal(Constant(sym.toString)))))
-
-        // sstucki: It seems necessary to keep the MUTABLE flag in the
-        // new ValDef set, otherwise it becomes tricky to
-        // "un-virtualize" a variable definition, if necessary
-        // (e.g. if the DSL does not handle variable definitions in a
-        // special way).
-        case ValDef(mods, sym, tpt, rhs) if mods.hasFlag(Flag.MUTABLE) =>
-          ValDef(mods, sym, tpt, liftFeature(None, "__newVar", List(rhs)))
-
-        case ValDef(mods, sym, tpt, rhs) if mods.hasFlag(Flag.LAZY) =>
-          ValDef(mods, sym, tpt, liftFeature(None, "__lazyValDef", List(rhs)))
-
-        case ValDef(mods, sym, tpt, rhs) =>
-          val newRhs =
-            if (virtualizeVal) liftFeature(None, "__valDef", List(rhs))
-            else transform(rhs)
-          ValDef(mods, sym, tpt, newRhs)
-
         case f @ Function(vparams, body) if virtualizeFunctions =>
           val tree = transform(body)
           liftFeature(None, "__lambda", List(Function(vparams, tree)), Nil, trans = x => x)
@@ -130,9 +108,6 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
         case Return(e) =>
           liftFeature(None, "__return", List(e))
 
-        case Assign(lhs, rhs) =>
-          liftFeature(None, "__assign", List(lhs, transform(rhs)), Nil, x => x)
-
         case LabelDef(sym, List(), If(cond, Block(body :: Nil, Apply(Ident(label),
           List())), Literal(Constant(())))) if label == sym => // while(){}
           liftFeature(None, "__whileDo", List(cond, body))
@@ -141,6 +116,55 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
           List()), Literal(Constant(()))))) if label == sym => // do while(){}
           liftFeature(None, "__doWhile", List(cond, body))
 
+        case Try(block, catches, finalizer) =>
+          val etaExpandedCatch = Function(
+            List(ValDef(Modifiers(Flag.PARAM), TermName("x"), Ident(TypeName("Any")), EmptyTree)),
+            Apply(Select(Ident(TermName("x")), TermName("matches")), List(Match(EmptyTree, catches))))
+
+          liftFeature(None, "__try", List(block, c.typecheck(c.untypecheck(etaExpandedCatch)), finalizer))
+
+        case Throw(expr) =>
+          liftFeature(None, "__throw", List(expr))
+
+        // TODO multiple apply
+        case Apply(Select(New(nme), termNames.CONSTRUCTOR), args) =>
+          liftFeature(None, "__New_" + nme.toString, args)
+
+        //
+        // Variables virtualization
+        //
+        case ValDef(mods, sym, tpt, rhs) if mods.hasFlag(Flag.PARAM) =>
+          ValDef(mods, sym, tpt, transform(rhs))
+
+        // sstucki: It seems necessary to keep the MUTABLE flag in the
+        // new ValDef set, otherwise it becomes tricky to
+        // "un-virtualize" a variable definition, if necessary
+        // (e.g. if the DSL does not handle variable definitions in a
+        // special way).
+        case ValDef(mods, sym, tpt, rhs) if mods.hasFlag(Flag.MUTABLE) =>
+          ValDef(mods, sym, tpt, liftFeature(None, "__varDef", List(rhs) ++ named(sym)))
+
+        case Assign(lhs, rhs) =>
+          liftFeature(None, "__assign", List(lhs, transform(rhs)), Nil, x => x)
+
+        case ValDef(mods, sym, tpt, rhs) if mods.hasFlag(Flag.LAZY) =>
+          ValDef(mods, sym, tpt, liftFeature(None, "__lazyValDef", List(rhs) ++ named(sym)))
+
+        case ValDef(mods, sym, tpt, rhs) =>
+          val newRhs =
+            if (virtualizeVal) liftFeature(None, "__valDef", List(rhs) ++ named(sym))
+            else transform(rhs)
+          ValDef(mods, sym, tpt, newRhs)
+
+        case Ident(x) if (tree.symbol.isTerm && (
+          tree.symbol.asTerm.isVar ||
+          tree.symbol.asTerm.isLazy ||
+          (tree.symbol.asTerm.isVal && virtualizeVal))) =>
+          liftFeature(None, "__read", List(tree), Nil, x => x)
+
+        //
+        // Universal methods virtualization
+        //
         case Apply(Select(qualifier, TermName("$eq$eq")), List(arg)) =>
           liftFeature(None, "infix_$eq$eq", List(qualifier, arg))
 
@@ -194,28 +218,17 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
           ) if arg0.tpe =:= typeOf[Long] && arg1.tpe =:= typeOf[Int] =>
           liftFeature(None, "infix_wait", List(qualifier, arg0, arg1))
 
-        case Ident(x) if tree.symbol.isTerm && tree.symbol.asTerm.isVar =>
-          liftFeature(None, "__readVar", List(tree), Nil, x => x)
-
         case Typed(x, Ident(typeNames.WILDCARD_STAR)) =>
           Typed(liftFeature(None, "__castVarArg", List(x)), Ident(typeNames.WILDCARD_STAR))
 
-        case ClassDef(mods, n, _, _) if mods.hasFlag(Flag.CASE) =>
-          // sstucki: there are issues with the ordering of
-          // virtualization and expansion of case classes (i.e. some
-          // of the expanded code might be virtualized even though it
-          // should not be and vice-versa).  So until we have decided
-          // how proper virtualization of case classes should be done,
-          // any attempt to do so should fail.
-          c.abort(tree.pos, "Virtualization of case classes is not supported.")
+        //
+        // Restrictions
+        //
+        case ClassDef(_, _, _, _) =>
+          c.abort(tree.pos, "Virtualization of classes and traits is not supported.")
 
-        case Try(block, catches, finalizer) =>
-          unsupported(tree.pos, "Virtualization of try/catch expressions is not supported.")
-          super.transform(tree)
-
-        case Throw(expr) =>
-          unsupported(tree.pos, "Virtualization of throw expressions is not supported.")
-          super.transform(tree)
+        case ModuleDef(_, _, _) =>
+          c.abort(tree.pos, "Virtualization of modules is not supported.")
 
         case _ =>
           super.transform(tree)
