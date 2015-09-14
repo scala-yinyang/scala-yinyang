@@ -277,6 +277,15 @@ trait BooleanDSL extends RepBase {
   }
 }
 
+trait MatchingOps extends RepBase {
+  object __match {
+    def zero: R[Option[Nothing]] = ???
+    def one[T](x: R[T]): R[Option[T]] = ???
+    def guard[T](cond: R[Boolean], then: => R[T]): R[Option[T]] = ???
+    def runOrElse[T, U](x: T)(f: R[T => Option[U]]): U = ???
+  }
+}
+
 trait IfThenElseDSL extends RepBase with BooleanDSL {
   def __ifThenElse[T](c: => R[Boolean], t: R[T], e: R[T]) = ???
 }
@@ -284,7 +293,7 @@ trait IfThenElseDSL extends RepBase with BooleanDSL {
 trait VectorDSL
   extends ArrayDSL with IntDSL with DoubleDSL with ClassTagOps
   with NumericOps with Base with IfThenElseDSL with Interpreted
-  with ScalaVirtualizationDSL with FullyStaged {
+  with ScalaVirtualizationDSL with MatchingOps with FullyStaged {
 
   def compile[T: TypeRep, Ret](unstableHoleIds: Set[Int]): Ret = ???
   def generateCode(className: String, unstableHoleIds: Set[Int]): String = ???

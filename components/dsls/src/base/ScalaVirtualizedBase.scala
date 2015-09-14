@@ -11,8 +11,8 @@ trait VirtualControlsBase extends RepBase {
 
 trait VirtualVariablesBase extends RepBase {
   def __valDef[T](init: R[T]): R[T]
-  def __varDef[T](init: R[T]): R[T]
   def __lazyValDef[T](init: R[T]): R[T]
+  def __varDef[T](init: R[T]): R[T]
   def __read[T](init: R[T]): R[T]
   def __assign[T](lhs: R[T], rhs: R[T]): R[Unit]
 }
