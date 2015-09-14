@@ -1,11 +1,11 @@
 package base
 
 trait VirtualControlsBase extends RepBase {
-  def __ifThenElse[T](cond: R[Boolean], thenBr: R[T], elseBr: R[T]): R[T]
+  def __ifThenElse[T](cnd: R[Boolean], thn: R[T], els: R[T]): R[T]
   def __return(expr: R[Any]): R[Nothing]
-  def __whileDo(cond: R[Boolean], body: R[Unit]): R[Unit]
+  def __whileDo(cnd: R[Boolean], body: R[Unit]): R[Unit]
   def __doWhile(body: R[Unit], cond: R[Boolean]): R[Unit]
-  def __try[T](body: R[T], b: R[Throwable => T], finalizer: R[T]): T
+  def __try[T](body: R[T], b: R[Throwable => T], fin: R[T]): T
   def __throw(e: R[Throwable]): R[Nothing]
 }
 

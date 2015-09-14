@@ -14,7 +14,7 @@ object YinYangBuild extends Build {
   lazy val projectSettings = Seq[Setting[_]](
     version              := "0.2.0-SNAPSHOT",
     organization         := "ch.epfl.lamp",
-    licenses             := Seq("New BSD" -> 
+    licenses             := Seq("New BSD" ->
       url("https://raw.githubusercontent.com/scala-yinyang/scala-yinyang/master/LICENCE")),
     homepage             := Some(url("https://github.com/scala-yinyang/scala-yinyang")),
     organizationHomepage := Some(url("http://lamp.epfl.ch")),
@@ -44,7 +44,7 @@ object YinYangBuild extends Build {
   lazy val _yinyang      = Project(id = "root",             base = file(".")                   , settings = Project.defaultSettings ++ Seq(publishArtifact := false)) aggregate (yinyang, yy_core, yy_paradise, example_dsls)
   lazy val yy_core       = Project(id = "yinyang-core",     base = file("components/core")     , settings = defaults ++ Seq(name := "yinyang-core"))
   lazy val yy_paradise   = Project(id = "yinyang-paradise", base = file("components/paradise") , settings = defaults ++ paradise ++ Seq(name := "yinyang-paradise")) dependsOn(yy_core)
-  lazy val yinyang       = Project(id = "scala-yinyang",    base = file("components/yin-yang") , settings = defaults ++ Seq(name := "scala-yinyang")) dependsOn(yy_core)  
+  lazy val yinyang       = Project(id = "scala-yinyang",    base = file("components/yin-yang") , settings = defaults ++ Seq(name := "scala-yinyang")) dependsOn(yy_core)
   lazy val example_dsls  = Project(id = "example-dsls",     base = file("components/dsls")     , settings = defaults ++ Seq(publishArtifact := false)) dependsOn(yinyang)
 
   lazy val defaults = projectSettings ++ scalaSettings ++ formatSettings ++ libraryDeps ++ Seq(
@@ -66,7 +66,7 @@ object YinYangBuild extends Build {
   // add the macro paradise compiler plugin
   lazy val paradise = Seq(
     libraryDependencies += {
-      val paradiseVersion =  
+      val paradiseVersion =
         if (scalaVersion.value == "2.11.2") "2.0.1"
         else"2.0.0"
       compilerPlugin("org.scalamacros" % "paradise" %  paradiseVersion cross CrossVersion.full)
@@ -111,13 +111,13 @@ object YinYangBuild extends Build {
         <developer>
           <id>amirsh</id>
           <name>Amir Shaikhha</name>
-          <url>http://people.epfl.ch/amir.shaikhha</url>          
+          <url>http://people.epfl.ch/amir.shaikhha</url>
         </developer>
         <developer>
           <id>sstucki</id>
           <name>Sandro Stucki</name>
-          <url>http://people.epfl.ch/sandro.stucki</url>          
-        </developer>        
+          <url>http://people.epfl.ch/sandro.stucki</url>
+        </developer>
       </developers>
     )
   )
@@ -134,6 +134,13 @@ object YinYangBuild extends Build {
     .setPreference(AlignParameters, true)
     .setPreference(AlignSingleLineCaseStatements, true)
   }
-  lazy val defaultScalacOptions = Seq("-deprecation", "-feature", "-language:higherKinds", "-language:implicitConversions")
+  lazy val defaultScalacOptions = Seq(
+    "-deprecation",
+    "-feature",
+    "-language:higherKinds",
+    "-language:implicitConversions",
+    "-Xexperimental"
+  )
+
   lazy val scalaOrg = "org.scala-lang"
 }

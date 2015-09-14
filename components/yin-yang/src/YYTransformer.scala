@@ -102,7 +102,8 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
        *     `lift("captured$" + sym)`
        */
       def transform(toHoles: List[Symbol], toMixed: List[Symbol], toLifts: List[Symbol])(block: Tree): Tree =
-        (PreProcess andThen
+        ((injectImport _) andThen
+          PreProcess andThen
           AscriptionTransformer andThen
           LiftLiteralTransformer(toLifts, toMixed) andThen
           (x => VirtualizationTransformer(x)._1) andThen
@@ -411,4 +412,8 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
     }
   """
 
+  def injectImport(body: Tree): Tree = c.typecheck(q"""
+    import _root_.ch.epfl.yinyang.runtime._;
+    ${c.untypecheck(body)}
+  """)
 }

@@ -104,4 +104,16 @@ class GenericTranslationSpec extends FlatSpec with ShouldMatchers {
     }
   }
 
+  it should "work with try/catch" in {
+    val captured = 1
+    val captured1 = 2
+    val captured2 = 3
+    intercept[NotImplementedError] {
+      laDebug {
+        val x: Any = 1
+        x match { case v => v }
+      }
+    }
+  }
+
 }

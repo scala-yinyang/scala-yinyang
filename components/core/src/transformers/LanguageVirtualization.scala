@@ -71,6 +71,7 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
   val failCompilation: Boolean
   val virtualizeVal: Boolean
   val nameBindings: Boolean = false
+  val restrictDefinitions: Boolean = true
 
   def virtualize(t: Tree): (Tree, Seq[DSLFeature]) = VirtualizationTransformer(t)
 
@@ -117,11 +118,13 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
           liftFeature(None, "__doWhile", List(cond, body))
 
         case Try(block, catches, finalizer) =>
+          val arg = Ident(TermName("x"))
           val etaExpandedCatch = Function(
             List(ValDef(Modifiers(Flag.PARAM), TermName("x"), Ident(TypeName("Any")), EmptyTree)),
-            Apply(Select(Ident(TermName("x")), TermName("matches")), List(Match(EmptyTree, catches))))
-
-          liftFeature(None, "__try", List(block, c.typecheck(c.untypecheck(etaExpandedCatch)), finalizer))
+            if (catches == Nil) arg else Match(arg, catches))
+          val finalizerTree = if (finalizer == EmptyTree) q"null" else finalizer
+          val tparams = if (tree.tpe == null) Nil else List(TypeTree(tree.tpe))
+          liftFeature(None, "__try", List(block, etaExpandedCatch, finalizerTree), tparams)
 
         case Throw(expr) =>
           liftFeature(None, "__throw", List(expr))
@@ -224,10 +227,15 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
         //
         // Restrictions
         //
-        case ClassDef(_, _, _, _) =>
+        // Case-classes are never supported: i) with @virtualize they badly interact with
+        //  further case class expansion, and ii) in macro mode we do not support them.
+        case ClassDef(mods, _, _, _) if mods.hasFlag(Flag.CASE) =>
+          c.abort(tree.pos, "Virtualization of case classes is not supported.")
+
+        case ClassDef(_, _, _, _) if restrictDefinitions =>
           c.abort(tree.pos, "Virtualization of classes and traits is not supported.")
 
-        case ModuleDef(_, _, _) =>
+        case ModuleDef(_, _, _) if restrictDefinitions =>
           c.abort(tree.pos, "Virtualization of modules is not supported.")
 
         case _ =>

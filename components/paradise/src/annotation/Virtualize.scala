@@ -58,5 +58,7 @@ private object virtualize {
     val failCompilation: Boolean = false
     val virtualizeFunctions: Boolean = false
     val virtualizeVal: Boolean = false
+
+    override val restrictDefinitions: Boolean = false
   }
 }

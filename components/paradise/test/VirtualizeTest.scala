@@ -14,7 +14,7 @@ class VirtualizeSpec extends FlatSpec with ShouldMatchers with EmbeddedControls 
   }
 
   "newVarInt" should "double int" in {
-    def __newVar(init: Int): Int = init + init
+    def __varDef(init: Int): Int = init + init
 
     @virtualize
     def virtualizeInt(str: Int) = {
@@ -26,7 +26,7 @@ class VirtualizeSpec extends FlatSpec with ShouldMatchers with EmbeddedControls 
   }
 
   "newVarString" should "double string" in {
-    def __newVar(init: String): String = init + init
+    def __varDef(init: String): String = init + init
 
     @virtualize
     def virtualizeString(str: String) = {
@@ -49,8 +49,8 @@ class VirtualizeSpec extends FlatSpec with ShouldMatchers with EmbeddedControls 
 
   "VirtualizeIfTest" should "be virtualized" in {
 
-    @virtualize
     object VirtualizeIfTest {
+      @virtualize
       def apply(cs: List[Boolean]) = if (cs) "yep" else "nope"
     }
 

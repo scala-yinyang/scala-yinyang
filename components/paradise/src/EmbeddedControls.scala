@@ -42,13 +42,16 @@ trait EmbeddedControls {
   // Control structures
   def __ifThenElse[T](cond: Boolean, thenBr: T, elseBr: T): T = macro ifThenElseImpl[T]
   def __return(expr: Any): Nothing = macro returnImpl
-  def __assign[T](lhs: T, rhs: T): Unit = macro assignImpl[T]
   def __whileDo(cond: Boolean, body: Unit): Unit = macro whileDoImpl
   def __doWhile(body: Unit, cond: Boolean): Unit = macro doWhileImpl
-  def __newVar[T](init: T): T = macro newVarImpl[T]
-  def __readVar[T](init: T): T = macro readVarImpl[T]
-  def __lazyValDef[T](init: T): T = macro lazyValDefImpl[T]
+
   def __valDef[T](init: T): T = macro valDefImpl[T]
+  def __varDef[T](init: T): T = macro varDefImpl[T]
+  def __lazyValDef[T](init: T): T = macro lazyValDefImpl[T]
+  def __read[T](init: T): T = macro readImpl[T]
+  def __assign[T](lhs: T, rhs: T): Unit = macro assignImpl[T]
+  def __try[T](body: T, catches: Throwable => T, finalizer: T): T = macro tryImpl[T]
+  def __throw(t: Throwable): Nothing = macro throwImpl
 
   // Infix methods for `Any` methods
   def infix_==(x1: Any, x2: Any): Boolean = macro any_==
@@ -95,13 +98,6 @@ private object EmbeddedControls {
     c.Expr(q"return $expr")
   }
 
-  def assignImpl[T](c: Context)(
-    lhs: c.Expr[T], rhs: c.Expr[T]): c.Expr[Unit] = {
-
-    import c.universe._
-    c.Expr(q"$lhs = $rhs")
-  }
-
   def whileDoImpl(c: Context)(
     cond: c.Expr[Boolean], body: c.Expr[Unit]): c.Expr[Unit] = {
 
@@ -116,9 +112,41 @@ private object EmbeddedControls {
     c.Expr(q"do $body while ($cond)")
   }
 
-  def newVarImpl[T](c: Context)(init: c.Expr[T]): c.Expr[T] = init
+  def tryImpl[T](c: Context)(body: c.Expr[T], catches: c.Expr[Any], finalizer: c.Expr[Any]): c.Expr[T] = {
+    import c.universe._
+    object EtaExpandedCases {
+      def unapply(v: Any): Option[List[CaseDef]] = v match {
+        case Function(
+          List(ValDef(_, TermName("x"), Ident(TypeName("Any")), EmptyTree)),
+          Match(Ident(TermName("x")), cases)) => Some(cases)
+        case _ => None
+      }
+    }
+    (catches, finalizer) match {
 
-  def readVarImpl[T](c: Context)(init: c.Expr[T]): c.Expr[T] = init
+      case (EtaExpandedCases(cases), q"null")   => c.Expr[T](q"try $body catch $cases")
+      case (EtaExpandedCases(cases), finalizer) => c.Expr[T](q"try $body catch $cases finally $finalizer")
+      case (_, q"null")                         => c.Expr[T](q"try $body")
+      case (_, finalizer)                       => c.Expr[T](q"try $body finally $finalizer")
+
+    }
+  }
+
+  def throwImpl(c: Context)(t: c.Expr[Throwable]): c.Expr[Nothing] = {
+    import c.universe._
+    c.Expr(q"throw $t")
+  }
+
+  def assignImpl[T](c: Context)(
+    lhs: c.Expr[T], rhs: c.Expr[T]): c.Expr[Unit] = {
+
+    import c.universe._
+    c.Expr(q"$lhs = $rhs")
+  }
+
+  def varDefImpl[T](c: Context)(init: c.Expr[T]): c.Expr[T] = init
+
+  def readImpl[T](c: Context)(init: c.Expr[T]): c.Expr[T] = init
 
   def valDefImpl[T](c: Context)(init: c.Expr[T]): c.Expr[T] = init
 
