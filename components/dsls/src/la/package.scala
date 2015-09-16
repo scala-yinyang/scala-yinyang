@@ -37,7 +37,7 @@ package object la {
           "shallow" -> false,
           "virtualizeFunctions" -> true,
           "virtualizeVal" -> true,
-          "debug" -> 3,
+          "debug" -> 0,
           "featureAnalysing" -> true,
           "ascriptionTransforming" -> false))(block)
   }

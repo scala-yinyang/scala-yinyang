@@ -81,27 +81,29 @@ trait NumericOps extends RepBase {
     override implicit def mkNumericOps(lhs: R[T]) = ???
   }
 
-  implicit object IntIsIntegral extends NumericOpsOf[Int] {
-    def plus(x: R[Int], y: R[Int]): R[Int] = ???
-    def minus(x: R[Int], y: R[Int]): R[Int] = ???
-    def times(x: R[Int], y: R[Int]): R[Int] = ???
-    def negate(x: R[Int]): R[Int] = ???
+  object `math.Numeric` {
+    implicit object IntIsIntegral extends NumericOpsOf[Int] {
+      def plus(x: R[Int], y: R[Int]): R[Int] = ???
+      def minus(x: R[Int], y: R[Int]): R[Int] = ???
+      def times(x: R[Int], y: R[Int]): R[Int] = ???
+      def negate(x: R[Int]): R[Int] = ???
 
-    def fromInt(x: R[Int]): R[Int] = ???
-    def toInt(x: R[Int]): R[Int] = ???
-    def toDouble(x: R[Int]): R[Double] = ???
-  }
+      def fromInt(x: R[Int]): R[Int] = ???
+      def toInt(x: R[Int]): R[Int] = ???
+      def toDouble(x: R[Int]): R[Double] = ???
+    }
 
-  implicit object DoubleIsFractional extends NumericOpsOf[Double] {
-    def plus(x: R[Double], y: R[Double]): R[Double] = ???
-    def minus(x: R[Double], y: R[Double]): R[Double] = ???
-    def times(x: R[Double], y: R[Double]): R[Double] = ???
-    def negate(x: R[Double]): R[Double] = ???
+    implicit object DoubleIsFractional extends NumericOpsOf[Double] {
+      def plus(x: R[Double], y: R[Double]): R[Double] = ???
+      def minus(x: R[Double], y: R[Double]): R[Double] = ???
+      def times(x: R[Double], y: R[Double]): R[Double] = ???
+      def negate(x: R[Double]): R[Double] = ???
 
-    def fromInt(x: R[Int]): R[Double] = ???
-    // TODO these need to return the lifted types. This means that Numeric Type needs to be changed to something else.
-    def toInt(x: R[Double]): R[Int] = ???
-    def toDouble(x: R[Double]): R[Double] = ???
+      def fromInt(x: R[Int]): R[Double] = ???
+      // TODO these need to return the lifted types. This means that Numeric Type needs to be changed to something else.
+      def toInt(x: R[Double]): R[Int] = ???
+      def toDouble(x: R[Double]): R[Double] = ???
+    }
   }
 }
 
@@ -278,11 +280,13 @@ trait BooleanDSL extends RepBase {
 }
 
 trait MatchingOps extends RepBase {
-  object __match {
-    def zero: R[Option[Nothing]] = ???
-    def one[T](x: R[T]): R[Option[T]] = ???
-    def guard[T](cond: R[Boolean], then: => R[T]): R[Option[T]] = ???
-    def runOrElse[T, U](x: T)(f: R[T => Option[U]]): U = ???
+  object `ch.epfl.yinyang.runtime.package` {
+    object __match {
+      def zero: R[Option[Nothing]] = ???
+      def one[T](x: R[T]): R[Option[T]] = ???
+      def guard[T](cond: R[Boolean], thn: => R[T]): R[Option[T]] = ???
+      def runOrElse[T, U](x: T)(f: R[T => Option[U]]): U = ???
+    }
   }
 }
 
@@ -300,7 +304,7 @@ trait VectorDSL
   def interpret[T: TypeTag](params: Any*) = ???
 
   type Vector[T] = dsl.la.Vector[T]
-  object Vector {
+  object `dsl.la.Vector` {
     def apply[T: Numeric](v: R[T]*): R[Vector[T]] = ???
   }
   trait VectorOps[T] {

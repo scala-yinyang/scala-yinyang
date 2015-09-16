@@ -18,7 +18,7 @@ trait RepTransformerLike[C <: Context] extends PolyTransformerLike[C] { this: Ty
   }
 
   def rep(inType: Type): Tree = {
-    AppliedTypeTree(Select(This(newTypeName(className)), newTypeName(IRType)),
+    AppliedTypeTree(Select(This(TypeName(className)), TypeName(IRType)),
       List(TypeTree(inType)))
   }
 
@@ -39,7 +39,7 @@ trait RepTransformerLike[C <: Context] extends PolyTransformerLike[C] { this: Ty
             //we can't construnct baseTree using TypeTree(pre) - pre is only scala.type not FunctionN
             //val baseTree = TypeTree(pre) //pre = scala.type
             //using such baseTree we get val a: scala.type[Rep[Int], Rep[Int]] = ...
-            val baseTree = Select(Ident(newTermName("scala")), sym.name)
+            val baseTree = Select(Ident(TermName("scala")), sym.name)
             AppliedTypeTree(baseTree, retTyperees)
 
           case SingleType(pre, name) if inType.typeSymbol.isClass && (!inType.typeSymbol.isModuleClass) =>
@@ -96,7 +96,7 @@ class PardisRepTransformer[C <: Context](ctx: C) extends RepTransformer[C](ctx) 
       case IsVar  => "Var"
       case NotVar => IRType
     }
-    AppliedTypeTree(Select(This(newTypeName(className)), TypeName(repType)),
+    AppliedTypeTree(Select(This(TypeName(className)), TypeName(repType)),
       List(TypeTree(inType)))
   }
 

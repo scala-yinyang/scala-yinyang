@@ -416,7 +416,6 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
     val typed = c.typecheck(q"""import _root_.ch.epfl.yinyang.runtime._;
       ${c.untypecheck(body)}
     """)
-    println(showRaw(typed))
     val Block(List(_), virtualizedBody) = typed
     virtualizedBody
   }

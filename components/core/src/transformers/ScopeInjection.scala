@@ -10,7 +10,7 @@ trait ScopeInjection extends MacroModule with TransformationUtils {
   import c.universe._
   import internal.decorators._
 
-  val rewireThis: Boolean = true
+  val rewireThis: Boolean = false
 
   // TODO DRY
   def rewiredToThis(s: String) = s == "package" || s == "Predef"
@@ -31,44 +31,23 @@ trait ScopeInjection extends MacroModule with TransformationUtils {
       newTree
     }
 
+    // Note: the Scala compiler sometimes leaves ".this" in the path and we remove it.
+    def injectModule(t: Tree): Tree =
+      Ident(TermName(t.toString.replaceAll("\\.this", "").replaceAll("`package`", "package")).encodedName)
+
+    /*
+     * Translation rules:
+     *   [[x.y.z.obj.method]] ~> this.`x.y.z.obj`.method
+     */
     override def transform(tree: Tree): Tree = {
       log(" " * ident + " --> " + tree, 3)
       ident += 1
 
       val result = tree match {
-        //provide Def trees with NoSymbol (for correct show(tree))
-        case vdDef: ValOrDefDef if rewireThis => {
-          val retDef = super.transform(tree)
-          retDef.setSymbol(NoSymbol)
-          retDef
-        }
-
-        case CaseDef(pat: Tree, guard: Tree, body: Tree) => {
-          val newPat = pat match {
-            case Apply(fun: TypeTree, args) => transform(preservePosition(Apply(fun.original, args), pat))
-            case _                          => transform(pat)
-          }
-          CaseDef(newPat, transform(guard), transform(body))
-        }
-
-        // re-wire objects
-        case s @ Select(Select(inn, t: TermName), name) // package object goes to this
-        if s.symbol.isMethod && (rewiredToThis(t.toString) || t.toString == "this") =>
-          Ident(name)
-
-        case s @ Select(inn, name) if s.symbol.isMethod =>
-          Select(transform(inn), name)
-
-        // replaces objects with their cake counterparts
-        case s @ Select(inn, name) if s.symbol.isModule =>
-          Ident(name)
-
-        // Added to rewire inherited methods to this class
-        case th @ This(_) if rewireThis =>
-          This(typeNames.EMPTY)
-
-        case _ =>
-          super.transform(tree)
+        case s @ Select(inn, name) if inn.symbol.isPackage && s.symbol.isModule => injectModule(s)
+        case s @ Select(inn, name) if inn.symbol.isModule => Select(transform(inn), name)
+        case Apply(Select(This(typeNames.EMPTY), TermName("lift")), _) => tree
+        case _ => super.transform(tree)
       }
 
       ident -= 1
