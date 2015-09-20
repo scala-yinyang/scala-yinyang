@@ -11,9 +11,12 @@ trait ScopeInjection extends MacroModule with TransformationUtils {
   import internal.decorators._
 
   val rewireThis: Boolean = false
+  // val implicitTrans: Option[Tree => Tree] = Some[Tree => Tree] { x =>
+  //   println(showRaw(x))
+  //   println(x.tpe)
+  //   q"${TermName("heyho" + x.tpe)}($x)"
+  // }
 
-  // TODO DRY
-  def rewiredToThis(s: String) = s == "package" || s == "Predef"
   object ScopeInjectionTransformer extends (Tree => Tree) {
     def apply(tree: Tree) = {
       val t = new ScopeInjectionTransformer().transform(tree)
@@ -35,6 +38,19 @@ trait ScopeInjection extends MacroModule with TransformationUtils {
     def injectModule(t: Tree): Tree =
       Ident(TermName(t.toString.replaceAll("\\.this", "").replaceAll("`package`", "package")).encodedName)
 
+    object MultipleApply {
+      def unapply(value: Tree): Option[(Tree, List[List[Tree]])] = value match {
+        case Apply(x, y) =>
+          Some(x match {
+            case MultipleApply(rx, ry) =>
+              (rx, y :: ry)
+            case _ =>
+              (x, y :: Nil)
+          })
+        case _ => None
+      }
+    }
+
     /*
      * Translation rules:
      *   [[x.y.z.obj.method]] ~> this.`x.y.z.obj`.method
@@ -44,10 +60,16 @@ trait ScopeInjection extends MacroModule with TransformationUtils {
       ident += 1
 
       val result = tree match {
+        case Apply(Select(This(typeNames.EMPTY), TermName("lift")), _) => tree
         case s @ Select(inn, name) if inn.symbol.isPackage && s.symbol.isModule => injectModule(s)
         case s @ Select(inn, name) if inn.symbol.isModule => Select(transform(inn), name)
-        case Apply(Select(This(typeNames.EMPTY), TermName("lift")), _) => tree
         case _ => super.transform(tree)
+
+        // Optimization: automatically add implicit calls to improve compilation speed.
+        // case MultipleApply(lhs @ Select(inn, name), argss) if !inn.symbol.isModule =>
+        //   val newqqc = transform(inn)
+        //   val tlhs: Tree = implicitTrans.map(_(inn)) getOrElse lhs
+        //   argss.foldLeft(tlhs)((agg, arg) => Apply(agg, arg.map(transform)))
       }
 
       ident -= 1
