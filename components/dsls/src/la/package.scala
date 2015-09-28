@@ -21,7 +21,7 @@ package object la {
         Map(
           "shallow" -> false,
           "virtualizeFunctions" -> true,
-          "virtualizeVal" -> true,
+          "virtualizeValDef" -> true,
           "debug" -> 0,
           "featureAnalysing" -> false,
           "ascriptionTransforming" -> false))(block)
@@ -36,7 +36,7 @@ package object la {
         Map(
           "shallow" -> false,
           "virtualizeFunctions" -> true,
-          "virtualizeVal" -> true,
+          "virtualizeValDef" -> true,
           "debug" -> 0,
           "featureAnalysing" -> true,
           "ascriptionTransforming" -> false))(block)

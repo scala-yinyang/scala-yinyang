@@ -55,10 +55,8 @@ private object virtualize {
     extends LanguageVirtualization {
     type Ctx = C
     val debugLevel = 0
-    val failCompilation: Boolean = false
     val virtualizeFunctions: Boolean = false
-    val virtualizeVal: Boolean = false
-
+    val virtualizeValDef: Boolean = false
     override val restrictDefinitions: Boolean = false
   }
 }

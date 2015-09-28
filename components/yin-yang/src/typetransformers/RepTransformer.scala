@@ -2,19 +2,27 @@ package ch.epfl.yinyang.typetransformers
 
 import scala.reflect.macros.blackbox.Context
 
-trait RepTransformerLike[C <: Context] extends PolyTransformerLike[C] { this: TypeTransformer[C] with PolyTransformerLike[C] =>
+trait RepTransformerLike[C <: Context] extends PolyTransformerLike[C] {
+  this: TypeTransformer[C] with PolyTransformerLike[C] =>
+
   import c.universe._
   val IRType = "Rep"
+
   override def constructPolyTree(typeCtx: TypeContext, inType: Type): Tree = inType match {
+
     case TypeRef(pre, sym, Nil) =>
       Ident(inType.typeSymbol.name)
+
     case TypeRef(pre, sym, args) =>
       AppliedTypeTree(Ident(toType(sym)),
         args map { x => constructPolyTree(typeCtx, x) })
+
     case ConstantType(t) =>
       TypeTree(inType)
+
     case another @ _ =>
       super.constructPolyTree(typeCtx, another)
+
   }
 
   def rep(inType: Type): Tree = {
@@ -29,8 +37,10 @@ trait RepTransformerLike[C <: Context] extends PolyTransformerLike[C] { this: Ty
     val universe = c.universe.asInstanceOf[scala.reflect.internal.Types]
 
     ctx match {
+
       case TypeArgCtx | TypeParameterCtx =>
         TypeTree(inType)
+
       case OtherCtx =>
         inType match {
           case inType if isFunctionType(inType) =>

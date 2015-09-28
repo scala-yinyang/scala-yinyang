@@ -18,7 +18,7 @@ import scala.reflect.macros.blackbox.Context
  *
  * Example: When faced with an `if` construct, the `@virtualized`
  * macro annotation will generate a method call:
- * `__ifThenElse(cond, thenp, elsep)`
+ * `$ifThenElse(cond, thenp, elsep)`
  *
  * This method call will be bound to an implementation based on normal
  * rules of scoping.  If it binds to the standard one in this trait,
@@ -40,18 +40,18 @@ trait EmbeddedControls {
   // SI-5778]]).
 
   // Control structures
-  def __ifThenElse[T](cond: Boolean, thenBr: T, elseBr: T): T = macro ifThenElseImpl[T]
-  def __return(expr: Any): Nothing = macro returnImpl
-  def __whileDo(cond: Boolean, body: Unit): Unit = macro whileDoImpl
-  def __doWhile(body: Unit, cond: Boolean): Unit = macro doWhileImpl
+  def $ifThenElse[T](cond: Boolean, thenBr: T, elseBr: T): T = macro ifThenElseImpl[T]
+  def $return(expr: Any): Nothing = macro returnImpl
+  def $whileDo(cond: Boolean, body: Unit): Unit = macro whileDoImpl
+  def $doWhile(body: Unit, cond: Boolean): Unit = macro doWhileImpl
 
-  def __valDef[T](init: T): T = macro valDefImpl[T]
-  def __varDef[T](init: T): T = macro varDefImpl[T]
-  def __lazyValDef[T](init: T): T = macro lazyValDefImpl[T]
-  def __read[T](init: T): T = macro readImpl[T]
-  def __assign[T](lhs: T, rhs: T): Unit = macro assignImpl[T]
-  def __try[T](body: T, catches: Throwable => T, finalizer: T): T = macro tryImpl[T]
-  def __throw(t: Throwable): Nothing = macro throwImpl
+  def $valDef[T](init: T): T = macro valDefImpl[T]
+  def $varDef[T](init: T): T = macro varDefImpl[T]
+  def $lazyValDef[T](init: T): T = macro lazyValDefImpl[T]
+  def $read[T](init: T): T = macro readImpl[T]
+  def $assign[T](lhs: T, rhs: T): Unit = macro assignImpl[T]
+  def $try[T](body: T, catches: Throwable => T, finalizer: T): T = macro tryImpl[T]
+  def $throw(t: Throwable): Nothing = macro throwImpl
 
   // Infix methods for `Any` methods
   def infix_==(x1: Any, x2: Any): Boolean = macro any_==

@@ -9,6 +9,7 @@ trait BaseYinYang {
    */
   type TypeRep[T]
   def runtimeType[T: TypeRep]: TypeRep[T]
+
   /**
    * Returns whether and how each hole is needed for compilation.
    *   @see [[VarType]] for details about the different types.

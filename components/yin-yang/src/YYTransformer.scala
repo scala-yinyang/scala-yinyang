@@ -184,7 +184,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
             ${c parse (reflInstance[CodeGenerator](dsl) generateCode className)}
             new ${Ident(TypeName(className))}().apply(..${captured})
           """
-        case tpe if tpe <:< typeOf[Stager] && compilVars.isEmpty =>
+        case tpe if tpe <:< typeOf[Staged] && compilVars.isEmpty =>
           log("COMPILE TIME COMPILED for lifting", 2)
           val retType = deepDealias(block.tree.tpe)
           q"""

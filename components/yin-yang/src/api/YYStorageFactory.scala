@@ -1,5 +1,4 @@
 package ch.epfl.yinyang.api
-
 import scala.collection.Iterator
 
 object YYStorageFactory {

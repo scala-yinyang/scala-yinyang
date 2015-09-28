@@ -1,9 +1,11 @@
 package dsl.la.rep
 
 import ch.epfl.yinyang.api._
-import base._
+import ch.epfl.yinyang.polymorphic._
+import ch.epfl.yinyang.polymorphic.generic._
 import scala.reflect.ClassTag
 import reflect.runtime.universe._
+import base._
 
 trait ClassTagOps extends RepBase {
   //  ClassTags posed a bit of a challenge: You want to keep the original
@@ -112,24 +114,24 @@ trait ScalaVirtualizationDSL extends VirtualControlsBase with VirtualFunctionsBa
   // Members declared in ch.epfl.yinyang.api.Interpreted
   def reset(): Unit = ???
 
-  def __ifThenElse[T](cond: R[Boolean], thenBr: R[T], elseBr: R[T]): R[T] = ???
-  def __return(expr: R[Any]): R[Nothing] = ???
-  def __assign[T](lhs: R[T], rhs: R[T]): R[Unit] = ???
-  def __whileDo(cond: R[Boolean], body: R[Unit]): R[Unit] = ???
-  def __doWhile(body: R[Unit], cond: R[Boolean]): R[Unit] = ???
-  def __varDef[T](init: R[T]): R[T] = ???
-  def __read[T](init: R[T]): R[T] = ???
-  def __lazyValDef[T](init: R[T]): R[T] = ???
-  def __valDef[T](init: R[T]): R[T] = ???
-  def __try[T](body: R[T], b: R[Throwable => T], finalizer: R[T]): T = ???
-  def __throw(e: R[Throwable]): R[Nothing] = ???
+  def $ifThenElse[T](cond: R[Boolean], thenBr: R[T], elseBr: R[T]): R[T] = ???
+  def $return(expr: R[Any]): R[Nothing] = ???
+  def $assign[T](lhs: R[T], rhs: R[T]): R[Unit] = ???
+  def $whileDo(cond: R[Boolean], body: R[Unit]): R[Unit] = ???
+  def $doWhile(body: R[Unit], cond: R[Boolean]): R[Unit] = ???
+  def $varDef[T](init: R[T]): R[T] = ???
+  def $read[T](init: R[T]): R[T] = ???
+  def $lazyValDef[T](init: R[T]): R[T] = ???
+  def $valDef[T](init: R[T]): R[T] = ???
+  def $try[T](body: => R[T], b: R[Throwable => T], finalizer: => R[T]): R[T] = ???
+  def $throw(e: R[Throwable]): R[Nothing] = ???
 
-  def __app[U](f: R[() => U]): () => R[U] = ???
-  def __app[T_1, U](f: R[T_1 => U]): R[T_1] => R[U] = ???
-  def __app[T_1, T_2, U](f: R[(T_1, T_2) => U]): (R[T_1], R[T_2]) => R[U] = ???
-  def __lambda[U](f: () => R[U]): R[() => U] = ???
-  def __lambda[T_1, U](f: R[T_1] => R[U]): R[T_1 => U] = ???
-  def __lambda[T_1, T_2, U](f: (R[T_1], R[T_2]) => R[U]): R[(T_1, T_2) => U] = ???
+  def $app[U](f: R[() => U]): () => R[U] = ???
+  def $app[T_1, U](f: R[T_1 => U]): R[T_1] => R[U] = ???
+  def $app[T_1, T_2, U](f: R[(T_1, T_2) => U]): (R[T_1], R[T_2]) => R[U] = ???
+  def $lam[U](f: () => R[U]): R[() => U] = ???
+  def $lam[T_1, U](f: R[T_1] => R[U]): R[T_1 => U] = ???
+  def $lam[T_1, T_2, U](f: (R[T_1], R[T_2]) => R[U]): R[(T_1, T_2) => U] = ???
 
   def infix_hashCode(t: R[Any]): R[Int] = ???
   def infix_!=(lhs: R[Any], rhs: R[Any]): R[Boolean] = ???
@@ -291,7 +293,7 @@ trait MatchingOps extends RepBase {
 }
 
 trait IfThenElseDSL extends RepBase with BooleanDSL {
-  def __ifThenElse[T](c: => R[Boolean], t: R[T], e: R[T]) = ???
+  def $ifThenElse[T](c: => R[Boolean], t: R[T], e: R[T]) = ???
 }
 
 trait VectorDSL
@@ -300,7 +302,7 @@ trait VectorDSL
   with ScalaVirtualizationDSL with MatchingOps with FullyStaged {
 
   def compile[T: TypeRep, Ret](unstableHoleIds: Set[Int]): Ret = ???
-  def generateCode(className: String, unstableHoleIds: Set[Int]): String = ???
+  def generateCode(className: String): String = ???
   def interpret[T: TypeTag](params: Any*) = ???
 
   type Vector[T] = dsl.la.Vector[T]

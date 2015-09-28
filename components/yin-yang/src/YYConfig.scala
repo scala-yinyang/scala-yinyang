@@ -16,6 +16,6 @@ trait YYConfig {
   val codeCacheSize: Int = config("codeCacheSize").asInstanceOf[Int]
   val minimumCountToStabilize: Int = config("minimumCountToStabilize").asInstanceOf[Int]
   val virtualizeFunctions: Boolean = config("virtualizeFunctions").asInstanceOf[Boolean]
-  val virtualizeVal: Boolean = config("virtualizeVal").asInstanceOf[Boolean]
+  val virtualizeValDef: Boolean = config("virtualizeValDef").asInstanceOf[Boolean]
   val failCompilation: Boolean = config("failCompilation").asInstanceOf[Boolean]
 }

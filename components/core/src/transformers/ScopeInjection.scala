@@ -38,19 +38,6 @@ trait ScopeInjection extends MacroModule with TransformationUtils {
     def injectModule(t: Tree): Tree =
       Ident(TermName(t.toString.replaceAll("\\.this", "").replaceAll("`package`", "package")).encodedName)
 
-    object MultipleApply {
-      def unapply(value: Tree): Option[(Tree, List[List[Tree]])] = value match {
-        case Apply(x, y) =>
-          Some(x match {
-            case MultipleApply(rx, ry) =>
-              (rx, y :: ry)
-            case _ =>
-              (x, y :: Nil)
-          })
-        case _ => None
-      }
-    }
-
     /*
      * Translation rules:
      *   [[x.y.z.obj.method]] ~> this.`x.y.z.obj`.method
@@ -65,7 +52,7 @@ trait ScopeInjection extends MacroModule with TransformationUtils {
         case s @ Select(inn, name) if inn.symbol.isModule => Select(transform(inn), name)
         case _ => super.transform(tree)
 
-        // Optimization: automatically add implicit calls to improve compilation speed.
+        // TODO: optimization: automatically add implicit calls to improve compilation speed.
         // case MultipleApply(lhs @ Select(inn, name), argss) if !inn.symbol.isModule =>
         //   val newqqc = transform(inn)
         //   val tlhs: Tree = implicitTrans.map(_(inn)) getOrElse lhs

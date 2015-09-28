@@ -5,9 +5,10 @@ import reflect.ClassTag
 import reflect.runtime.universe.TypeTag
 
 /**
- * Base trait for interpreted DSLs.
+ * Base trait for program DSLs.
  */
-trait Stager { this: BaseYinYang =>
+trait Staged { this: BaseYinYang =>
 
   def stage[T](): T
+
 }

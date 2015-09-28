@@ -1,13 +1,11 @@
-package base
-
-package polymorphic {
-
+import base._
+package ch.epfl.yinyang.polymorphic {
   trait VirtualControlsBase extends RepBase {
     def $ifThenElse[T](cnd: R[Boolean], thn: R[T], els: R[T]): R[T]
     def $return(expr: R[Any]): R[Nothing]
     def $whileDo(cnd: R[Boolean], body: R[Unit]): R[Unit]
     def $doWhile(body: R[Unit], cond: R[Boolean]): R[Unit]
-    def $try[T](body: => R[T], b: R[Throwable => T], fin: R[T]): T
+    def $try[T](body: => R[T], b: R[Throwable => T], fin: => R[T]): R[T]
     def $throw(e: R[Throwable]): R[Nothing]
   }
 
@@ -74,7 +72,7 @@ package identity {
     def $throw(t: Throwable): Nothing
 
     def $valDef[T](init: T): T
-    def $lazyValDef[T](init: T): T
+    def $lazyValDef[T](init: => T): T
     def $varDef[T](init: T): T
     def $read[T](init: T): T
     def $assign[T](lhs: T, rhs: T): Unit
@@ -137,7 +135,7 @@ package custom {
     type Function2[T_1, T_2, U]
     def $app[U](f: Function0[U]): () => U
     def $app[T_1, U](f: Function1[T_1, U]): T_1 => U
-    def $app[T_1, T_2, U](f: Function2[T_1, T_2] => U): (T_1, T_2) => U
+    def $app[T_1, T_2, U](f: Function2[T_1, T_2, U]): (T_1, T_2) => U
 
     def $lam[U](f: () => U): Function0[U]
     def $lam[T_1, U](f: T_1 => U): Function1[T_1, U]
@@ -173,4 +171,3 @@ package custom {
     def infix_wait(x: AnyRef, timeout: Long, nanos: Int): Unit
   }
 }
-

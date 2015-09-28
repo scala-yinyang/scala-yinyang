@@ -23,6 +23,26 @@ trait TransformationUtils extends MacroModule {
   import c.universe._
   import internal.decorators._
 
+  object MultipleTypeApply {
+    def unapply(value: Tree): Option[(Tree, List[Tree], List[List[Tree]])] = value match {
+
+      case Apply(x, y) =>
+        Some(x match {
+          case MultipleTypeApply(lhs, targs, argss) =>
+            (lhs, targs, y :: argss)
+          case TypeApply(lhs, targs) =>
+            (lhs, targs, Nil)
+          case _ =>
+            (x, Nil, y :: Nil)
+        })
+
+      case TypeApply(lhs, targs) =>
+        Some((lhs, targs, Nil))
+
+      case _ => None
+    }
+  }
+
   /* These two should be unified */
   def method(recOpt: Option[Tree], methName: String, args: List[List[Tree]], targs: List[Tree] = Nil): Tree = {
     val calleeName = TermName(methName)
@@ -76,15 +96,6 @@ trait TransformationUtils extends MacroModule {
   def log(s: => String, level: Int = 0) = if (debugLevel > level) println(s)
 
   def debugLevel: Int
-
-  // TODO (VJ) Removed UnstageBlock from all transformers as these unrelated features.
-  object UnstageBlock {
-    def unapply(tree: Tree): Option[Tree] = tree match {
-      case q"unstage($body)" => Some(body)
-      case q"ch.epfl.yinyang.api.`package`.unstage[$t]($body)" => Some(body)
-      case _ => None
-    }
-  }
 
   /*
    * Utility methods for logging.

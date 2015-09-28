@@ -50,7 +50,7 @@ trait ScalaCompile { this: CodeGenerator =>
     val className = "staged$" + compileCount
     compileCount += 1
 
-    val source = generateCode(className, unstableHoleIds)
+    val source = generateCode(className)
 
     if (dumpGeneratedCode) println(source)
 

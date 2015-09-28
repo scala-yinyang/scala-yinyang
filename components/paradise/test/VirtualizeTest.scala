@@ -5,7 +5,7 @@ import org.scalatest.{ FlatSpec, ShouldMatchers }
 
 class VirtualizeSpec extends FlatSpec with ShouldMatchers with EmbeddedControls {
 
-  def __ifThenElse[T](cs: List[Boolean], tb: => T, eb: => T): T = {
+  def $ifThenElse[T](cs: List[Boolean], tb: => T, eb: => T): T = {
     if (cs forall (_ == true)) tb else eb
   }
 
@@ -14,7 +14,7 @@ class VirtualizeSpec extends FlatSpec with ShouldMatchers with EmbeddedControls 
   }
 
   "newVarInt" should "double int" in {
-    def __varDef(init: Int): Int = init + init
+    def $varDef(init: Int): Int = init + init
 
     @virtualize
     def virtualizeInt(str: Int) = {
@@ -26,7 +26,7 @@ class VirtualizeSpec extends FlatSpec with ShouldMatchers with EmbeddedControls 
   }
 
   "newVarString" should "double string" in {
-    def __varDef(init: String): String = init + init
+    def $varDef(init: String): String = init + init
 
     @virtualize
     def virtualizeString(str: String) = {
@@ -71,7 +71,7 @@ class VirtualizeSpec extends FlatSpec with ShouldMatchers with EmbeddedControls 
     VirtualizeIfTraitTest(List(true, true)) should be("yep")
   }
 
-  // Should use default `__ifThenElse` from EmbeddedControls.
+  // Should use default `$ifThenElse` from EmbeddedControls.
   "defaultIfTest" should "be virtualized" in {
 
     @virtualize
@@ -84,11 +84,11 @@ class VirtualizeSpec extends FlatSpec with ShouldMatchers with EmbeddedControls 
     defaultIfTest(true) should be("yep")
   }
 
-  // Should use inner virtualized `__ifThenElse`
+  // Should use inner virtualized `$ifThenElse`
   "virtualizeInnerIfTest" should "be virtualized" in {
 
-    // This overrides the `__ifThenElse` in `EmbeddedControls`
-    def __ifThenElse[T](c: Boolean, thenBr: => T, elseBr: => T): T =
+    // This overrides the `$ifThenElse` in `EmbeddedControls`
+    def $ifThenElse[T](c: Boolean, thenBr: => T, elseBr: => T): T =
       if (!c) thenBr else elseBr
 
     @virtualize
