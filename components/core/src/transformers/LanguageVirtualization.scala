@@ -30,11 +30,14 @@ import scala.collection.mutable
  *   t == t1                =>       infix_==(t, t1)
  *   t != t1                =>       infix_!=(t, t1)
  *   t.##                   =>       infix_##(t)
- *   t.equals t1            =>       infix_equals(t, t1)
- *   t.hashCode             =>       infix_hashCode(t)
  *   t.asInstanceOf[T]      =>       infix_asInstanceOf[T](t)
  *   t.isInstanceOf[T]      =>       infix_isInstanceOf[T](t)
+ *   t.getClass             =>       infix_getClass(t)
+ *
+ *   // configurable
  *   t.toString             =>       infix_toString(t)
+ *   t.hashCode             =>       infix_hashCode(t)
+ *   t.equals t1            =>       infix_equals(t, t1)
  * }}}
  *
  * ===Vritualization of `AnyRef` methods===
@@ -72,6 +75,7 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
   val virtualizeVal: Boolean
   val nameBindings: Boolean = false
   val restrictDefinitions: Boolean = true
+  val translateNonFinalUniversal: Boolean = true
 
   def virtualize(t: Tree): (Tree, Seq[DSLFeature]) = VirtualizationTransformer(t)
 
@@ -177,10 +181,10 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
         case Apply(lhs @ Select(qualifier, TermName("$hash$hash")), List()) =>
           liftFeature(None, "infix_$hash$hash", List(qualifier))
 
-        case Apply(lhs @ Select(qualifier, TermName("equals")), List(arg)) =>
+        case Apply(lhs @ Select(qualifier, TermName("equals")), List(arg)) if translateNonFinalUniversal =>
           liftFeature(None, "infix_equals", List(qualifier, arg))
 
-        case Apply(lhs @ Select(qualifier, TermName("hashCode")), List()) =>
+        case Apply(lhs @ Select(qualifier, TermName("hashCode")), List()) if translateNonFinalUniversal =>
           liftFeature(None, "infix_hashCode", List(qualifier))
 
         case TypeApply(Select(qualifier, TermName("asInstanceOf")), targs) =>
@@ -189,7 +193,10 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
         case TypeApply(Select(qualifier, TermName("isInstanceOf")), targs) =>
           liftFeature(None, "infix_isInstanceOf", List(qualifier), targs)
 
-        case Apply(lhs @ Select(qualifier, TermName("toString")), List()) =>
+        case TypeApply(Select(qualifier, TermName("getClass"))) =>
+          liftFeature(None, "infix_getClass", List(qualifier), Nil)
+
+        case Apply(lhs @ Select(qualifier, TermName("toString")), List()) if translateNonFinalUniversal =>
           liftFeature(None, "infix_toString", List(qualifier))
 
         case Apply(lhs @ Select(qualifier, TermName("eq")), List(arg)) =>

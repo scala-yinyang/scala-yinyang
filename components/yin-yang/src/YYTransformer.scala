@@ -105,8 +105,8 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
         ((injectImport _) andThen
           PreProcess andThen
           AscriptionTransformer andThen
-          LiftLiteralTransformer(toLifts, toMixed) andThen
           (x => VirtualizationTransformer(x)._1) andThen
+          LiftLiteralTransformer(toLifts, toMixed) andThen
           TypeTreeTransformer andThen
           ScopeInjectionTransformer andThen
           HoleTransformer((toHoles ++ toMixed).distinct, className) andThen
