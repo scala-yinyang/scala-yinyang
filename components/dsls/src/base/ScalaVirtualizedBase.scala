@@ -1,6 +1,7 @@
 import base._
 package ch.epfl.yinyang.polymorphic {
-  trait VirtualControlsBase extends RepBase {
+
+  trait VirtualControlsBase extends PolymorphicBase {
     def $ifThenElse[T](cnd: R[Boolean], thn: R[T], els: R[T]): R[T]
     def $return(expr: R[Any]): R[Nothing]
     def $whileDo(cnd: R[Boolean], body: R[Unit]): R[Unit]
@@ -9,7 +10,7 @@ package ch.epfl.yinyang.polymorphic {
     def $throw(e: R[Throwable]): R[Nothing]
   }
 
-  trait VirtualVariablesBase extends RepBase {
+  trait VirtualVariablesBase extends PolymorphicBase {
     def $valDef[T](init: R[T]): R[T]
     def $lazyValDef[T](init: R[T]): R[T]
     def $varDef[T](init: R[T]): R[T]
@@ -17,7 +18,7 @@ package ch.epfl.yinyang.polymorphic {
     def $assign[T](lhs: R[T], rhs: R[T]): R[Unit]
   }
 
-  trait VirtualAnyBase extends RepBase {
+  trait VirtualAnyBase extends PolymorphicBase {
     def infix_==(x1: R[Any], x2: R[Any]): R[Boolean]
     def infix_!=(x1: R[Any], x2: R[Any]): R[Boolean]
     def infix_##(x: R[Any]): R[Int]
@@ -26,7 +27,7 @@ package ch.epfl.yinyang.polymorphic {
     def infix_getClass(x: R[Any]): R[Class[_]]
   }
 
-  trait VirtualAnyRefBase extends RepBase {
+  trait VirtualAnyRefBase extends PolymorphicBase {
     def infix_eq(x1: R[AnyRef], x2: R[AnyRef]): R[Boolean]
     def infix_ne(x1: R[AnyRef], x2: R[AnyRef]): R[Boolean]
     def infix_notify(x: R[AnyRef]): R[Unit]
@@ -38,7 +39,7 @@ package ch.epfl.yinyang.polymorphic {
   }
 
   package generic {
-    trait VirtualFunctionsBase extends RepBase {
+    trait VirtualFunctionsBase extends PolymorphicBase {
       def $app[U](f: R[() => U]): () => R[U]
       def $app[T_1, U](f: R[T_1 => U]): R[T_1] => R[U]
       def $app[T_1, T_2, U](f: R[(T_1, T_2) => U]): (R[T_1], R[T_2]) => R[U]
@@ -50,7 +51,7 @@ package ch.epfl.yinyang.polymorphic {
   }
 
   package inlining {
-    trait VirtualFunctionsBase extends RepBase {
+    trait VirtualFunctionsBase extends PolymorphicBase {
       def $app[U](f: R[() => U]): () => R[U]
       def $app[T_1, U](f: R[T_1] => R[U]): R[T_1] => R[U]
       def $app[T_1, T_2, U](f: (R[T_1], R[T_2]) => R[U]): (R[T_1], R[T_2]) => R[U]

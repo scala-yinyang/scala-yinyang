@@ -7,7 +7,7 @@ import scala.reflect.ClassTag
 import reflect.runtime.universe._
 import base._
 
-trait ClassTagOps extends RepBase {
+trait ClassTagOps extends PolymorphicBase {
   //  ClassTags posed a bit of a challenge: You want to keep the original
   //  class tags created by the compiler, as rewiring everything is too
   //  cumbersome, but at the same time you want to bridge the types from
@@ -19,7 +19,7 @@ trait ClassTagOps extends RepBase {
   val ClassTag = scala.reflect.ClassTag
 }
 
-trait NumericOps extends RepBase {
+trait NumericOps extends PolymorphicBase {
   type Numeric[T] = NumericOps[T]
 
   trait NumericOps[T] {
@@ -137,7 +137,7 @@ trait ScalaVirtualizationDSL extends VirtualControlsBase with VirtualFunctionsBa
   def infix_!=(lhs: R[Any], rhs: R[Any]): R[Boolean] = ???
 }
 
-trait IntDSL extends RepBase {
+trait IntDSL extends PolymorphicBase {
   //to overload int operations
   implicit object IntOverloaded
 
@@ -183,7 +183,7 @@ trait IntDSL extends RepBase {
   //  implicit def intOpsToDoubleOps(conv: R[Int]): R[Double] = ???
 }
 
-trait DoubleDSL extends RepBase {
+trait DoubleDSL extends PolymorphicBase {
 
   implicit object DoubleOverloaded
 
@@ -223,7 +223,7 @@ trait DoubleDSL extends RepBase {
   }
 }
 
-trait ArrayDSL extends RepBase {
+trait ArrayDSL extends PolymorphicBase {
 
   trait ArrayOps[T] {
     def apply(i: R[Int]): R[T]
@@ -253,7 +253,7 @@ trait ArrayDSL extends RepBase {
 
 }
 
-//trait TupleDSL extends RepBase {
+//trait TupleDSL extends PolymorphicBase {
 //
 //  trait Tuple2Ops[T1, T2] extends AnyRef {
 //    def _1: R[T1]
@@ -274,14 +274,14 @@ trait ArrayDSL extends RepBase {
 //
 //}
 
-trait BooleanDSL extends RepBase {
+trait BooleanDSL extends PolymorphicBase {
   implicit object LiftBoolean extends LiftEvidence[Boolean, R[Boolean]] {
     def lift(v: Boolean): R[Boolean] = ???
     def hole(tpe: TypeTag[Boolean], symbolId: Int): R[Boolean] = ???
   }
 }
 
-trait MatchingOps extends RepBase {
+trait MatchingOps extends PolymorphicBase {
   object `ch.epfl.yinyang.runtime.package` {
     object __match {
       def zero: R[Option[Nothing]] = ???
@@ -292,7 +292,7 @@ trait MatchingOps extends RepBase {
   }
 }
 
-trait IfThenElseDSL extends RepBase with BooleanDSL {
+trait IfThenElseDSL extends PolymorphicBase with BooleanDSL {
   def $ifThenElse[T](c: => R[Boolean], t: R[T], e: R[T]) = ???
 }
 

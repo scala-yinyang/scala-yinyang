@@ -5,6 +5,6 @@ trait Base extends BaseYinYangTypeTag with CodeGenerator {
   def main(): Any
 }
 
-trait RepBase extends Base {
+trait PolymorphicBase extends Base {
   type R[+T]
 }
