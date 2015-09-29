@@ -114,14 +114,14 @@ trait ScalaVirtualizationDSL extends VirtualControlsBase with VirtualFunctionsBa
   // Members declared in ch.epfl.yinyang.api.Interpreted
   def reset(): Unit = ???
 
-  def $ifThenElse[T](cond: R[Boolean], thenBr: R[T], elseBr: R[T]): R[T] = ???
+  def $ifThenElse[T](cond: R[Boolean], thenBr: => R[T], elseBr: => R[T]): R[T] = ???
   def $return(expr: R[Any]): R[Nothing] = ???
   def $assign[T](lhs: R[T], rhs: R[T]): R[Unit] = ???
-  def $whileDo(cond: R[Boolean], body: R[Unit]): R[Unit] = ???
-  def $doWhile(body: R[Unit], cond: R[Boolean]): R[Unit] = ???
+  def $whileDo(cond: R[Boolean], body: => R[Unit]): R[Unit] = ???
+  def $doWhile(body: => R[Unit], cond: R[Boolean]): R[Unit] = ???
   def $varDef[T](init: R[T]): R[T] = ???
   def $read[T](init: R[T]): R[T] = ???
-  def $lazyValDef[T](init: R[T]): R[T] = ???
+  def $lazyValDef[T](init: => R[T]): R[T] = ???
   def $valDef[T](init: R[T]): R[T] = ???
   def $try[T](body: => R[T], b: R[Throwable => T], finalizer: => R[T]): R[T] = ???
   def $throw(e: R[Throwable]): R[Nothing] = ???
