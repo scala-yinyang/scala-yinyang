@@ -1,7 +1,7 @@
 package dsl.print
 
 import ch.epfl.yinyang.api._
-import base._
+import ch.epfl.yinyang.example._
 import ch.epfl.yinyang.polymorphic._
 import ch.epfl.yinyang.polymorphic.generic._
 import scala.collection._
@@ -321,7 +321,7 @@ trait PrintCodeGenerator { self: CodeGenerator =>
   val holes: mutable.ArrayBuffer[BaseHole[_]] = new mutable.ArrayBuffer()
 }
 
-trait MiniIntDSL extends BaseYinYang with VirtualAnyBase {
+trait MiniIntDSL extends BaseYinYang with VirtualAnyBase with Base {
   self: BooleanOps with PrintCodeGenerator =>
 
   type Int = IntOps
@@ -387,7 +387,7 @@ trait MiniIntDSL extends BaseYinYang with VirtualAnyBase {
 
 }
 
-trait BooleanOps extends BaseYinYangTypeTag { self: PrintCodeGenerator =>
+trait BooleanOps extends Base { self: PrintCodeGenerator =>
 
   type Boolean = BooleanOps
 
@@ -423,7 +423,7 @@ trait BooleanOps extends BaseYinYangTypeTag { self: PrintCodeGenerator =>
 
 }
 
-trait MiniUnitDSL extends BaseYinYangTypeTag {
+trait MiniUnitDSL extends Base {
   type Unit = scala.Unit
 
   implicit object LiftUnit extends LiftEvidence[scala.Unit, Unit] {

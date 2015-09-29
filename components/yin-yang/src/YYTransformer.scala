@@ -183,19 +183,19 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
           log("COMPILE TIME COMPILED", 2)
 
           q"""
-            ch.epfl.yinyang.runtime.YYStorage.incrementCompileTimeCompileCount(${programIdTree})
             ${c parse (reflInstance[CodeGenerator](dsl) generateCode className)}
             new ${Ident(TypeName(className))}().apply(..${captured})
           """
-        case tpe if tpe <:< typeOf[Staged] && compilVars.isEmpty =>
+
+        case tpe if tpe <:< typeOf[Reified] && compilVars.isEmpty => // TODO fix issues here!
           log("COMPILE TIME COMPILED for lifting", 2)
           val retType = deepDealias(block.tree.tpe)
           q"""
             $dsl
-            val dslInstance = new ${Ident(TypeName(className))}()
-            import dslInstance._
-            dslInstance.stage[dslInstance.Rep[$retType]]()
+            val dslInstance = new ${Ident(TypeName(className))}
+            dslInstance.reify(dslInstance.runtimeType[$retType])
           """
+
         case _ =>
           /*
            * Requires run-time variables => execute at run-time and install a recompilation guard.
@@ -228,16 +228,6 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
                   ${programId}, cache, compilVars)
                 program.apply(..${sortedHoles})
               """
-            // TODO(vsalvis) How do optional variables interact with interpretation?
-            // FIXME: this is not tested! Types probably wrong
-            // case t if t <:< typeOf[Interpreted] => q"""
-            //   val dslInstance = ${c parse YYCacheString}
-            //   val compilVars: scala.Array[Any] = scala.Array(..$compilVars)
-            //   ${compilVars.map({ k => "dslInstance.captured$" + k.symbol.toString + " = " + k.symbol.toString }) mkString "\n"}
-            //   def invalidate(): () => Any = () => dslInstance.reset
-            //   dslInstance.check(compilVars, invalidate)
-            //   dslInstance.interpret[${retTypeString}](..${sortedHoles})
-            // """
           }
           Block(List(dsl), guardedExecute)
       }

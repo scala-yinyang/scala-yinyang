@@ -5,7 +5,7 @@ import ch.epfl.yinyang.polymorphic._
 import ch.epfl.yinyang.polymorphic.generic._
 import scala.reflect.ClassTag
 import reflect.runtime.universe._
-import base._
+import ch.epfl.yinyang.example._
 
 trait ClassTagOps extends PolymorphicBase {
   //  ClassTags posed a bit of a challenge: You want to keep the original

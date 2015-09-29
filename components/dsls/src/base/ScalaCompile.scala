@@ -1,4 +1,4 @@
-package base
+package ch.epfl.yinyang.example
 
 import ch.epfl.yinyang.api._
 import scala.tools.nsc._

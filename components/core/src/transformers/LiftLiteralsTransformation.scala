@@ -31,23 +31,19 @@ trait LiftLiteralTransformation extends MacroModule with TransformationUtils wit
     def lift(t: List[Tree]) = genApply("lift", t)
     def mixed(t: List[Tree]) = genApply("mixed", t)
 
-    //   TODO this translation needs to happen
-    //   [[x.y.z.k.this.f]] if f is a field ~> lift(x.y.z.k.this.f)
-    //   [[x.y.z.k.this.m]] if m is a method ~> lift(x.y.z.k.this.m) or error (config)
-
     override def transform(tree: Tree): Tree = {
       tree match {
-        case t @ Literal(Constant(_)) =>
-          lift(List(t))
+        case t @ Literal(Constant(_)) => lift(List(t))
+
         case t @ Ident(n) =>
+
           if (toLift.contains(t.symbol))
-            lift(List(Ident(TermName("captured$" + t.name.decodedName.toString))))
+            lift(List(Ident(TermName(t.name.decodedName.toString))))
           else if (toMixed.contains(t.symbol))
-            mixed(List(Ident(TermName("captured$" + t.name.decodedName.toString)), t))
+            mixed(List(Ident(TermName(t.name.decodedName.toString)), t))
           else Ident(n)
 
-        case _ =>
-          super.transform(tree)
+        case _ => super.transform(tree)
       }
     }
   }

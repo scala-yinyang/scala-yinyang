@@ -1,4 +1,4 @@
-import base._
+import ch.epfl.yinyang.example._
 package ch.epfl.yinyang.polymorphic {
 
   trait VirtualControlsBase extends PolymorphicBase {

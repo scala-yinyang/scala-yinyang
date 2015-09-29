@@ -42,6 +42,10 @@ trait HoleTransformation extends MacroModule with TransformationUtils {
    * `hole[T](classTag[T], holeId)` and builds the holeTable mapping from
    * holeIds to symbolIds.
    */
+  //  TODO this translation needs to happen properly. Absence of explicit lifting should be handled by config. What should
+  //  be converted to lift, and what to hole, and what should be rejected.
+  //   [[x.y.z.k.this.f]] if f is a field ~> hole(x.y.z.k.this.f)
+  //   [[x.y.z.k.this.m(...,...,...)]] if m is a method ~> hole(x.y.z.k.this.m) // (config) to reject or accept?
   class HoleTransformer(toHoles: List[Int]) extends Transformer {
 
     override def transform(tree: Tree): Tree = tree match {
