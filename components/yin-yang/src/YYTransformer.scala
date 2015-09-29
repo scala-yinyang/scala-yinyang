@@ -103,10 +103,13 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
        */
       def transform(toHoles: List[Symbol], toMixed: List[Symbol], toLifts: List[Symbol])(block: Tree): Tree =
         ((injectImport _) andThen
+          (c.typecheck(_)) andThen // virtualizes pattern matching
           PreProcess andThen
           AscriptionTransformer andThen
           (x => VirtualizationTransformer(x)._1) andThen
           LiftLiteralTransformer(toLifts, toMixed) andThen
+          (c.typecheck(_)) andThen // returns the lost type information
+          (removeImport _) andThen // removes the shallow imports
           TypeTreeTransformer andThen
           ScopeInjectionTransformer andThen
           HoleTransformer((toHoles ++ toMixed).distinct, className) andThen
@@ -412,11 +415,13 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
     }
   """
 
-  def injectImport(body: Tree): Tree = {
-    val typed = c.typecheck(q"""import _root_.ch.epfl.yinyang.runtime._;
-      ${c.untypecheck(body)}
-    """)
-    val Block(List(_), virtualizedBody) = typed
+  def injectImport(body: Tree): Tree = q"""
+      import _root_.ch.epfl.yinyang.shallow._;
+      ${body}
+    """
+
+  def removeImport(body: Tree): Tree = {
+    val Block(List(_), virtualizedBody) = body
     virtualizedBody
   }
 }

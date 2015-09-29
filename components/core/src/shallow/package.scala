@@ -4,7 +4,7 @@ package ch.epfl.yinyang
  * Pattern matcher for the direct embedding.
  * Note: Should be imported only by the framework--never manually.
  */
-package object runtime {
+package object shallow {
   object __match {
     def zero: Option[Nothing] = None
     def one[T](x: T): Option[T] = Some(x)
@@ -15,6 +15,9 @@ package object runtime {
   }
 
   // Used for type-checking the intermediate steps of the translation.
+
+  def hole[T](id: Long): T = ???
+  def lift[T](v: T): T = ???
   def $ifThenElse[T](cond: Boolean, thenBr: => T, elseBr: => T): T = ???
   def $return(expr: Any): Nothing = ???
   def $whileDo(cond: Boolean, body: => Unit): Unit = ???
