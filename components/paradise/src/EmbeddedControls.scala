@@ -54,27 +54,27 @@ trait EmbeddedControls {
   def $throw(t: Throwable): Nothing = macro throwImpl
 
   // Infix methods for `Any` methods
-  def infix_==(x1: Any, x2: Any): Boolean = macro any_==
-  def infix_!=(x1: Any, x2: Any): Boolean = macro any_!=
-  def infix_##(x: Any): Int = macro any_##
-  def infix_equals(x1: Any, x2: Any): Boolean = macro any_equals
-  def infix_hashCode(x: Any): Int = macro any_hashCode
-  def infix_asInstanceOf[T](x: Any): T = macro any_asInstanceOf[T]
-  def infix_isInstanceOf[T](x: Any): Boolean = macro any_isInstanceOf[T]
-  def infix_toString(x: Any): String = macro any_toString
-  def infix_getClass(x: Any): Class[_] = macro any_getClass
+  def $infix_==(x1: Any, x2: Any): Boolean = macro any_==
+  def $infix_!=(x1: Any, x2: Any): Boolean = macro any_!=
+  def $infix_##(x: Any): Int = macro any_##
+  def $infix_equals(x1: Any, x2: Any): Boolean = macro any_equals
+  def $infix_hashCode(x: Any): Int = macro any_hashCode
+  def $infix_asInstanceOf[T](x: Any): T = macro any_asInstanceOf[T]
+  def $infix_isInstanceOf[T](x: Any): Boolean = macro any_isInstanceOf[T]
+  def $infix_toString(x: Any): String = macro any_toString
+  def $infix_getClass(x: Any): Class[_] = macro any_getClass
 
   // Infix methods for `AnyRef` methods
-  def infix_eq(x1: AnyRef, x2: AnyRef): Boolean = macro anyRef_eq
-  def infix_ne(x1: AnyRef, x2: AnyRef): Boolean = macro anyRef_ne
-  def infix_notify(x: AnyRef): Unit = macro anyRef_notify
-  def infix_notifyAll(x: AnyRef): Unit = macro anyRef_notifyAll
-  def infix_synchronized[T](x: AnyRef, body: T): T = macro anyRef_synchronized[T]
-  def infix_wait(x: AnyRef): Unit = macro anyRef_wait0
-  def infix_wait(x: AnyRef, timeout: Long): Unit = macro anyRef_wait1
-  def infix_wait(x: AnyRef, timeout: Long, nanos: Int): Unit = macro anyRef_wait2
-  def infix_clone(x: AnyRef): AnyRef = macro anyRef_clone
-  def infix_finalize(x: AnyRef): Unit = macro anyRef_finalize
+  def $infix_eq(x1: AnyRef, x2: AnyRef): Boolean = macro anyRef_eq
+  def $infix_ne(x1: AnyRef, x2: AnyRef): Boolean = macro anyRef_ne
+  def $infix_notify(x: AnyRef): Unit = macro anyRef_notify
+  def $infix_notifyAll(x: AnyRef): Unit = macro anyRef_notifyAll
+  def $infix_synchronized[T](x: AnyRef, body: T): T = macro anyRef_synchronized[T]
+  def $infix_wait(x: AnyRef): Unit = macro anyRef_wait0
+  def $infix_wait(x: AnyRef, timeout: Long): Unit = macro anyRef_wait1
+  def $infix_wait(x: AnyRef, timeout: Long, nanos: Int): Unit = macro anyRef_wait2
+  def $infix_clone(x: AnyRef): AnyRef = macro anyRef_clone
+  def $infix_finalize(x: AnyRef): Unit = macro anyRef_finalize
 }
 
 /**

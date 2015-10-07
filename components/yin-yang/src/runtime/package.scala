@@ -1,10 +1,12 @@
 package ch.epfl.yinyang
 
+import reflect.runtime.universe._
+
 /*
  * Pattern matcher for the direct embedding.
  * Note: Should be imported only by the framework--never manually.
  */
-package object runtime {
+package object shallow {
   object __match {
     def zero: Option[Nothing] = None
     def one[T](x: T): Option[T] = Some(x)
@@ -16,6 +18,10 @@ package object runtime {
 
   // Used for type-checking the intermediate steps of the translation.
   // Note: methods do not have an implementation since they should never be executed.
+
+  def lift[T](v: T): T = ???
+  def hole[T](ttag: TypeTag[T], id: Int): T = ???
+
   def $ifThenElse[T](cond: Boolean, thenBr: => T, elseBr: => T): T = ???
   def $return(expr: Any): Nothing = ???
   def $whileDo(cond: Boolean, body: => Unit): Unit = ???
@@ -32,6 +38,7 @@ package object runtime {
   def $infix_==(x1: Any, x2: Any): Boolean = ???
   def $infix_!=(x1: Any, x2: Any): Boolean = ???
   def $infix_##(x: Any): Int = ???
+  def $infix_hashCode(x: Any): Int = ???
   def $infix_asInstanceOf[T](x: Any): T = ???
   def $infix_isInstanceOf[T](x: Any): Boolean = ???
   def $infix_getClass(x: Any): Class[_] = ???

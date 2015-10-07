@@ -9,7 +9,7 @@ class VirtualizeSpec extends FlatSpec with ShouldMatchers with EmbeddedControls 
     if (cs forall (_ == true)) tb else eb
   }
 
-  def infix_==[T](x1: List[T], x2: List[T]): Boolean = {
+  def $infix_==[T](x1: List[T], x2: List[T]): Boolean = {
     (x1 zip x2) forall (p => p._1 == p._2)
   }
 

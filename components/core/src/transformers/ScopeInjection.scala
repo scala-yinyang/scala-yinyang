@@ -10,12 +10,9 @@ trait ScopeInjection extends MacroModule with TransformationUtils {
   import c.universe._
   import internal.decorators._
 
-  val rewireThis: Boolean = false
-  // val implicitTrans: Option[Tree => Tree] = Some[Tree => Tree] { x =>
-  //   println(showRaw(x))
-  //   println(x.tpe)
-  //   q"${TermName("heyho" + x.tpe)}($x)"
-  // }
+  val implicitTrans: Option[Tree => Tree] = Some[Tree => Tree] { x =>
+    q"${TermName("opsOf" + x.tpe)}($x)"
+  }
 
   object ScopeInjectionTransformer extends (Tree => Tree) {
     def apply(tree: Tree) = {
@@ -47,16 +44,19 @@ trait ScopeInjection extends MacroModule with TransformationUtils {
       ident += 1
 
       val result = tree match {
-        case Apply(Select(This(typeNames.EMPTY), TermName("lift")), _) => tree
+        case Apply(Select(This(typeNames.EMPTY), TermName("lift")), _)          => tree
         case s @ Select(inn, name) if inn.symbol.isPackage && s.symbol.isModule => injectModule(s)
-        case s @ Select(inn, name) if inn.symbol.isModule => Select(transform(inn), name)
+        case Select(inn, name) if inn.symbol.isModule                           => Select(transform(inn), name)
+
+        //Optimization: adds implicit arguments manually.
+        case MultipleTypeApply(
+          lhs @ Select(inn, name), targs, argss) if !inn.symbol.isModule && !isFunction(lhs.symbol) =>
+          val newqqc = transform(inn)
+          val tlhs = implicitTrans.map(trans => Select(trans(inn), name)) getOrElse lhs
+          MultipleTypeApply(tlhs, targs, argss.map(_.map(transform)))
+
         case _ => super.transform(tree)
 
-        // TODO: optimization: automatically add implicit calls to improve compilation speed.
-        // case MultipleApply(lhs @ Select(inn, name), argss) if !inn.symbol.isModule =>
-        //   val newqqc = transform(inn)
-        //   val tlhs: Tree = implicitTrans.map(_(inn)) getOrElse lhs
-        //   argss.foldLeft(tlhs)((agg, arg) => Apply(agg, arg.map(transform)))
       }
 
       ident -= 1

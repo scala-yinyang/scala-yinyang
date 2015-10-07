@@ -2,6 +2,10 @@ package ch.epfl.yinyang.api
 
 import reflect.runtime.universe._
 
+/**
+ * Base trait for all YinYang based DSLs. The sole reason for its existence
+ * is the existence of dual type representation.
+ */
 trait BaseYinYang {
   /**
    * Abstraction over different scala runtime types. Once the Manifests are deprecated

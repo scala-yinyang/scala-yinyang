@@ -2,7 +2,7 @@ package ch.epfl.yinyang
 package transformers
 
 import ch.epfl.yinyang._
-import ch.epfl.yinyang.transformers._
+import ch.epfl.yinyang.analysis._
 import scala.reflect.macros.blackbox.Context
 import language.experimental.macros
 import scala.collection.mutable
@@ -62,7 +62,7 @@ import scala.collection.mutable
  *   val x = b              =>       $valDef(b)
  * }}}
  *
- * With `virtualizeNonFinalUniversal`:
+ * With `virtualizeEquals`:
  * {{{
  *   t.toString             =>       infix_toString(t)
  *   t.hashCode             =>       infix_hashCode(t)
@@ -77,7 +77,8 @@ import scala.collection.mutable
  * }}}
  *
  */
-trait LanguageVirtualization extends MacroModule with TransformationUtils with DataDefs {
+trait LanguageVirtualization extends MacroModule with TransformationUtils
+  with DataDefs with FreeIdentAnalysis {
   import c.universe._
 
   /**
@@ -105,7 +106,7 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
   /**
    * Defines virtualizaition of non-final universal methods (e.g., `toString`).
    */
-  val virtualizeNonFinalUniversal: Boolean = true
+  val virtualizeEquals: Boolean = true
 
   /**
    * Defines a prefix for all virtualized methods.
@@ -116,13 +117,14 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
 
   object VirtualizationTransformer {
     def apply(tree: Tree) = {
-      val t = new VirtualizationTransformer().apply(tree)
+      val freeVars = freeVariables(tree)
+      val t = new VirtualizationTransformer(freeVars).apply(tree)
       log("(virtualized, Seq[Features]): " + t, 2)
       t
     }
   }
 
-  private class VirtualizationTransformer extends Transformer {
+  private class VirtualizationTransformer(val freeVars: List[Tree] = Nil) extends Transformer {
     val lifted = mutable.ArrayBuffer[DSLFeature]()
 
     def liftFeature(receiver: Option[Tree], nme: String, args: List[Tree], targs: List[Tree] = Nil, trans: Tree => Tree = transform): Tree = {
@@ -195,9 +197,10 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
           val newRhs =
             if (virtualizeValDef) liftFeature(None, prefix + "valDef", List(rhs) ++ named(sym))
             else transform(rhs)
+
           ValDef(mods, sym, tpt, newRhs)
 
-        case Ident(x) if (tree.symbol.isTerm && (
+        case Ident(x) if (tree.symbol.isTerm && !(freeVars contains tree) && (
           tree.symbol.asTerm.isVar ||
           tree.symbol.asTerm.isLazy ||
           (tree.symbol.asTerm.isVal && virtualizeValDef))) =>
@@ -207,60 +210,60 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
         // Universal methods virtualization
         //
         case Apply(Select(qualifier, TermName("$eq$eq")), List(arg)) =>
-          liftFeature(None, "infix_$eq$eq", List(qualifier, arg))
+          liftFeature(None, prefix + "infix_$eq$eq", List(qualifier, arg))
 
         case Apply(Select(qualifier, TermName("$bang$eq")), List(arg)) =>
-          liftFeature(None, "infix_$bang$eq", List(qualifier, arg))
+          liftFeature(None, prefix + "infix_$bang$eq", List(qualifier, arg))
 
         case Apply(lhs @ Select(qualifier, TermName("$hash$hash")), List()) =>
-          liftFeature(None, "infix_$hash$hash", List(qualifier))
+          liftFeature(None, prefix + "infix_$hash$hash", List(qualifier))
 
-        case Apply(lhs @ Select(qualifier, TermName("equals")), List(arg)) if virtualizeNonFinalUniversal =>
-          liftFeature(None, "infix_equals", List(qualifier, arg))
+        case Apply(lhs @ Select(qualifier, TermName("equals")), List(arg)) if virtualizeEquals =>
+          liftFeature(None, prefix + "infix_equals", List(qualifier, arg))
 
-        case Apply(lhs @ Select(qualifier, TermName("hashCode")), List()) if virtualizeNonFinalUniversal =>
-          liftFeature(None, "infix_hashCode", List(qualifier))
+        case Apply(lhs @ Select(qualifier, TermName("hashCode")), List()) =>
+          liftFeature(None, prefix + "infix_hashCode", List(qualifier))
 
         case TypeApply(Select(qualifier, TermName("asInstanceOf")), targs) =>
-          liftFeature(None, "infix_asInstanceOf", List(qualifier), targs)
+          liftFeature(None, prefix + "infix_asInstanceOf", List(qualifier), targs)
 
         case TypeApply(Select(qualifier, TermName("isInstanceOf")), targs) =>
-          liftFeature(None, "infix_isInstanceOf", List(qualifier), targs)
+          liftFeature(None, prefix + "infix_isInstanceOf", List(qualifier), targs)
 
         case TypeApply(Select(qualifier, TermName("getClass")), targs) =>
-          liftFeature(None, "infix_getClass", List(qualifier), targs)
+          liftFeature(None, prefix + "infix_getClass", List(qualifier), targs)
 
-        case Apply(lhs @ Select(qualifier, TermName("toString")), List()) if virtualizeNonFinalUniversal =>
-          liftFeature(None, "infix_toString", List(qualifier))
+        case Apply(lhs @ Select(qualifier, TermName("toString")), List()) =>
+          liftFeature(None, prefix + "infix_toString", List(qualifier))
 
         case Apply(lhs @ Select(qualifier, TermName("eq")), List(arg)) =>
-          liftFeature(None, "infix_eq", List(qualifier, arg))
+          liftFeature(None, prefix + "infix_eq", List(qualifier, arg))
 
         case Apply(lhs @ Select(qualifier, TermName("ne")), List(arg)) =>
-          liftFeature(None, "infix_ne", List(qualifier, arg))
+          liftFeature(None, prefix + "infix_ne", List(qualifier, arg))
 
         case Apply(Select(qualifier, TermName("notify")), List()) =>
-          liftFeature(None, "infix_notify", List(qualifier))
+          liftFeature(None, prefix + "infix_notify", List(qualifier))
 
         case Apply(Select(qualifier, TermName("notifyAll")), List()) =>
-          liftFeature(None, "infix_notifyAll", List(qualifier))
+          liftFeature(None, prefix + "infix_notifyAll", List(qualifier))
 
         case Apply(Select(qualifier, TermName("synchronized")), List(arg)) =>
-          liftFeature(None, "infix_synchronized", List(qualifier, arg))
+          liftFeature(None, prefix + "infix_synchronized", List(qualifier, arg))
 
         case Apply(TypeApply(Select(qualifier, TermName("synchronized")), targs), List(arg)) =>
-          liftFeature(None, "infix_synchronized", List(qualifier, arg), targs)
+          liftFeature(None, prefix + "infix_synchronized", List(qualifier, arg), targs)
 
         case Apply(Select(qualifier, TermName("wait")), List()) =>
-          liftFeature(None, "infix_wait", List(qualifier))
+          liftFeature(None, prefix + "infix_wait", List(qualifier))
 
         case Apply(Select(qualifier, TermName("wait")), List(arg)
           ) if arg.tpe =:= typeOf[Long] =>
-          liftFeature(None, "infix_wait", List(qualifier, arg))
+          liftFeature(None, prefix + "infix_wait", List(qualifier, arg))
 
         case Apply(Select(qualifier, TermName("wait")), List(arg0, arg1)
           ) if arg0.tpe =:= typeOf[Long] && arg1.tpe =:= typeOf[Int] =>
-          liftFeature(None, "infix_wait", List(qualifier, arg0, arg1))
+          liftFeature(None, prefix + "infix_wait", List(qualifier, arg0, arg1))
 
         case Typed(x, Ident(typeNames.WILDCARD_STAR)) =>
           Typed(liftFeature(None, prefix + "castVarArg", List(x)), Ident(typeNames.WILDCARD_STAR))
@@ -285,13 +288,6 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
     }
 
     object FunctionApply {
-      private val functionArity = 22
-      private val functionSymbols = (0 to functionArity)
-        .map(x => "scala.Function" + x)
-        .map(c.mirror.staticClass)
-
-      def isFunction(methodSymbol: Symbol): Boolean =
-        functionSymbols.contains(methodSymbol.owner)
 
       def unapply(tree: Tree): Option[(Tree, List[Tree], List[Tree])] = tree match {
         case Apply(m @ Select(qualifier, TermName("apply")), args) if isFunction(m.symbol) =>

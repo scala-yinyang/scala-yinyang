@@ -22,9 +22,22 @@ trait TransformationUtils extends MacroModule {
   import c.universe._
   import internal.decorators._
 
-  object MultipleTypeApply {
-    def unapply(value: Tree): Option[(Tree, List[Tree], List[List[Tree]])] = value match {
+  private val functionArity = 22
+  private val functionSymbols = (0 to functionArity)
+    .map(x => "scala.Function" + x)
+    .map(c.mirror.staticClass)
 
+  def isFunction(methodSymbol: Symbol): Boolean =
+    functionSymbols.contains(methodSymbol.owner)
+
+  object MultipleTypeApply {
+
+    def apply(lhs: Tree, targs: List[Tree], argss: List[List[Tree]]): Tree = {
+      val tpeApply = if (targs.isEmpty) lhs else TypeApply(lhs, targs)
+      argss.foldLeft(tpeApply)((agg, args) => Apply(agg, args))
+    }
+
+    def unapply(value: Tree): Option[(Tree, List[Tree], List[List[Tree]])] = value match {
       case Apply(x, y) =>
         Some(x match {
           case MultipleTypeApply(lhs, targs, argss) =>

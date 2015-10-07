@@ -27,9 +27,8 @@ trait LiftLiteralTransformation extends MacroModule with TransformationUtils wit
   class LiftLiteralTransformer(toLift: List[Symbol], toMixed: List[Symbol])
     extends Transformer {
 
-    def genApply(name: String, t: List[Tree]) = Apply(Select(This(typeNames.EMPTY), TermName(name)), t)
-    def lift(t: List[Tree]) = genApply("lift", t)
-    def mixed(t: List[Tree]) = genApply("mixed", t)
+    def lift(t: List[Tree]) = q"lift(..$t)"
+    def mixed(t: List[Tree]) = q"mixed(..$t)"
 
     override def transform(tree: Tree): Tree = {
       tree match {

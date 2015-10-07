@@ -41,6 +41,21 @@ object YYTransformer {
       val preProcessor = preProcessing.getOrElse(new NullPreProcessing[c.type](c))
     }
 
+  /*def apply[C <: Context, T](c: C)(
+    dslComponent: c.Type,
+    tpeTransformer: TypeTransformer[c.type],
+    config: Map[String, Any] = Map(),
+    postProcessing: Option[PostProcessing[c.type]] = None,
+    preProcessing: Option[PreProcessing[c.type]] = None): YYTransformer[c.type, T] = {
+
+    new YYTransformer[c.type, T](c, dslComponent.toString, config withDefault (defaults)) {
+      val typeTransformer = tpeTransformer
+      typeTransformer.className = className
+      val postProcessor = postProcessing.getOrElse(new NullPostProcessing[c.type](c))
+      val preProcessor = preProcessing.getOrElse(new NullPreProcessing[c.type](c))
+    }
+  }*/
+
   protected[yinyang] val uID = new AtomicLong(0)
 }
 
@@ -103,12 +118,12 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
        */
       def transform(toHoles: List[Symbol], toMixed: List[Symbol], toLifts: List[Symbol])(block: Tree): Tree =
         ((injectImport _) andThen
-          (c.typecheck(_)) andThen // virtualizes pattern matching
+          (c.untypecheck(_)) andThen (c.typecheck(_)) andThen // virtualizes pattern matching
           PreProcess andThen
           AscriptionTransformer andThen
           (x => VirtualizationTransformer(x)._1) andThen
           LiftLiteralTransformer(toLifts, toMixed) andThen
-          (c.typecheck(_)) andThen // returns the lost type information
+          (c.untypecheck(_)) andThen (c.typecheck(_)) andThen // returns the lost type information
           (removeImport _) andThen // removes the shallow imports
           TypeTreeTransformer andThen
           ScopeInjectionTransformer andThen
@@ -412,6 +427,20 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
 
   def removeImport(body: Tree): Tree = {
     val Block(List(_), virtualizedBody) = body
-    virtualizedBody
+
+    object DropPackageTransformer extends Transformer {
+      override def transform(tree: Tree): Tree = {
+        tree match {
+          // TODO: Reorganize this better! It is not really only removing imports.
+          case q"ch.epfl.yinyang.shallow.`package`.lift[${ _ }]" => q"lift"
+          case q"ch.epfl.yinyang.shallow.`package`.hole[${ _ }]" => q"hole"
+          case q"ch.epfl.yinyang.shallow.`package`.$x" => Ident(x)
+          case Ident(x) => Ident(x)
+          case _ => super.transform(tree)
+        }
+      }
+    }
+
+    DropPackageTransformer.transform(virtualizedBody)
   }
 }

@@ -34,6 +34,7 @@ package object shallow {
   def infix_==(x1: Any, x2: Any): Boolean = ???
   def infix_!=(x1: Any, x2: Any): Boolean = ???
   def infix_##(x: Any): Int = ???
+  def infix_hashCode(x: Any): Int = ???
   def infix_asInstanceOf[T](x: Any): T = ???
   def infix_isInstanceOf[T](x: Any): Boolean = ???
   def infix_getClass(x: Any): Class[_] = ???

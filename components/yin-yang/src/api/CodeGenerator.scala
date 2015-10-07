@@ -26,3 +26,8 @@ trait Compiled { self: BaseYinYang =>
    */
   def compile[T: TypeRep, Ret](): Ret
 }
+
+trait Executeable { self: BaseYinYang =>
+  def execute[T](args: Seq[Any]): T
+}
+

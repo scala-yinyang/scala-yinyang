@@ -133,13 +133,15 @@ trait ScalaVirtualizationDSL extends VirtualControlsBase with VirtualFunctionsBa
   def $lam[T_1, U](f: R[T_1] => R[U]): R[T_1 => U] = ???
   def $lam[T_1, T_2, U](f: (R[T_1], R[T_2]) => R[U]): R[(T_1, T_2) => U] = ???
 
-  def infix_hashCode(t: R[Any]): R[Int] = ???
-  def infix_!=(lhs: R[Any], rhs: R[Any]): R[Boolean] = ???
+  def $infix_hashCode(t: R[Any]): R[Int] = ???
+  def $infix_!=(lhs: R[Any], rhs: R[Any]): R[Boolean] = ???
 }
 
 trait IntDSL extends PolymorphicBase {
   //to overload int operations
   implicit object IntOverloaded
+
+  def opsOfInt(x: R[Int]): IntOpsOf = new IntOpsOf(x)
 
   //Rep versions of Int operations
   trait IntOps {

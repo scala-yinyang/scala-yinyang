@@ -19,23 +19,25 @@ package ch.epfl.yinyang.polymorphic {
   }
 
   trait VirtualAnyBase extends PolymorphicBase {
-    def infix_==(x1: R[Any], x2: R[Any]): R[Boolean]
-    def infix_!=(x1: R[Any], x2: R[Any]): R[Boolean]
-    def infix_##(x: R[Any]): R[Int]
-    def infix_asInstanceOf[T](x: R[Any]): R[T]
-    def infix_isInstanceOf[T](x: R[Any]): R[Boolean]
-    def infix_getClass(x: R[Any]): R[Class[_]]
+    def $infix_==(x1: R[Any], x2: R[Any]): R[Boolean]
+    def $infix_!=(x1: R[Any], x2: R[Any]): R[Boolean]
+    def $infix_##(x: R[Any]): R[Int]
+    def $infix_hashCode(x: R[Any]): R[Int]
+    def $infix_asInstanceOf[T](x: R[Any]): R[T]
+    def $infix_isInstanceOf[T](x: R[Any]): R[Boolean]
+    def $infix_getClass(x: R[Any]): R[Class[_]]
+    def $infix_toString(x: R[Any]): R[String]
   }
 
   trait VirtualAnyRefBase extends PolymorphicBase {
-    def infix_eq(x1: R[AnyRef], x2: R[AnyRef]): R[Boolean]
-    def infix_ne(x1: R[AnyRef], x2: R[AnyRef]): R[Boolean]
-    def infix_notify(x: R[AnyRef]): R[Unit]
-    def infix_notifyAll(x: R[AnyRef]): R[Unit]
-    def infix_synchronized[T](x: R[AnyRef], body: R[T]): R[T]
-    def infix_wait(x: R[AnyRef]): R[Unit]
-    def infix_wait(x: R[AnyRef], timeout: R[Long]): R[Unit]
-    def infix_wait(x: R[AnyRef], timeout: R[Long], nanos: R[Int]): R[Unit]
+    def $infix_eq(x1: R[AnyRef], x2: R[AnyRef]): R[Boolean]
+    def $infix_ne(x1: R[AnyRef], x2: R[AnyRef]): R[Boolean]
+    def $infix_notify(x: R[AnyRef]): R[Unit]
+    def $infix_notifyAll(x: R[AnyRef]): R[Unit]
+    def $infix_synchronized[T](x: R[AnyRef], body: R[T]): R[T]
+    def $infix_wait(x: R[AnyRef]): R[Unit]
+    def $infix_wait(x: R[AnyRef], timeout: R[Long]): R[Unit]
+    def $infix_wait(x: R[AnyRef], timeout: R[Long], nanos: R[Int]): R[Unit]
   }
 
   package generic {
@@ -92,23 +94,25 @@ package identity {
   }
 
   trait VirtualAnyBase {
-    def infix_==(x1: Any, x2: Any): Boolean
-    def infix_!=(x1: Any, x2: Any): Boolean
-    def infix_##(x: Any): Int
-    def infix_asInstanceOf[T](x: Any): T
-    def infix_isInstanceOf[T](x: Any): Boolean
-    def infix_getClass(x: Any): Class[_]
+    def $infix_==(x1: Any, x2: Any): Boolean
+    def $infix_!=(x1: Any, x2: Any): Boolean
+    def $infix_##(x: Any): Int
+    def $infix_hashCode(x: Any): Int
+    def $infix_asInstanceOf[T](x: Any): T
+    def $infix_isInstanceOf[T](x: Any): Boolean
+    def $infix_getClass(x: Any): Class[_]
+    def $infix_toString(x: Any): String
   }
 
   trait VirtualAnyRefBase {
-    def infix_eq(x1: AnyRef, x2: AnyRef): Boolean
-    def infix_ne(x1: AnyRef, x2: AnyRef): Boolean
-    def infix_notify(x: AnyRef): Unit
-    def infix_notifyAll(x: AnyRef): Unit
-    def infix_synchronized[T](x: AnyRef, body: T): T
-    def infix_wait(x: AnyRef): Unit
-    def infix_wait(x: AnyRef, timeout: Long): Unit
-    def infix_wait(x: AnyRef, timeout: Long, nanos: Int): Unit
+    def $infix_eq(x1: AnyRef, x2: AnyRef): Boolean
+    def $infix_ne(x1: AnyRef, x2: AnyRef): Boolean
+    def $infix_notify(x: AnyRef): Unit
+    def $infix_notifyAll(x: AnyRef): Unit
+    def $infix_synchronized[T](x: AnyRef, body: T): T
+    def $infix_wait(x: AnyRef): Unit
+    def $infix_wait(x: AnyRef, timeout: Long): Unit
+    def $infix_wait(x: AnyRef, timeout: Long, nanos: Int): Unit
   }
 }
 package custom {
@@ -150,12 +154,15 @@ package custom {
     type Boolean
     type Int
     type Class[T]
-    def infix_==(x1: Any, x2: Any): Boolean
-    def infix_!=(x1: Any, x2: Any): Boolean
-    def infix_##(x: Any): Int
-    def infix_asInstanceOf[T](x: Any): T
-    def infix_isInstanceOf[T](x: Any): Boolean
-    def infix_getClass(x: Any): Class[_]
+    type String
+    def $infix_==(x1: Any, x2: Any): Boolean
+    def $infix_!=(x1: Any, x2: Any): Boolean
+    def $infix_##(x: Any): Int
+    def $infix_hashCode(x: Any): Int
+    def $infix_asInstanceOf[T](x: Any): T
+    def $infix_isInstanceOf[T](x: Any): Boolean
+    def $infix_getClass(x: Any): Class[_]
+    def $infix_toString(x: Any): String
   }
 
   trait VirtualAnyRefBase {
@@ -164,13 +171,13 @@ package custom {
     type Int
     type Long
     type Unit
-    def infix_eq(x1: AnyRef, x2: AnyRef): Boolean
-    def infix_ne(x1: AnyRef, x2: AnyRef): Boolean
-    def infix_notify(x: AnyRef): Unit
-    def infix_notifyAll(x: AnyRef): Unit
-    def infix_synchronized[T](x: AnyRef, body: T): T
-    def infix_wait(x: AnyRef): Unit
-    def infix_wait(x: AnyRef, timeout: Long): Unit
-    def infix_wait(x: AnyRef, timeout: Long, nanos: Int): Unit
+    def $infix_eq(x1: AnyRef, x2: AnyRef): Boolean
+    def $infix_ne(x1: AnyRef, x2: AnyRef): Boolean
+    def $infix_notify(x: AnyRef): Unit
+    def $infix_notifyAll(x: AnyRef): Unit
+    def $infix_synchronized[T](x: AnyRef, body: T): T
+    def $infix_wait(x: AnyRef): Unit
+    def $infix_wait(x: AnyRef, timeout: Long): Unit
+    def $infix_wait(x: AnyRef, timeout: Long, nanos: Int): Unit
   }
 }
