@@ -17,17 +17,3 @@ trait CodeGenerator { self: BaseYinYang =>
   def generateCode(className: String): String
 
 }
-
-trait Compiled { self: BaseYinYang =>
-  /**
-   * Method that should compile the DSL and return a function of type (...) => T.
-   * @param unstableHoleIds The set of optional variables that should be treated as
-   *   unstable, to be passed to the `generateCode` function.
-   */
-  def compile[T: TypeRep, Ret](): Ret
-}
-
-trait Executeable { self: BaseYinYang =>
-  def execute[T](args: Seq[Any]): T
-}
-

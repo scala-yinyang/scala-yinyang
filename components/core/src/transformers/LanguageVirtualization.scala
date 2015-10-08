@@ -203,7 +203,7 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils
         case Ident(x) if (tree.symbol.isTerm && !(freeVars contains tree) && (
           tree.symbol.asTerm.isVar ||
           tree.symbol.asTerm.isLazy ||
-          (tree.symbol.asTerm.isVal && virtualizeValDef))) =>
+          (!tree.symbol.isParameter && tree.symbol.asTerm.isVal && virtualizeValDef))) =>
           liftFeature(None, prefix + "read", List(tree), Nil, x => x)
 
         //

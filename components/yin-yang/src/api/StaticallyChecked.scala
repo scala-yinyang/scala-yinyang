@@ -12,7 +12,7 @@ protected[yinyang] class Reporter(private val c: Context) {
 
 /**
  * Trait that statically checked DSLs need to inherit
- * .
+ *
  * NOTE: DSLs inheriting this trait will always be reflectively instantiated at compile time.
  */
 trait StaticallyChecked { this: BaseYinYang =>

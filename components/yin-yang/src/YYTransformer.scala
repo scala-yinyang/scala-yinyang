@@ -14,19 +14,15 @@ import yinyang.typetransformers.TypeTransformer
 
 object YYTransformer {
   val defaults = Map[String, Any](
-    ("shallow" -> true),
+    ("direct" -> true),
     ("debug" -> 0),
     ("shortenDSLNames" -> true),
-    ("mainMethod" -> "main"),
-    ("featureAnalysing" -> true),
+    ("mainMethodName" -> "main"),
+    ("restrictLanguage" -> true),
     ("virtualizeFunctions" -> false),
     ("failCompilation" -> true),
-    ("ascriptionTransforming" -> true),
-    ("liftTypes" -> Nil),
-    ("optionalInitiallyStable" -> true),
-    ("codeCacheSize" -> 3),
-    ("minimumCountToStabilize" -> 500))
-
+    ("ascribeTerms" -> true),
+    ("liftTypes" -> Nil))
   def apply[C <: Context, T](c: C)(
     dslName: String,
     tpeTransformer: TypeTransformer[c.type],
@@ -40,21 +36,6 @@ object YYTransformer {
       val postProcessor = postProcessing.getOrElse(new NullPostProcessing[c.type](c))
       val preProcessor = preProcessing.getOrElse(new NullPreProcessing[c.type](c))
     }
-
-  /*def apply[C <: Context, T](c: C)(
-    dslComponent: c.Type,
-    tpeTransformer: TypeTransformer[c.type],
-    config: Map[String, Any] = Map(),
-    postProcessing: Option[PostProcessing[c.type]] = None,
-    preProcessing: Option[PreProcessing[c.type]] = None): YYTransformer[c.type, T] = {
-
-    new YYTransformer[c.type, T](c, dslComponent.toString, config withDefault (defaults)) {
-      val typeTransformer = tpeTransformer
-      typeTransformer.className = className
-      val postProcessor = postProcessing.getOrElse(new NullPostProcessing[c.type](c))
-      val preProcessor = preProcessing.getOrElse(new NullPreProcessing[c.type](c))
-    }
-  }*/
 
   protected[yinyang] val uID = new AtomicLong(0)
 }
@@ -93,89 +74,40 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
   def apply[T](block: c.Expr[T]): c.Expr[T] = {
     log("-------- YYTransformer STARTED for block: " + showRaw(block.tree), 2)
 
-    def shallowFlag = shallow || (c.settings contains ("embed"))
-    if (featureAnalysing) // Aborts compilation for unsupported constructs
+    def directFlag = direct || (c.settings contains ("embed"))
+    if (restrictLanguage) // Aborts compilation for unsupported constructs
       FeatureAnalyzer(block.tree)
 
-    if (shallowFlag) { block }
+    if (directFlag) { block }
     else {
       // mark captured variables as holes
       val captured: List[Tree] = freeVariables(block.tree)
       val capturedSyms: List[Symbol] = captured.map(_.symbol)
-      log("Free variables (capturedSyms): " + capturedSyms, 2)
-      log("original: " + block, 2)
 
       /*
        * Transforms the given DSL program block.
        *   @param toHoles All contained symbolIds will be replaced with
        *     `hole[T](classTag[T], holeId)` and the holeTable will map from
        *     holeId to symbolId
-       *   @param toMixed All contained symbolIds will be replaced with
-       *     `lift("captured$" + sym, hole[T](classTag[T], holeId))` and the
-       *     holeTable will map from holeId to symbolId
        *   @param toLifts All contained symbols will be replaced with
        *     `lift("captured$" + sym)`
        */
-      def transform(toHoles: List[Symbol], toMixed: List[Symbol], toLifts: List[Symbol])(block: Tree): Tree =
+      def transform(toHoles: List[Symbol], toLifts: List[Symbol])(block: Tree): Tree =
         ((injectImport _) andThen
           (c.untypecheck(_)) andThen (c.typecheck(_)) andThen // virtualizes pattern matching
           PreProcess andThen
           AscriptionTransformer andThen
           (x => VirtualizationTransformer(x)._1) andThen
-          LiftLiteralTransformer(toLifts, toMixed) andThen
+          LiftLiteralTransformer(toLifts) andThen
+          HoleTransformer(toHoles.distinct, className) andThen
           (c.untypecheck(_)) andThen (c.typecheck(_)) andThen // returns the lost type information
           (removeImport _) andThen // removes the shallow imports
           TypeTreeTransformer andThen
           ScopeInjectionTransformer andThen
-          HoleTransformer((toHoles ++ toMixed).distinct, className) andThen
-          composeDSL((toLifts ++ toMixed).distinct) andThen
+          (composeDSL _) andThen
           PostProcess)(block)
 
-      lazy val unboundDSL = {
-        val t = transform(capturedSyms, Nil, Nil)(block.tree)
-        log("FIRST TRANSFORM DONE (prettyPrinting in Caps):\n" + code(t) + "\n", 2)
-        log(show(t, printTypes = true), 3)
-        t
-      }
-      val varTypes: List[(Tree, VarType)] = dslType match {
-        case tpe if tpe <:< typeOf[FullyStaged] =>
-          captured.map(t => (t, defaultCompVar(t.symbol)))
-
-        case tpe if tpe <:< typeOf[FullyUnstaged] =>
-          captured.map(t => (t, NonCompVar()))
-
-        case tpe if tpe <:< typeOf[HoleTypeAnalyser] => {
-          capturedSyms.foreach { s => log(s.typeSignature.typeConstructor.toString, 3) }
-          captured.map(t => (t,
-            if (liftTypes.exists(l => t.symbol.typeSignature <:< l.asInstanceOf[Type]))
-              defaultCompVar(t.symbol)
-            else NonCompVar()))
-        }
-
-        case tpe =>
-          captured.zip(
-            reflInstance[BaseYinYang](unboundDSL)
-              .compilationVars(capturedSyms.asInstanceOf[List[reflect.runtime.universe.Symbol]]))
-      }
-
-      val compilVars: List[Tree] = varTypes.collect { case (s, _: CompVar) => s }
-      val nonCompilVars: List[Tree] = captured diff compilVars
-      val guards: List[Guard] = varTypes.collect { case (_, v: CompVar) => v.guard }
-      val liftedCompilVars: List[Tree] = varTypes.collect { case (s, _: RequiredStaticCompVar) => s }
-      val mixedCompilVars: List[Tree] = compilVars diff liftedCompilVars
-
-      log(s"VarTypes: $varTypes", 2)
-      log(s"capturedSyms: $capturedSyms\nnonCompilVars (holes): $nonCompilVars" +
-        s"compilVars: $compilVars\nlifted: $liftedCompilVars\nmixed: $mixedCompilVars", 2)
-
-      // re-transform the tree with new holes if there are required vars
-      val dsl = if (compilVars.isEmpty) unboundDSL
-      else {
-        holeTable.clear()
-        transform(
-          nonCompilVars.map(_.symbol), mixedCompilVars.map(_.symbol), liftedCompilVars.map(_.symbol))(
-            block.tree)
-      }
+      lazy val dsl = transform(capturedSyms, Nil)(block.tree)
 
       // if the DSL inherits the StaticallyChecked trait reflectively do the static analysis
       if (dslType <:< typeOf[StaticallyChecked]) {
@@ -183,73 +115,47 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
         reflInstance[StaticallyChecked](dsl).staticallyCheck(new Reporter(c))
       }
 
-      val sortedHoles = (nonCompilVars ++ mixedCompilVars)
-        .map(x => (x.symbol, x)).toMap.values.toSeq
+      val sortedHoles = captured.map(x => (x.symbol, x)).toMap.values.toSeq
         .sortBy(h => holeTable.indexOf(symbolId(h)))
 
-      def args(holes: List[Symbol]): List[Symbol] = holes
-      // holes.map({ y: Symbol => y.name.decodedName.toString })
-
-      val programId = new scala.util.Random().nextLong
-      val programIdTree = Literal(Constant(programId))
       val dslTree = dslType match {
-        case tpe if tpe <:< typeOf[CodeGenerator] && compilVars.isEmpty && !(tpe <:< typeOf[FullyStaged]) =>
+        case tpe if tpe <:< typeOf[CodeGenerator] && !(tpe <:< typeOf[Staged]) =>
           // does not require run-time data => completely generated at compile.
           log("COMPILE TIME COMPILED", 2)
 
           q"""
             ${c parse (reflInstance[CodeGenerator](dsl) generateCode className)}
-            new ${Ident(TypeName(className))}().apply(..${captured})
+            new ${Ident(TypeName(className))}().apply(..${sortedHoles})
           """
 
-        case tpe if tpe <:< typeOf[Reified] && compilVars.isEmpty => // TODO fix issues here!
-          log("COMPILE TIME COMPILED for lifting", 2)
+        case tpe if tpe <:< typeOf[Reified] =>
+          log("RUNTIME COMPILED for LIFTING", 2)
           val retType = deepDealias(block.tree.tpe)
           q"""
             $dsl
             val dslInstance = new ${Ident(TypeName(className))}
-            dslInstance.reify(dslInstance.runtimeType[$retType])
+            dslInstance.reify(dslInstance.$$tpe[$retType])
           """
 
-        case _ =>
+        case tpe if tpe <:< typeOf[Executable] =>
           /*
            * Requires run-time variables => execute at run-time and install a recompilation guard.
            */
-          log("RUNTIME COMPILED with guards", 2)
+          log("RUNTIME COMPILED and EXECUTED", 2)
           val retType = deepDealias(block.tree.tpe)
-          val retTypeString = retType.toString
-          val functionTypeString =
-            s"""${sortedHoles.map(_ => "scala.Any").mkString("(", ", ", ")")} => ${retTypeString}"""
-          val functionType = tq"(..${sortedHoles.map(_ => tq"scala.Any")}) => ${retType}"
 
-          log("Guard function strings: " + guards, 3)
+          q"""
+            $dsl
+            val dslInstance = new ${Ident(TypeName(className))}
+            dslInstance.execute[$retType](..${sortedHoles})
+          """
 
-          val optionalHoleIds = varTypes.collect({
-            case (s, _: Optional) => holeTable.indexOf(symbolId(s))
-            case (_, _: CompVar)  => -1
-          }) mkString ("scala.Array((", "), (", "))")
-
-          val YYCacheString = YYStorageFactory.getYYStorageString(
-            className, functionTypeString, retTypeString,
-            guards, optionalHoleIds, optionalInitiallyStable, codeCacheSize, minimumCountToStabilize,
-            compilVars.map(_.symbol.asInstanceOf[reflect.runtime.universe.Symbol]))
-
-          val guardedExecute = dslType match {
-            case t if t <:< typeOf[CodeGenerator] =>
-              q"""
-                val cache = ${c parse YYCacheString}
-                val compilVars: scala.Array[Any] = scala.Array(..$compilVars)
-                val program = ch.epfl.yinyang.runtime.YYStorage.guardedLookup[${functionType}](
-                  ${programId}, cache, compilVars)
-                program.apply(..${sortedHoles})
-              """
-          }
-          Block(List(dsl), guardedExecute)
+        case _ => c.abort(c.enclosingPosition, "DSL does not extend adequate traits!")
       }
 
       log(s"Final tree: ${showRaw(c.untypecheck(dslTree))}", 3)
       log(s"Final untyped: ${show(c.untypecheck(dslTree), printTypes = true)}", 3)
-      log(s"Final typed: ${show(c.typecheck(c.untypecheck(dslTree)), printTypes = true)}\n")
+      log(s"Final typed: ${show(c.typecheck(c.untypecheck(dslTree)), printTypes = true)}\n", 3)
       log("-------- YYTransformer DONE ----------\n\n", 2)
       c.Expr[T](c.untypecheck(dslTree))
     }
@@ -258,8 +164,6 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
   /*
   * Configuration parameters.
   */
-  def interpretMethod = "interpret"
-  val holeMethod = "hole"
   val classUID = YYTransformer.uID.incrementAndGet
   override val className =
     s"generated$$${dslName.filter(_ != '.') + classUID}"
@@ -360,7 +264,7 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
     val res = try {
       // block containing only dummy methods that were applied.
       val block = Block(List(
-        composeDSL(Nil)(Block(
+        composeDSL(Block(
           methodSet.map(x => application(x)).toList,
           Literal(Constant(()))))), Literal(Constant(())))
       log(s"Block: ${show(block)})", 3)
@@ -374,10 +278,6 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
     }
 
     res
-  }
-
-  def defaultCompVar(s: Symbol): CompVar = {
-    CompVar.equality(s.typeSignature.toString)
   }
 
   private lazy val dslTrait = {
@@ -413,27 +313,26 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
     _reflInstance.get.asInstanceOf[T]
   }
 
-  def composeDSL(compilVars: List[Symbol])(transformedBody: Tree): Tree = q"""
+  def composeDSL(transformedBody: Tree): Tree = q"""
     class ${TypeName(className)} extends $dslTrait {
-      ..${compilVars.map(k => q"var ${TermName("captured$" + k.name.decodedName.toString)} = $k")}
       def main(): Any = {$transformedBody}
     }
   """
 
   def injectImport(body: Tree): Tree = q"""
-      import _root_.ch.epfl.yinyang.shallow._;
-      ${body}
-    """
+    import _root_.ch.epfl.yinyang.shallow._;
+    ${body}
+  """
 
   def removeImport(body: Tree): Tree = {
     val Block(List(_), virtualizedBody) = body
 
+    // TODO: Get a better name! It is not really only removing imports.
     object DropPackageTransformer extends Transformer {
       override def transform(tree: Tree): Tree = {
         tree match {
-          // TODO: Reorganize this better! It is not really only removing imports.
-          case q"ch.epfl.yinyang.shallow.`package`.lift[${ _ }]" => q"lift"
-          case q"ch.epfl.yinyang.shallow.`package`.hole[${ _ }]" => q"hole"
+          case q"ch.epfl.yinyang.shallow.`package`.$$lift[${ _ }]" => q"$$lift"
+          case q"ch.epfl.yinyang.shallow.`package`.$$hole[${ _ }]" => q"$$hole"
           case q"ch.epfl.yinyang.shallow.`package`.$x" => Ident(x)
           case Ident(x) => Ident(x)
           case _ => super.transform(tree)

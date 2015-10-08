@@ -21,35 +21,20 @@ trait Base extends BaseYinYangTypeTag with CodeGenerator {
      * Constructs the DSL internal IR node that will represent a constant.
      */
     def lift(v: T): Ret
-
-    /**
-     * Constructs the DSL internal IR node that will represent a mixed variable
-     * that carries both an initial value available at code generation time and
-     * a hole that can be used in the generated code. Only DSLs with dynamic or
-     * optional compilation variables need to override this method.
-     */
-    def mixed(v: T, hole: Ret): Ret = ???
   }
 
   /**
    * Method that replaces captured identifiers of the DSL body.
    */
-  def hole[T, Ret](tpe: TypeRep[T], symbolId: Int)(implicit liftEv: LiftEvidence[T, Ret]): Ret =
+  def $hole[T, Ret](symbolId: Int, tpe: TypeRep[T])(implicit liftEv: LiftEvidence[T, Ret]): Ret =
     liftEv hole (tpe, symbolId)
 
   /**
    * Method that replaces constants and captured identifiers required for run-time
    * optimizations in the DSL body.
    */
-  def lift[T, Ret](v: T)(implicit liftEv: LiftEvidence[T, Ret]): Ret =
+  def $lift[T, Ret](v: T)(implicit liftEv: LiftEvidence[T, Ret]): Ret =
     liftEv.lift(v)
-
-  /**
-   * Method that replaces constants and captured identifiers required for run-time
-   * optimizations in the DSL body.
-   */
-  def mixed[T, Ret](v: T, hole: Ret)(implicit liftEv: LiftEvidence[T, Ret]): Ret =
-    liftEv.mixed(v, hole)
 
   def main(): Any
 }

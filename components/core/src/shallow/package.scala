@@ -1,7 +1,9 @@
 package ch.epfl.yinyang
 
+import reflect.runtime.universe.TypeTag
+
 /*
- * Pattern matcher for the direct embedding.
+ * Interface for type checking the virtualized direct embedding.
  * Note: Should be imported only by the framework--never manually.
  */
 package object shallow {
@@ -15,9 +17,10 @@ package object shallow {
   }
 
   // Used for type-checking the intermediate steps of the translation.
+  def $tpe[T]: TypeTag[T] = ???
+  def $hole[T](id: Int, tpe: TypeTag[T]): T = ???
+  def $lift[T](v: T): T = ???
 
-  def hole[T](id: Long): T = ???
-  def lift[T](v: T): T = ???
   def $ifThenElse[T](cond: Boolean, thenBr: => T, elseBr: => T): T = ???
   def $return(expr: Any): Nothing = ???
   def $whileDo(cond: Boolean, body: => Unit): Unit = ???
@@ -31,22 +34,22 @@ package object shallow {
   def $read[T](init: T): T = ???
   def $assign[T](lhs: T, rhs: T): Unit = ???
 
-  def infix_==(x1: Any, x2: Any): Boolean = ???
-  def infix_!=(x1: Any, x2: Any): Boolean = ???
-  def infix_##(x: Any): Int = ???
-  def infix_hashCode(x: Any): Int = ???
-  def infix_asInstanceOf[T](x: Any): T = ???
-  def infix_isInstanceOf[T](x: Any): Boolean = ???
-  def infix_getClass(x: Any): Class[_] = ???
+  def $infix_==(x1: Any, x2: Any): Boolean = ???
+  def $infix_!=(x1: Any, x2: Any): Boolean = ???
+  def $infix_##(x: Any): Int = ???
+  def $infix_hashCode(x: Any): Int = ???
+  def $infix_asInstanceOf[T](x: Any): T = ???
+  def $infix_isInstanceOf[T](x: Any): Boolean = ???
+  def $infix_getClass(x: Any): Class[_] = ???
 
-  def infix_eq(x1: AnyRef, x2: AnyRef): Boolean = ???
-  def infix_ne(x1: AnyRef, x2: AnyRef): Boolean = ???
-  def infix_notify(x: AnyRef): Unit = ???
-  def infix_notifyAll(x: AnyRef): Unit = ???
-  def infix_synchronized[T](x: AnyRef, body: T): T = ???
-  def infix_wait(x: AnyRef): Unit = ???
-  def infix_wait(x: AnyRef, timeout: Long): Unit = ???
-  def infix_wait(x: AnyRef, timeout: Long, nanos: Int): Unit = ???
+  def $infix_eq(x1: AnyRef, x2: AnyRef): Boolean = ???
+  def $infix_ne(x1: AnyRef, x2: AnyRef): Boolean = ???
+  def $infix_notify(x: AnyRef): Unit = ???
+  def $infix_notifyAll(x: AnyRef): Unit = ???
+  def $infix_synchronized[T](x: AnyRef, body: T): T = ???
+  def $infix_wait(x: AnyRef): Unit = ???
+  def $infix_wait(x: AnyRef, timeout: Long): Unit = ???
+  def $infix_wait(x: AnyRef, timeout: Long, nanos: Int): Unit = ???
 
   def $app[U](f: () => U): () => U = ???
   def $lam[U](f: () => U): () => U = ???

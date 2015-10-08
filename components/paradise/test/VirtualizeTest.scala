@@ -130,26 +130,9 @@ class VirtualizeSpec extends FlatSpec with ShouldMatchers with EmbeddedControls 
     defaultEqualsTest(true, true) should be(true)
   }
 
-  "parameter of virtualizeParamTest" should "not be virtualized" in {
-
-    val c = false
-    def virtualizeParamTest(
-      @virtualize s: String = if (c) "yep" else "nope") = s
-
-    virtualizeParamTest() should be("nope")
-  }
-
-  "type parameter of virtualizeTParamTest" should "not be virtualized" in {
-
-    def virtualizeTParamTest[@virtualize T](s: T) = s
-
-    virtualizeTParamTest("nope") should be("nope")
-  }
-
   "try expression in virtualizeTryTest" should "not be virtualized" in {
 
-    @virtualize
-    def virtualizeTryTest[T](s: => T) = try s
+    @virtualize def virtualizeTryTest[T](s: => T) = try s finally s
 
     virtualizeTryTest("nope") should be("nope")
   }

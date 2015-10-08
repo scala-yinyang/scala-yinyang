@@ -25,15 +25,15 @@ trait VirtualAny {
   import VirtualAny._
 
   // Poor man's infix methods for `Any` methods
-  def infix_==(x1: Any, x2: Any): Any = macro any_==
-  def infix_!=(x1: Any, x2: Any): Any = macro any_!=
-  def infix_##(x: Any): Any = macro any_##
-  def infix_equals(x1: Any, x2: Any): Any = macro any_equals
-  def infix_hashCode(x: Any): Any = macro any_hashCode
-  def infix_asInstanceOf[T](x: Any): Any = macro any_asInstanceOf[T]
-  def infix_isInstanceOf[T](x: Any): Any = macro any_isInstanceOf[T]
-  def infix_toString(x: Any): Any = macro any_toString
-  def infix_getClass(x: Any): Any = macro any_getClass
+  def $infix_==(x1: Any, x2: Any): Any = macro any_==
+  def $infix_!=(x1: Any, x2: Any): Any = macro any_!=
+  def $infix_##(x: Any): Any = macro any_##
+  def $infix_equals(x1: Any, x2: Any): Any = macro any_equals
+  def $infix_hashCode(x: Any): Any = macro any_hashCode
+  def $infix_asInstanceOf[T](x: Any): Any = macro any_asInstanceOf[T]
+  def $infix_isInstanceOf[T](x: Any): Any = macro any_isInstanceOf[T]
+  def $infix_toString(x: Any): Any = macro any_toString
+  def $infix_getClass(x: Any): Any = macro any_getClass
 }
 
 /* VirtualAny companion object containing macro implementations. */

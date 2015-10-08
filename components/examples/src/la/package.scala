@@ -19,12 +19,12 @@ package object la {
         },
         None, None,
         Map(
-          "shallow" -> false,
+          "direct" -> false,
           "virtualizeFunctions" -> true,
           "virtualizeValDef" -> true,
           "debug" -> 0,
-          "featureAnalysing" -> false,
-          "ascriptionTransforming" -> false))(block)
+          "restrictLanguage" -> false,
+          "ascribeTerms" -> false))(block)
 
     def liftRepDebug[T](c: Context)(block: c.Expr[T]): c.Expr[T] =
       YYTransformer[c.type, T](c)(
@@ -34,11 +34,11 @@ package object la {
         },
         None, None,
         Map(
-          "shallow" -> false,
+          "direct" -> false,
           "virtualizeFunctions" -> true,
           "virtualizeValDef" -> true,
-          "debug" -> 0,
-          "featureAnalysing" -> true,
-          "ascriptionTransforming" -> false))(block)
+          "debug" -> 3,
+          "restrictLanguage" -> false,
+          "ascribeTerms" -> false))(block)
   }
 }

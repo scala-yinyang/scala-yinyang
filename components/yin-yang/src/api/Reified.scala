@@ -9,7 +9,7 @@ import reflect.runtime.universe.TypeTag
  * The DSL component will be called with a method:
  *  {{{
  *    val dsl = // shallow DSL of type Ret translated by Yin-Yang
- *    dsl.reify(runtimeType[Ret])
+ *    dsl.reify($tpe[Ret])
  *  }}}
  */
 trait Reified { self: BaseYinYang => }

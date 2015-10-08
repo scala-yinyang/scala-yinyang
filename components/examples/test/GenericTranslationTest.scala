@@ -72,7 +72,7 @@ class GenericTranslationSpec extends FlatSpec with ShouldMatchers {
 
   it should "work for locally defined functions" in {
     intercept[NotImplementedError] {
-      val x: Int = la {
+      val res: Int = la {
         def id[T](x: T): T = x
         def id2[T, U <: AnyRef](p1: T, p2: U): Unit = ()
         id2[Int, String](1, "string")
@@ -86,8 +86,8 @@ class GenericTranslationSpec extends FlatSpec with ShouldMatchers {
       la {
         type X = Int
         type Y = dsl.la.Vector[X]
-        val x: Y = dsl.la.Vector(1, 2, 3)
-        x
+        val vecRes: Y = dsl.la.Vector(1, 2, 3)
+        vecRes
       }
     }
   }
@@ -98,8 +98,8 @@ class GenericTranslationSpec extends FlatSpec with ShouldMatchers {
     val captured2 = 3
     intercept[NotImplementedError] {
       la {
-        val x: Int = captured + captured1 + captured2
-        x + 1
+        val resX: Int = captured + captured1 + captured2
+        resX + 1
       }
     }
   }

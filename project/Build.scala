@@ -25,8 +25,8 @@ object YinYangBuild extends Build {
 
   lazy val scalaSettings = Defaults.defaultSettings ++ Seq(
     scalaOrganization    := scalaOrg,
-    scalaVersion         := "2.11.2",
-    crossScalaVersions := Seq("2.11.0", "2.11.1", "2.11.2"),
+    scalaVersion         := "2.11.7",
+    crossScalaVersions := Seq("2.11.0", "2.11.1", "2.11.2", "2.11.3", "2.11.4", "2.11.5", "2.11.6", "2.11.7"),
     scalacOptions        := defaultScalacOptions
   )
 
@@ -41,11 +41,11 @@ object YinYangBuild extends Build {
   )))
 
   // modules
-  lazy val _yinyang      = Project(id = "root",             base = file(".")                   , settings = Project.defaultSettings ++ Seq(publishArtifact := false)) aggregate (yinyang, yy_core, yy_paradise, example_dsls)
-  lazy val yy_core       = Project(id = "yinyang-core",     base = file("components/core")     , settings = defaults ++ Seq(name := "yinyang-core"))
-  lazy val yy_paradise   = Project(id = "yinyang-paradise", base = file("components/paradise") , settings = defaults ++ paradise ++ Seq(name := "yinyang-paradise")) dependsOn(yy_core)
-  lazy val yinyang       = Project(id = "scala-yinyang",    base = file("components/yin-yang") , settings = defaults ++ Seq(name := "scala-yinyang")) dependsOn(yy_core)
-  lazy val example_dsls  = Project(id = "example-dsls",     base = file("components/dsls")     , settings = defaults ++ Seq(publishArtifact := false)) dependsOn(yinyang)
+  lazy val _yinyang      = Project(id = "root",             base = file(".")                   , settings = Project.defaultSettings ++ Seq(publishArtifact := false)) aggregate (yinyang, yy_core, yy_paradise, examples)
+  lazy val yy_core       = Project(id = "core",             base = file("components/core")     , settings = defaults ++ Seq(name := "yinyang-core"))
+  lazy val yy_paradise   = Project(id = "paradise",         base = file("components/paradise") , settings = defaults ++ paradise ++ Seq(name := "yinyang-paradise")) dependsOn(yy_core)
+  lazy val yinyang       = Project(id = "yinyang",          base = file("components/yin-yang") , settings = defaults ++ Seq(name := "scala-yinyang")) dependsOn(yy_core)
+  lazy val examples      = Project(id = "examples",         base = file("components/examples") , settings = defaults ++ Seq(publishArtifact := false)) dependsOn(yinyang)
 
   lazy val defaults = projectSettings ++ scalaSettings ++ formatSettings ++ libraryDeps ++ Seq(
     resolvers +=  "OSSH" at "https://oss.sonatype.org/content/groups/public",
@@ -65,12 +65,8 @@ object YinYangBuild extends Build {
 
   // add the macro paradise compiler plugin
   lazy val paradise = Seq(
-    libraryDependencies += {
-      val paradiseVersion =
-        if (scalaVersion.value == "2.11.2") "2.0.1"
-        else"2.0.0"
-      compilerPlugin("org.scalamacros" % "paradise" %  paradiseVersion cross CrossVersion.full)
-    },
+    libraryDependencies +=
+      compilerPlugin("org.scalamacros" % "paradise" %  "2.1.0-M5" cross CrossVersion.full),
     scalacOptions := defaultScalacOptions
   )
 

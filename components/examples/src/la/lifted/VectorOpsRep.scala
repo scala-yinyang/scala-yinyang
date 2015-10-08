@@ -53,26 +53,6 @@ trait NumericOps extends PolymorphicBase {
     implicit def mkNumericOps(lhs: R[T]): Ops
   }
 
-  //  val DoubleIsFractional = Numeric.DoubleIsFractional
-  //
-  //  implicit class NumericOpsOf[T](v: Numeric[T]) {
-  //    def plus(x: R[T], y: R[T]): R[T] = ???
-  //    def minus(x: R[T], y: R[T]): R[T] = ???
-  //    def times(x: R[T], y: R[T]): R[T] = ???
-  //    def negate(x: R[T]): R[T] = ???
-  //    def fromInt(x: R[Int]): R[T] = ???
-  //    def toInt(x: R[T]): R[Int] = ???
-  //    def toDouble(x: R[T]): R[Double] = ???
-  //
-  //    def zero: R[T] = ???
-  //    def one: R[T] = ???
-  //
-  //    def abs(x: R[T]): R[T] = ???
-  //    def signum(x: R[T]): R[Int] = ???
-  //
-  //    implicit def mkNumericOps(lhs: R[T]) = ???
-  //  }
-
   trait NumericOpsOf[T] extends NumericOps[T] {
     def zero: R[T] = ???
     def one: R[T] = ???
@@ -110,9 +90,6 @@ trait NumericOps extends PolymorphicBase {
 }
 
 trait ScalaVirtualizationDSL extends VirtualControlsBase with VirtualFunctionsBase with VirtualVariablesBase {
-
-  // Members declared in ch.epfl.yinyang.api.Interpreted
-  def reset(): Unit = ???
 
   def $ifThenElse[T](cond: R[Boolean], thenBr: => R[T], elseBr: => R[T]): R[T] = ???
   def $return(expr: R[Any]): R[Nothing] = ???
@@ -300,12 +277,12 @@ trait IfThenElseDSL extends PolymorphicBase with BooleanDSL {
 
 trait VectorDSL
   extends ArrayDSL with IntDSL with DoubleDSL with ClassTagOps
-  with NumericOps with Base with IfThenElseDSL with Interpreted
-  with ScalaVirtualizationDSL with MatchingOps with FullyStaged {
+  with NumericOps with Base with IfThenElseDSL
+  with ScalaVirtualizationDSL with MatchingOps with Executable with Staged {
 
   def compile[T: TypeRep, Ret](unstableHoleIds: Set[Int]): Ret = ???
   def generateCode(className: String): String = ???
-  def interpret[T: TypeTag](params: Any*) = ???
+  def execute[T: TypeTag](params: Any*) = ???
 
   type Vector[T] = dsl.la.Vector[T]
   object `dsl.la.Vector` {

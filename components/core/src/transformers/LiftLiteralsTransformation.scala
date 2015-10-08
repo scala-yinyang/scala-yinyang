@@ -17,30 +17,26 @@ import scala.collection.mutable
 trait LiftLiteralTransformation extends MacroModule with TransformationUtils with DataDefs {
   import c.universe._
   object LiftLiteralTransformer {
-    def apply(toLift: List[Symbol], toMixed: List[Symbol])(tree: Tree) = {
-      val t = new LiftLiteralTransformer(toLift, toMixed).transform(tree)
+    def apply(toLift: List[Symbol])(tree: Tree) = {
+      val t = new LiftLiteralTransformer(toLift).transform(tree)
       log("lifted: " + t, 2)
       t
     }
   }
 
-  class LiftLiteralTransformer(toLift: List[Symbol], toMixed: List[Symbol])
+  class LiftLiteralTransformer(toLift: List[Symbol])
     extends Transformer {
 
-    def lift(t: List[Tree]) = q"lift(..$t)"
-    def mixed(t: List[Tree]) = q"mixed(..$t)"
+    def lift(t: List[Tree]) = q"$$lift(..$t)"
 
     override def transform(tree: Tree): Tree = {
       tree match {
         case t @ Literal(Constant(_)) => lift(List(t))
 
         case t @ Ident(n) =>
-
           if (toLift.contains(t.symbol))
             lift(List(Ident(TermName(t.name.decodedName.toString))))
-          else if (toMixed.contains(t.symbol))
-            mixed(List(Ident(TermName(t.name.decodedName.toString)), t))
-          else Ident(n)
+          else t
 
         case _ => super.transform(tree)
       }
