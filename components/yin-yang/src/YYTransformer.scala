@@ -28,13 +28,15 @@ object YYTransformer {
     tpeTransformer: TypeTransformer[c.type],
     postProcessing: Option[PostProcessing[c.type]],
     preProcessing: Option[PreProcessing[c.type]],
-    config: Map[String, Any] = Map()): YYTransformer[c.type, T] =
+    config: Map[String, Any] = Map(),
+    implTransformer: Option[c.Tree => c.Tree] = None): YYTransformer[c.type, T] =
 
     new YYTransformer[c.type, T](c, dslName, config withDefault (defaults)) {
       val typeTransformer = tpeTransformer
       typeTransformer.className = className
       val postProcessor = postProcessing.getOrElse(new NullPostProcessing[c.type](c))
       val preProcessor = preProcessing.getOrElse(new NullPreProcessing[c.type](c))
+      val implicitTransformer = implTransformer
     }
 
   protected[yinyang] val uID = new AtomicLong(0)
@@ -60,6 +62,8 @@ abstract class YYTransformer[C <: Context, T](val c: C, dslName: String, val con
   import typeTransformer._
   import postProcessor._
   import preProcessor._
+
+  override val virtualizeValDef = super[YYConfig].virtualizeValDef
 
   /**
    * Main YinYang method. Transforms the body of the DSL, makes the DSL cake out

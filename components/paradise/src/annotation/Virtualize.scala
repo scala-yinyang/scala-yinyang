@@ -56,7 +56,6 @@ private object virtualize {
     type Ctx = C
     val debugLevel = 0
     val virtualizeFunctions: Boolean = false
-    val virtualizeValDef: Boolean = false
     override val restrictDefinitions: Boolean = false
   }
 }

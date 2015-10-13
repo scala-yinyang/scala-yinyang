@@ -87,11 +87,6 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils
   val virtualizeFunctions: Boolean
 
   /**
-   * Defines whether we virtualize value definitions.
-   */
-  val virtualizeValDef: Boolean
-
-  /**
    * Defines if we should restrict class, trait, and object definitions. In macros
    * we do not want to reject programs with nested definitions.
    */
@@ -107,6 +102,11 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils
    * Defines virtualizaition of non-final universal methods (e.g., `toString`).
    */
   val virtualizeEquals: Boolean = true
+
+  /**
+   * Defines whether we virtualize value definitions.
+   */
+  val virtualizeValDef: Boolean = false
 
   /**
    * Defines a prefix for all virtualized methods.

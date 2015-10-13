@@ -24,7 +24,8 @@ package object la {
           "virtualizeValDef" -> true,
           "debug" -> 0,
           "restrictLanguage" -> false,
-          "ascribeTerms" -> false))(block)
+          "ascribeTerms" -> false),
+        None)(block)
 
     def liftRepDebug[T](c: Context)(block: c.Expr[T]): c.Expr[T] =
       YYTransformer[c.type, T](c)(
@@ -39,6 +40,7 @@ package object la {
           "virtualizeValDef" -> true,
           "debug" -> 3,
           "restrictLanguage" -> false,
-          "ascribeTerms" -> false))(block)
+          "ascribeTerms" -> false),
+        None)(block)
   }
 }

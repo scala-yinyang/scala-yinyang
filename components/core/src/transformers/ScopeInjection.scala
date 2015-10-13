@@ -10,9 +10,7 @@ trait ScopeInjection extends MacroModule with TransformationUtils {
   import c.universe._
   import internal.decorators._
 
-  val implicitTrans: Option[Tree => Tree] = Some[Tree => Tree] { x =>
-    q"${TermName("opsOf" + x.tpe)}($x)"
-  }
+  val implicitTransformer: Option[Tree => Tree]
 
   object ScopeInjectionTransformer extends (Tree => Tree) {
     def apply(tree: Tree) = {
@@ -55,10 +53,11 @@ trait ScopeInjection extends MacroModule with TransformationUtils {
 
         //Optimization: adds implicit arguments manually.
         case MultipleTypeApply(lhs @ Select(inn, name), targs, argss
-          ) if !inn.symbol.isModule && !isFunction(lhs.symbol) =>
+          ) if !implicitTransformer.isEmpty &&
+          !(inn.symbol.isModule || isFunction(lhs.symbol)) =>
           val newqqc = transform(inn)
           val tlhs = if (inn.tpe != null)
-            implicitTrans.map(trans => Select(trans(inn), name)) getOrElse lhs
+            implicitTransformer.map(trans => Select(trans(inn), name)) getOrElse lhs
           else lhs
           MultipleTypeApply(tlhs, targs, argss.map(_.map(transform)))
 
