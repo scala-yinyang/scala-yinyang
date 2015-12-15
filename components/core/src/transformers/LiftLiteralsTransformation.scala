@@ -17,41 +17,28 @@ import scala.collection.mutable
 trait LiftLiteralTransformation extends MacroModule with TransformationUtils with DataDefs {
   import c.universe._
   object LiftLiteralTransformer {
-    def apply(toLift: List[Symbol], toMixed: List[Symbol])(tree: Tree) = {
-      val t = new LiftLiteralTransformer(toLift, toMixed).transform(tree)
+    def apply(toLift: List[Symbol])(tree: Tree) = {
+      val t = new LiftLiteralTransformer(toLift).transform(tree)
       log("lifted: " + t, 2)
       t
     }
   }
 
-  class LiftLiteralTransformer(toLift: List[Symbol], toMixed: List[Symbol])
+  class LiftLiteralTransformer(toLift: List[Symbol])
     extends Transformer {
 
-    def genApply(name: String, t: List[Tree]) = Apply(Select(This(typeNames.EMPTY), TermName(name)), t)
-    def lift(t: List[Tree]) = genApply("lift", t)
-    def mixed(t: List[Tree]) = genApply("mixed", t)
+    def lift(t: List[Tree]) = q"$$lift(..$t)"
 
     override def transform(tree: Tree): Tree = {
       tree match {
-        case t @ Literal(Constant(_)) =>
-          lift(List(t))
-        case t @ Ident(_) if toLift.contains(t.symbol) =>
-          lift(List(Ident(TermName("captured$" + t.name.decodedName.toString))))
-        case t @ Ident(_) if toMixed.contains(t.symbol) =>
-          mixed(List(Ident(TermName("captured$" + t.name.decodedName.toString)), t))
-        // the type associated with the identifier will remain if we don't that
+        case t @ Literal(Constant(_)) => lift(List(t))
+
         case t @ Ident(n) =>
-          log("local variable: " + t, 3)
-          Ident(n)
-        //=======
-        //          lift(List(Ident(TermName( /*"captured$" + */ t.name.decodedName.toString))))
-        //        /*case t @ Ident(_) if toMixed.contains(t.symbol) =>
-        //          mixed(List(Ident(TermName("captured$" + t.name.decodedName.toString)), t))*/
-        //        case t @ Ident(_) =>
-        //          Ident(TermName(t.name.decodedName.toString))
-        //>>>>>>> Modifications for the demo.
-        case _ =>
-          super.transform(tree)
+          if (toLift.contains(t.symbol))
+            lift(List(Ident(TermName(t.name.decodedName.toString))))
+          else t
+
+        case _ => super.transform(tree)
       }
     }
   }

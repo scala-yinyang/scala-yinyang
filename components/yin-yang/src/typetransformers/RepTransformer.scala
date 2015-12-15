@@ -2,23 +2,31 @@ package ch.epfl.yinyang.typetransformers
 
 import scala.reflect.macros.blackbox.Context
 
-trait RepTransformerLike[C <: Context] extends PolyTransformerLike[C] { this: TypeTransformer[C] with PolyTransformerLike[C] =>
+trait RepTransformerLike[C <: Context] extends PolyTransformerLike[C] {
+  this: TypeTransformer[C] with PolyTransformerLike[C] =>
+
   import c.universe._
   val IRType = "Rep"
+
   override def constructPolyTree(typeCtx: TypeContext, inType: Type): Tree = inType match {
+
     case TypeRef(pre, sym, Nil) =>
       Ident(inType.typeSymbol.name)
+
     case TypeRef(pre, sym, args) =>
       AppliedTypeTree(Ident(toType(sym)),
         args map { x => constructPolyTree(typeCtx, x) })
+
     case ConstantType(t) =>
       TypeTree(inType)
+
     case another @ _ =>
       super.constructPolyTree(typeCtx, another)
+
   }
 
   def rep(inType: Type): Tree = {
-    AppliedTypeTree(Select(This(newTypeName(className)), newTypeName(IRType)),
+    AppliedTypeTree(Select(This(TypeName(className)), TypeName(IRType)),
       List(TypeTree(inType)))
   }
 
@@ -29,8 +37,10 @@ trait RepTransformerLike[C <: Context] extends PolyTransformerLike[C] { this: Ty
     val universe = c.universe.asInstanceOf[scala.reflect.internal.Types]
 
     ctx match {
+
       case TypeArgCtx | TypeParameterCtx =>
         TypeTree(inType)
+
       case OtherCtx =>
         inType match {
           case inType if isFunctionType(inType) =>
@@ -39,7 +49,7 @@ trait RepTransformerLike[C <: Context] extends PolyTransformerLike[C] { this: Ty
             //we can't construnct baseTree using TypeTree(pre) - pre is only scala.type not FunctionN
             //val baseTree = TypeTree(pre) //pre = scala.type
             //using such baseTree we get val a: scala.type[Rep[Int], Rep[Int]] = ...
-            val baseTree = Select(Ident(newTermName("scala")), sym.name)
+            val baseTree = Select(Ident(TermName("scala")), sym.name)
             AppliedTypeTree(baseTree, retTyperees)
 
           case SingleType(pre, name) if inType.typeSymbol.isClass && (!inType.typeSymbol.isModuleClass) =>
@@ -66,39 +76,10 @@ class RepTransformer[C <: Context](ctx: C) extends TypeTransformer[C](ctx) with 
 }
 
 /**
- * Type transformer for Pardis Rep types.
+ * Type transformer for the Generic translation types.
  */
 class GenericTypeTransformer[C <: Context](ctx: C) extends RepTransformer[C](ctx) {
   import c.universe._
-
-  override def constructRepTree(ctx: TypeContext, inType: Type): Tree = {
-    ctx match {
-      case OtherCtx =>
-        inType match {
-          case inType if isFunctionType(inType) =>
-            rep(inType)
-          case _ =>
-            super.constructRepTree(ctx, inType)
-        }
-      case _ => super.constructRepTree(ctx, inType)
-    }
-  }
-}
-
-/**
- * Type transformer for Pardis Rep types.
- */
-class PardisRepTransformer[C <: Context](ctx: C) extends RepTransformer[C](ctx) {
-  import c.universe._
-
-  override def rep(inType: Type): Tree = {
-    val repType = varCtx match {
-      case IsVar  => "Var"
-      case NotVar => IRType
-    }
-    AppliedTypeTree(Select(This(newTypeName(className)), TypeName(repType)),
-      List(TypeTree(inType)))
-  }
 
   override def constructRepTree(ctx: TypeContext, inType: Type): Tree = {
     ctx match {

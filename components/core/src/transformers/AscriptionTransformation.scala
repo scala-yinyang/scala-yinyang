@@ -16,10 +16,10 @@ import scala.collection.mutable
 trait AscriptionTransformation extends MacroModule with TransformationUtils with DataDefs {
   import c.universe._
 
-  def ascriptionTransforming: Boolean
+  def ascribeTerms: Boolean
   object AscriptionTransformer extends (Tree => Tree) {
     def apply(tree: Tree) =
-      if (ascriptionTransforming) {
+      if (ascribeTerms) {
         val t = new AscriptionTransformer().transform(tree)
         log("ascription transformed: " + t, 2)
         t

@@ -8,11 +8,8 @@ import scala.collection.mutable
 import mutable.{ ListBuffer, HashMap }
 
 /**
- * Analysed free variables in the block. Free vars are the idents that are not
+ * Analyzed free variables in the block. Free vars are the identifiers that are not
  * defined in the block.
- *
- * TODO either here or at hole transformer support the fields and methods without params.
- *
  */
 trait FreeIdentAnalysis extends MacroModule with TransformationUtils {
   import c.universe._

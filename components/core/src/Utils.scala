@@ -1,6 +1,5 @@
 package ch.epfl.yinyang
 
-import ch.epfl.yinyang._
 import ch.epfl.yinyang.transformers._
 import scala.reflect.macros.blackbox.Context
 import language.experimental.macros
@@ -22,6 +21,39 @@ trait DataDefs extends MacroModule {
 trait TransformationUtils extends MacroModule {
   import c.universe._
   import internal.decorators._
+
+  private val functionArity = 22
+  private val functionSymbols = (0 to functionArity)
+    .map(x => "scala.Function" + x)
+    .map(c.mirror.staticClass)
+
+  def isFunction(methodSymbol: Symbol): Boolean =
+    functionSymbols.contains(methodSymbol.owner)
+
+  object MultipleTypeApply {
+
+    def apply(lhs: Tree, targs: List[Tree], argss: List[List[Tree]]): Tree = {
+      val tpeApply = if (targs.isEmpty) lhs else TypeApply(lhs, targs)
+      argss.foldLeft(tpeApply)((agg, args) => Apply(agg, args))
+    }
+
+    def unapply(value: Tree): Option[(Tree, List[Tree], List[List[Tree]])] = value match {
+      case Apply(x, y) =>
+        Some(x match {
+          case MultipleTypeApply(lhs, targs, argss) =>
+            (lhs, targs, y :: argss)
+          case TypeApply(lhs, targs) =>
+            (lhs, targs, Nil)
+          case _ =>
+            (x, Nil, y :: Nil)
+        })
+
+      case TypeApply(lhs, targs) =>
+        Some((lhs, targs, Nil))
+
+      case _ => None
+    }
+  }
 
   /* These two should be unified */
   def method(recOpt: Option[Tree], methName: String, args: List[List[Tree]], targs: List[Tree] = Nil): Tree = {
@@ -76,15 +108,6 @@ trait TransformationUtils extends MacroModule {
   def log(s: => String, level: Int = 0) = if (debugLevel > level) println(s)
 
   def debugLevel: Int
-
-  // TODO (VJ) Removed UnstageBlock from all transformers as these unrelated features.
-  object UnstageBlock {
-    def unapply(tree: Tree): Option[Tree] = tree match {
-      case q"unstage($body)" => Some(body)
-      case q"ch.epfl.yinyang.api.`package`.unstage[$t]($body)" => Some(body)
-      case _ => None
-    }
-  }
 
   /*
    * Utility methods for logging.

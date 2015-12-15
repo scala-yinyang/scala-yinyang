@@ -2,7 +2,7 @@ package ch.epfl.yinyang
 package transformers
 
 import ch.epfl.yinyang._
-import ch.epfl.yinyang.transformers._
+import ch.epfl.yinyang.analysis._
 import scala.reflect.macros.blackbox.Context
 import language.experimental.macros
 import scala.collection.mutable
@@ -11,27 +11,31 @@ import scala.collection.mutable
  * Converts Scala features that can not be overridden to method calls that can be given
  * arbitrary semantics.
  *
- * ==Features covered are==
+ * == Control Structures==
  * {{{
- *   var x = e              =>       var x = __newVar(e)
- *   x = t                  =>       __assign(x, t)
- *   x // if x is a var     =>       __readVar(x)
- *   if(c) t else e         =>       __ifThenElse(c, t, e)
- *   while(c) b             =>       __whileDo(c, b)
- *   do b while c           =>       __doWhile(c, b)
- *   return t               =>       __return(t)
+ *   if(c) t else e         =>       $ifThenElse(c, t, e)
+ *   while(c) b             =>       $whileDo(c, b)
+ *   do b while c           =>       $doWhile(c, b)
+ *   return t               =>       $return(t)
+ *   try c catch m finally f=>       $try(c, t: Throwable => t match m, f)
+ *   throw t                =>       $throw(t)
+ * }}}
+ * ===Virtualization of `Any` methods===
+ * {{{
+ *   var x      = e                =>       var x = $varDef(e)
+ *   lazy val x = e                =>       val x = $lazyValDef(e)
+ *   x = t                         =>       $assign(x, t)
+ *   x // depends on configuration =>       $read(x)
  * }}}
  *
  * ===Virtualization of `Any` methods===
  * {{{
  *   t == t1                =>       infix_==(t, t1)
  *   t != t1                =>       infix_!=(t, t1)
- *   t.##                   =>       infix_##(t, t1)
- *   t.equals t1            =>       infix_equals(t, t1)
- *   t.hashCode             =>       infix_hashCode(t)
+ *   t.##                   =>       infix_##(t)
  *   t.asInstanceOf[T]      =>       infix_asInstanceOf[T](t)
  *   t.isInstanceOf[T]      =>       infix_isInstanceOf[T](t)
- *   t.toString             =>       infix_toString(t)
+ *   t.getClass             =>       infix_getClass(t)
  * }}}
  *
  * ===Vritualization of `AnyRef` methods===
@@ -47,42 +51,80 @@ import scala.collection.mutable
  * }}}
  *
  * ===Configurable===
+ * With `virtualizeFunctions`:
  * {{{
- *   x => e                 =>       __lambda(x => e)
- *   f.apply(x)             =>       __app(f).apply(x)    // if `f` is a function object
- *   val x = b              =>       __valDef(b)
+ *   x => e                 =>       $lam(x => e)
+ *   f.apply(x)             =>       $app(f).apply(x)    // if `f` is a function object
  * }}}
  *
- * @todo
+ * With `virtualizeValDef`:
  * {{{
- *   try b catch c          =>       __tryCatch(b, c, f)
- *   throw e                =>       __throw(e)
- *   lazy val x = b         =>       __lazyValDef(b)
- *   def f                  =>       ignored for now as it is treated by the scope injection
- *   case class C { ... }   =>       forbiden, for now
- *   match                  =>       ignored, should be treated by virtual pattern matcher
- *   new                    =>       forbiden, for now
+ *   val x = b              =>       $valDef(b)
  * }}}
+ *
+ * With `virtualizeEquals`:
+ * {{{
+ *   t.toString             =>       infix_toString(t)
+ *   t.hashCode             =>       infix_hashCode(t)
+ *   t.equals t1            =>       infix_equals(t, t1)
+ * }}}
+ *
+ * ===Restricted===
+ * {{{
+ *     class C { ... }
+ *     trait T
+ *     object O
+ * }}}
+ *
  */
-trait LanguageVirtualization extends MacroModule with TransformationUtils with DataDefs {
+trait LanguageVirtualization extends MacroModule with TransformationUtils
+  with DataDefs with FreeIdentAnalysis {
   import c.universe._
 
+  /**
+   * Defines if functions are virtualized.
+   */
   val virtualizeFunctions: Boolean
-  val failCompilation: Boolean
-  val virtualizeVal: Boolean
-  val virtualizeVarNamed: Boolean = false
+
+  /**
+   * Defines if we should restrict class, trait, and object definitions. In macros
+   * we do not want to reject programs with nested definitions.
+   */
+  val restrictDefinitions: Boolean = true
+
+  /**
+   * Appends names to value bindings. This is used for debugging of generated code
+   * in some DSLs.
+   */
+  val nameBindings: Boolean = false
+
+  /**
+   * Defines virtualizaition of non-final universal methods (e.g., `toString`).
+   */
+  val virtualizeEquals: Boolean = true
+
+  /**
+   * Defines whether we virtualize value definitions.
+   */
+  val virtualizeValDef: Boolean = false
+
+  /**
+   * Defines a prefix for all virtualized methods.
+   */
+  val prefix = "$"
 
   def virtualize(t: Tree): (Tree, Seq[DSLFeature]) = VirtualizationTransformer(t)
 
   object VirtualizationTransformer {
     def apply(tree: Tree) = {
-      val t = new VirtualizationTransformer().apply(tree)
+      val freeVars = freeVariables(tree)
+      val t = new VirtualizationTransformer(freeVars).apply(tree)
       log("(virtualized, Seq[Features]): " + t, 2)
       t
     }
   }
 
-  private class VirtualizationTransformer extends Transformer {
+  private class VirtualizationTransformer(val freeVars: List[Tree] = Nil) extends Transformer {
     val lifted = mutable.ArrayBuffer[DSLFeature]()
 
     def liftFeature(receiver: Option[Tree], nme: String, args: List[Tree], targs: List[Tree] = Nil, trans: Tree => Tree = transform): Tree = {
@@ -91,14 +133,51 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
       method(receiver.map(trans), nme, List(args.map(trans)), targs)
     }
 
+    def named(name: TermName): Seq[Tree] = if (nameBindings) Seq(q"$name") else Seq()
+
     override def transform(tree: Tree): Tree = {
       tree match {
+        case f @ Function(vparams, body) if virtualizeFunctions =>
+          val tree = transform(body)
+          liftFeature(None, prefix + "lam", List(Function(vparams, tree)), Nil, trans = x => x)
 
+        case FunctionApply(qualifier, args, targs) if virtualizeFunctions =>
+          Apply(Select(liftFeature(None, prefix + "app", List(qualifier), targs), TermName("apply")), args map transform)
+
+        case t @ If(cond, thenBr, elseBr) =>
+          liftFeature(None, prefix + "ifThenElse", List(cond, thenBr, elseBr))
+
+        case Return(e) =>
+          liftFeature(None, prefix + "return", List(e))
+
+        case LabelDef(sym, List(), If(cond, Block(body :: Nil, Apply(Ident(label),
+          List())), Literal(Constant(())))) if label == sym => // while(){}
+          liftFeature(None, prefix + "whileDo", List(cond, body))
+
+        case LabelDef(sym, List(), Block(body :: Nil, If(cond, Apply(Ident(label),
+          List()), Literal(Constant(()))))) if label == sym => // do while(){}
+          liftFeature(None, prefix + "doWhile", List(cond, body))
+
+        case Try(block, catches, finalizer) =>
+          val arg = Ident(TermName("x"))
+          val etaExpandedCatch = Function(
+            List(ValDef(Modifiers(Flag.PARAM), TermName("x"), Ident(TypeName("Any")), EmptyTree)),
+            if (catches == Nil) arg else Match(arg, catches))
+          val finalizerTree = if (finalizer == EmptyTree) q"null" else finalizer
+          val tparams = if (tree.tpe == null) Nil else List(TypeTree(tree.tpe))
+          liftFeature(None, prefix + "try", List(block, etaExpandedCatch, finalizerTree), tparams)
+
+        case Throw(expr) =>
+          liftFeature(None, prefix + "throw", List(expr))
+
+        case MultipleTypeApply(Select(New(nme), termNames.CONSTRUCTOR), targs, argss) =>
+          method(None, prefix + "new_" + nme.toString, argss.map(_.map(transform)), targs)
+
+        //
+        // Variables virtualization
+        //
         case ValDef(mods, sym, tpt, rhs) if mods.hasFlag(Flag.PARAM) =>
           ValDef(mods, sym, tpt, transform(rhs))
-
-        case ValDef(mods, sym, tpt, rhs) if mods.hasFlag(Flag.MUTABLE) && virtualizeVarNamed =>
-          ValDef(mods, sym, tpt, liftFeature(None, "__newVarNamed", List(rhs, Literal(Constant(sym.toString)))))
 
         // sstucki: It seems necessary to keep the MUTABLE flag in the
         // new ValDef set, otherwise it becomes tricky to
@@ -106,116 +185,102 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
         // (e.g. if the DSL does not handle variable definitions in a
         // special way).
         case ValDef(mods, sym, tpt, rhs) if mods.hasFlag(Flag.MUTABLE) =>
-          ValDef(mods, sym, tpt, liftFeature(None, "__newVar", List(rhs)))
+          ValDef(mods, sym, tpt, liftFeature(None, prefix + "varDef", List(rhs) ++ named(sym)))
+
+        case Assign(lhs, rhs) =>
+          liftFeature(None, prefix + "assign", List(lhs, transform(rhs)), Nil, x => x)
 
         case ValDef(mods, sym, tpt, rhs) if mods.hasFlag(Flag.LAZY) =>
-          ValDef(mods, sym, tpt, liftFeature(None, "__lazyValDef", List(rhs)))
+          ValDef(mods, sym, tpt, liftFeature(None, prefix + "lazyValDef", List(rhs) ++ named(sym)))
 
         case ValDef(mods, sym, tpt, rhs) =>
           val newRhs =
-            if (virtualizeVal) liftFeature(None, "__valDef", List(rhs))
+            if (virtualizeValDef) liftFeature(None, prefix + "valDef", List(rhs) ++ named(sym))
             else transform(rhs)
+
           ValDef(mods, sym, tpt, newRhs)
 
-        case f @ Function(vparams, body) if virtualizeFunctions =>
-          val tree = transform(body)
-          liftFeature(None, "__lambda", List(Function(vparams, tree)), Nil, trans = x => x)
+        case Ident(x) if (tree.symbol.isTerm && !(freeVars contains tree) && (
+          tree.symbol.asTerm.isVar ||
+          tree.symbol.asTerm.isLazy ||
+          (!tree.symbol.isParameter && tree.symbol.asTerm.isVal && virtualizeValDef))) =>
+          liftFeature(None, prefix + "read", List(tree), Nil, x => x)
 
-        case FunctionApply(qualifier, args, targs) if virtualizeFunctions =>
-          Apply(Select(liftFeature(None, "__app", List(qualifier), targs), TermName("apply")), args map transform)
-
-        case t @ If(cond, thenBr, elseBr) =>
-          liftFeature(None, "__ifThenElse", List(cond, thenBr, elseBr))
-
-        case Return(e) =>
-          liftFeature(None, "__return", List(e))
-
-        case Assign(lhs, rhs) =>
-          liftFeature(None, "__assign", List(lhs, transform(rhs)), Nil, x => x)
-
-        case LabelDef(sym, List(), If(cond, Block(body :: Nil, Apply(Ident(label),
-          List())), Literal(Constant(())))) if label == sym => // while(){}
-          liftFeature(None, "__whileDo", List(cond, body))
-
-        case LabelDef(sym, List(), Block(body :: Nil, If(cond, Apply(Ident(label),
-          List()), Literal(Constant(()))))) if label == sym => // do while(){}
-          liftFeature(None, "__doWhile", List(cond, body))
-
+        //
+        // Universal methods virtualization
+        //
         case Apply(Select(qualifier, TermName("$eq$eq")), List(arg)) =>
-          liftFeature(None, "infix_$eq$eq", List(qualifier, arg))
+          liftFeature(None, prefix + "infix_$eq$eq", List(qualifier, arg))
 
         case Apply(Select(qualifier, TermName("$bang$eq")), List(arg)) =>
-          liftFeature(None, "infix_$bang$eq", List(qualifier, arg))
+          liftFeature(None, prefix + "infix_$bang$eq", List(qualifier, arg))
 
         case Apply(lhs @ Select(qualifier, TermName("$hash$hash")), List()) =>
-          liftFeature(None, "infix_$hash$hash", List(qualifier))
+          liftFeature(None, prefix + "infix_$hash$hash", List(qualifier))
 
-        case Apply(lhs @ Select(qualifier, TermName("equals")), List(arg)) =>
-          liftFeature(None, "infix_equals", List(qualifier, arg))
+        case Apply(lhs @ Select(qualifier, TermName("equals")), List(arg)) if virtualizeEquals =>
+          liftFeature(None, prefix + "infix_equals", List(qualifier, arg))
 
         case Apply(lhs @ Select(qualifier, TermName("hashCode")), List()) =>
-          liftFeature(None, "infix_hashCode", List(qualifier))
+          liftFeature(None, prefix + "infix_hashCode", List(qualifier))
 
         case TypeApply(Select(qualifier, TermName("asInstanceOf")), targs) =>
-          liftFeature(None, "infix_asInstanceOf", List(qualifier), targs)
+          liftFeature(None, prefix + "infix_asInstanceOf", List(qualifier), targs)
 
         case TypeApply(Select(qualifier, TermName("isInstanceOf")), targs) =>
-          liftFeature(None, "infix_isInstanceOf", List(qualifier), targs)
+          liftFeature(None, prefix + "infix_isInstanceOf", List(qualifier), targs)
+
+        case TypeApply(Select(qualifier, TermName("getClass")), targs) =>
+          liftFeature(None, prefix + "infix_getClass", List(qualifier), targs)
 
         case Apply(lhs @ Select(qualifier, TermName("toString")), List()) =>
-          liftFeature(None, "infix_toString", List(qualifier))
+          liftFeature(None, prefix + "infix_toString", List(qualifier))
 
         case Apply(lhs @ Select(qualifier, TermName("eq")), List(arg)) =>
-          liftFeature(None, "infix_eq", List(qualifier, arg))
+          liftFeature(None, prefix + "infix_eq", List(qualifier, arg))
 
         case Apply(lhs @ Select(qualifier, TermName("ne")), List(arg)) =>
-          liftFeature(None, "infix_ne", List(qualifier, arg))
+          liftFeature(None, prefix + "infix_ne", List(qualifier, arg))
 
         case Apply(Select(qualifier, TermName("notify")), List()) =>
-          liftFeature(None, "infix_notify", List(qualifier))
+          liftFeature(None, prefix + "infix_notify", List(qualifier))
 
         case Apply(Select(qualifier, TermName("notifyAll")), List()) =>
-          liftFeature(None, "infix_notifyAll", List(qualifier))
+          liftFeature(None, prefix + "infix_notifyAll", List(qualifier))
 
         case Apply(Select(qualifier, TermName("synchronized")), List(arg)) =>
-          liftFeature(None, "infix_synchronized", List(qualifier, arg))
+          liftFeature(None, prefix + "infix_synchronized", List(qualifier, arg))
 
         case Apply(TypeApply(Select(qualifier, TermName("synchronized")), targs), List(arg)) =>
-          liftFeature(None, "infix_synchronized", List(qualifier, arg), targs)
+          liftFeature(None, prefix + "infix_synchronized", List(qualifier, arg), targs)
 
         case Apply(Select(qualifier, TermName("wait")), List()) =>
-          liftFeature(None, "infix_wait", List(qualifier))
+          liftFeature(None, prefix + "infix_wait", List(qualifier))
 
         case Apply(Select(qualifier, TermName("wait")), List(arg)
           ) if arg.tpe =:= typeOf[Long] =>
-          liftFeature(None, "infix_wait", List(qualifier, arg))
+          liftFeature(None, prefix + "infix_wait", List(qualifier, arg))
 
         case Apply(Select(qualifier, TermName("wait")), List(arg0, arg1)
           ) if arg0.tpe =:= typeOf[Long] && arg1.tpe =:= typeOf[Int] =>
-          liftFeature(None, "infix_wait", List(qualifier, arg0, arg1))
-
-        case Ident(x) if tree.symbol.isTerm && tree.symbol.asTerm.isVar =>
-          liftFeature(None, "__readVar", List(tree), Nil, x => x)
+          liftFeature(None, prefix + "infix_wait", List(qualifier, arg0, arg1))
 
         case Typed(x, Ident(typeNames.WILDCARD_STAR)) =>
-          Typed(liftFeature(None, "__castVarArg", List(x)), Ident(typeNames.WILDCARD_STAR))
+          Typed(liftFeature(None, prefix + "castVarArg", List(x)), Ident(typeNames.WILDCARD_STAR))
 
-        case ClassDef(mods, n, _, _) if mods.hasFlag(Flag.CASE) =>
-          // sstucki: there are issues with the ordering of
-          // virtualization and expansion of case classes (i.e. some
-          // of the expanded code might be virtualized even though it
-          // should not be and vice-versa).  So until we have decided
-          // how proper virtualization of case classes should be done,
-          // any attempt to do so should fail.
+        //
+        // Restrictions
+        //
+        // Case-classes are never supported: i) with @virtualize they badly interact with
+        //  further case class expansion, and ii) in macro mode we do not support them.
+        case ClassDef(mods, _, _, _) if mods.hasFlag(Flag.CASE) =>
           c.abort(tree.pos, "Virtualization of case classes is not supported.")
 
-        case Try(block, catches, finalizer) =>
-          unsupported(tree.pos, "Virtualization of try/catch expressions is not supported.")
-          super.transform(tree)
+        case ClassDef(_, _, _, _) if restrictDefinitions =>
+          c.abort(tree.pos, "Virtualization of classes and traits is not supported.")
 
-        case Throw(expr) =>
-          unsupported(tree.pos, "Virtualization of throw expressions is not supported.")
-          super.transform(tree)
+        case ModuleDef(_, _, _) if restrictDefinitions =>
+          c.abort(tree.pos, "Virtualization of modules is not supported.")
 
         case _ =>
           super.transform(tree)
@@ -223,13 +288,6 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
     }
 
     object FunctionApply {
-      private val functionArity = 22
-      private val functionSymbols = (0 to functionArity)
-        .map(x => "scala.Function" + x)
-        .map(c.mirror.staticClass)
-
-      def isFunction(methodSymbol: Symbol): Boolean =
-        functionSymbols.contains(methodSymbol.owner)
 
       def unapply(tree: Tree): Option[(Tree, List[Tree], List[Tree])] = tree match {
         case Apply(m @ Select(qualifier, TermName("apply")), args) if isFunction(m.symbol) =>
@@ -246,9 +304,6 @@ trait LanguageVirtualization extends MacroModule with TransformationUtils with D
         case _ => None
       }
     }
-
-    def unsupported: (Position, String) => Unit =
-      if (failCompilation) c.abort else c.warning
 
     def apply(tree: c.universe.Tree): (Tree, Seq[DSLFeature]) =
       (transform(tree), lifted.toSeq)

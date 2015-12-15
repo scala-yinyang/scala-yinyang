@@ -18,7 +18,7 @@ import scala.reflect.macros.blackbox.Context
  *
  * Example: When faced with an `if` construct, the `@virtualized`
  * macro annotation will generate a method call:
- * `__ifThenElse(cond, thenp, elsep)`
+ * `$ifThenElse(cond, thenp, elsep)`
  *
  * This method call will be bound to an implementation based on normal
  * rules of scoping.  If it binds to the standard one in this trait,
@@ -40,38 +40,41 @@ trait EmbeddedControls {
   // SI-5778]]).
 
   // Control structures
-  def __ifThenElse[T](cond: Boolean, thenBr: T, elseBr: T): T = macro ifThenElseImpl[T]
-  def __return(expr: Any): Nothing = macro returnImpl
-  def __assign[T](lhs: T, rhs: T): Unit = macro assignImpl[T]
-  def __whileDo(cond: Boolean, body: Unit): Unit = macro whileDoImpl
-  def __doWhile(body: Unit, cond: Boolean): Unit = macro doWhileImpl
-  def __newVar[T](init: T): T = macro newVarImpl[T]
-  def __readVar[T](init: T): T = macro readVarImpl[T]
-  def __lazyValDef[T](init: T): T = macro lazyValDefImpl[T]
-  def __valDef[T](init: T): T = macro valDefImpl[T]
+  def $ifThenElse[T](cond: Boolean, thenBr: T, elseBr: T): T = macro ifThenElseImpl[T]
+  def $return(expr: Any): Nothing = macro returnImpl
+  def $whileDo(cond: Boolean, body: Unit): Unit = macro whileDoImpl
+  def $doWhile(body: Unit, cond: Boolean): Unit = macro doWhileImpl
+
+  def $valDef[T](init: T): T = macro valDefImpl[T]
+  def $varDef[T](init: T): T = macro varDefImpl[T]
+  def $lazyValDef[T](init: T): T = macro lazyValDefImpl[T]
+  def $read[T](init: T): T = macro readImpl[T]
+  def $assign[T](lhs: T, rhs: T): Unit = macro assignImpl[T]
+  def $try[T](body: T, catches: Throwable => T, finalizer: T): T = macro tryImpl[T]
+  def $throw(t: Throwable): Nothing = macro throwImpl
 
   // Infix methods for `Any` methods
-  def infix_==(x1: Any, x2: Any): Boolean = macro any_==
-  def infix_!=(x1: Any, x2: Any): Boolean = macro any_!=
-  def infix_##(x: Any): Int = macro any_##
-  def infix_equals(x1: Any, x2: Any): Boolean = macro any_equals
-  def infix_hashCode(x: Any): Int = macro any_hashCode
-  def infix_asInstanceOf[T](x: Any): T = macro any_asInstanceOf[T]
-  def infix_isInstanceOf[T](x: Any): Boolean = macro any_isInstanceOf[T]
-  def infix_toString(x: Any): String = macro any_toString
-  def infix_getClass(x: Any): Class[_] = macro any_getClass
+  def $infix_==(x1: Any, x2: Any): Boolean = macro any_==
+  def $infix_!=(x1: Any, x2: Any): Boolean = macro any_!=
+  def $infix_##(x: Any): Int = macro any_##
+  def $infix_equals(x1: Any, x2: Any): Boolean = macro any_equals
+  def $infix_hashCode(x: Any): Int = macro any_hashCode
+  def $infix_asInstanceOf[T](x: Any): T = macro any_asInstanceOf[T]
+  def $infix_isInstanceOf[T](x: Any): Boolean = macro any_isInstanceOf[T]
+  def $infix_toString(x: Any): String = macro any_toString
+  def $infix_getClass(x: Any): Class[_] = macro any_getClass
 
   // Infix methods for `AnyRef` methods
-  def infix_eq(x1: AnyRef, x2: AnyRef): Boolean = macro anyRef_eq
-  def infix_ne(x1: AnyRef, x2: AnyRef): Boolean = macro anyRef_ne
-  def infix_notify(x: AnyRef): Unit = macro anyRef_notify
-  def infix_notifyAll(x: AnyRef): Unit = macro anyRef_notifyAll
-  def infix_synchronized[T](x: AnyRef, body: T): T = macro anyRef_synchronized[T]
-  def infix_wait(x: AnyRef): Unit = macro anyRef_wait0
-  def infix_wait(x: AnyRef, timeout: Long): Unit = macro anyRef_wait1
-  def infix_wait(x: AnyRef, timeout: Long, nanos: Int): Unit = macro anyRef_wait2
-  def infix_clone(x: AnyRef): AnyRef = macro anyRef_clone
-  def infix_finalize(x: AnyRef): Unit = macro anyRef_finalize
+  def $infix_eq(x1: AnyRef, x2: AnyRef): Boolean = macro anyRef_eq
+  def $infix_ne(x1: AnyRef, x2: AnyRef): Boolean = macro anyRef_ne
+  def $infix_notify(x: AnyRef): Unit = macro anyRef_notify
+  def $infix_notifyAll(x: AnyRef): Unit = macro anyRef_notifyAll
+  def $infix_synchronized[T](x: AnyRef, body: T): T = macro anyRef_synchronized[T]
+  def $infix_wait(x: AnyRef): Unit = macro anyRef_wait0
+  def $infix_wait(x: AnyRef, timeout: Long): Unit = macro anyRef_wait1
+  def $infix_wait(x: AnyRef, timeout: Long, nanos: Int): Unit = macro anyRef_wait2
+  def $infix_clone(x: AnyRef): AnyRef = macro anyRef_clone
+  def $infix_finalize(x: AnyRef): Unit = macro anyRef_finalize
 }
 
 /**
@@ -95,13 +98,6 @@ private object EmbeddedControls {
     c.Expr(q"return $expr")
   }
 
-  def assignImpl[T](c: Context)(
-    lhs: c.Expr[T], rhs: c.Expr[T]): c.Expr[Unit] = {
-
-    import c.universe._
-    c.Expr(q"$lhs = $rhs")
-  }
-
   def whileDoImpl(c: Context)(
     cond: c.Expr[Boolean], body: c.Expr[Unit]): c.Expr[Unit] = {
 
@@ -116,9 +112,41 @@ private object EmbeddedControls {
     c.Expr(q"do $body while ($cond)")
   }
 
-  def newVarImpl[T](c: Context)(init: c.Expr[T]): c.Expr[T] = init
+  def tryImpl[T](c: Context)(body: c.Expr[T], catches: c.Expr[Any], finalizer: c.Expr[Any]): c.Expr[T] = {
+    import c.universe._
+    object EtaExpandedCases {
+      def unapply(v: Any): Option[List[CaseDef]] = v match {
+        case Function(
+          List(ValDef(_, TermName("x"), Ident(TypeName("Any")), EmptyTree)),
+          Match(Ident(TermName("x")), cases)) => Some(cases)
+        case _ => None
+      }
+    }
+    (catches, finalizer) match {
 
-  def readVarImpl[T](c: Context)(init: c.Expr[T]): c.Expr[T] = init
+      case (EtaExpandedCases(cases), q"null")   => c.Expr[T](q"try $body catch $cases")
+      case (EtaExpandedCases(cases), finalizer) => c.Expr[T](q"try $body catch $cases finally $finalizer")
+      case (_, q"null")                         => c.Expr[T](q"try $body")
+      case (_, finalizer)                       => c.Expr[T](q"try $body finally $finalizer")
+
+    }
+  }
+
+  def throwImpl(c: Context)(t: c.Expr[Throwable]): c.Expr[Nothing] = {
+    import c.universe._
+    c.Expr(q"throw $t")
+  }
+
+  def assignImpl[T](c: Context)(
+    lhs: c.Expr[T], rhs: c.Expr[T]): c.Expr[Unit] = {
+
+    import c.universe._
+    c.Expr(q"$lhs = $rhs")
+  }
+
+  def varDefImpl[T](c: Context)(init: c.Expr[T]): c.Expr[T] = init
+
+  def readImpl[T](c: Context)(init: c.Expr[T]): c.Expr[T] = init
 
   def valDefImpl[T](c: Context)(init: c.Expr[T]): c.Expr[T] = init
 

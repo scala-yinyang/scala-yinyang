@@ -21,8 +21,6 @@ import scala.collection.mutable.ArrayBuffer
  */
 trait HoleTransformation extends MacroModule with TransformationUtils {
 
-  def holeMethod: String
-
   import c.universe._
 
   /** SymbolIds indexed by holeIds. */
@@ -42,26 +40,26 @@ trait HoleTransformation extends MacroModule with TransformationUtils {
    * `hole[T](classTag[T], holeId)` and builds the holeTable mapping from
    * holeIds to symbolIds.
    */
+  //  TODO this translation needs to happen properly. Absence of explicit lifting should be handled by config. What should
+  //  be converted to lift, and what to hole, and what should be rejected.
+  //   [[x.y.z.k.this.f]] if f is a field ~> hole(x.y.z.k.this.f)
+  //   [[x.y.z.k.this.m(...,...,...)]] if m is a method ~> hole(x.y.z.k.this.m) // (config) to reject or accept?
   class HoleTransformer(toHoles: List[Int]) extends Transformer {
 
     override def transform(tree: Tree): Tree = tree match {
-      case i @ Ident(s) if toHoles contains symbolId(i.symbol) => {
-        val index = {
-          val sId = symbolId(i.symbol)
-          if (holeTable.contains(sId))
-            holeTable.indexOf(sId)
-          else {
-            holeTable += symbolId(i.symbol)
-            holeTable.size - 1
-          }
+
+      case i @ Ident(s) if toHoles contains symbolId(i.symbol) =>
+        val sId = symbolId(i.symbol)
+        val index = if (holeTable.contains(sId)) holeTable.indexOf(sId)
+        else {
+          holeTable += symbolId(i.symbol)
+          holeTable.size - 1
         }
-        Apply(
-          Select(This(typeNames.EMPTY), TermName(holeMethod)),
-          List(
-            TypeApply(
-              Select(This(typeNames.EMPTY), TermName("runtimeType")), List(TypeTree(i.tpe.widen))),
-            Literal(Constant(index))))
-      }
+        q"$$hole($index, $$tpe[${i.tpe.dealias.widen}])"
+
+      case Ident(s) => // TODO move this to a separate phase.
+        Ident(s)
+
       case _ =>
         super.transform(tree)
     }
